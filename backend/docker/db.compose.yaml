@@ -1,0 +1,34 @@
+x-networks: &networks
+  networks:
+    - shared_service_network
+
+services:
+  # ----------------------
+  # 1) Postgres DB
+  # ----------------------
+  db:
+    image: postgres:13
+    container_name: db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydatabase
+    volumes:
+      - shared_pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    # Add a healthcheck so Docker knows when Postgres is actually ready
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d mydatabase || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    <<: *networks
+
+volumes:
+  shared_pgdata:
+    external: true
+
+networks:
+  shared_service_network:
+    external: true
