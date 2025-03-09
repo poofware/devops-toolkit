@@ -1,13 +1,17 @@
-#-----------------------
-#  Go App Build Targets
+# ----------------------
+# Go App Build Targets
 # ----------------------
 
 SHELL := /bin/bash
+
+.PHONY: build
 
 # Check that the current working directory is the root of a Go service by verifying that go.mod exists.
 ifeq ($(wildcard go.mod),)
   $(error Error: go.mod not found. Please ensure you are in the root directory of your Go service.)
 endif
+
+INCLUDED_GO_APP_BUILD := 1
 
 
 ifndef COMPOSE_PROJECT_NAME
@@ -33,10 +37,10 @@ DEFAULT_BUILD_SERVICES := app db migrate
 BUILD_SERVICES ?= $(DEFAULT_BUILD_SERVICES)
 
 
-.PHONY: build
-
 # Include path relative to the root of the project
-include devops-toolkit/backend/make/utils/go_app_deps.mk
+ifndef INCLUDED_GO_APP_DEPS
+  include devops-toolkit/backend/make/utils/go_app_deps.mk
+endif
 
 
 ## Builds specified Docker images (defaults to app, db, migrate) found in COMPOSE_FILE (make with VERBOSE=1 for more info)

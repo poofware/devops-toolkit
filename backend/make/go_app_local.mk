@@ -1,16 +1,20 @@
 # ------------------------------
-#  Go App Local Testing Targets
+# Go App Local Testing Targets
 #  
-#  This Makefile is intended to be included in the main Makefile
-#  in the root of a Go service.
+# This Makefile is intended to be included in the main Makefile
+# in the root of a Go service.
 # ------------------------------
 
 SHELL := /bin/bash
+
+.PHONY: up integration-test unit-test down ci clean
 
 # Check that the current working directory is the root of a Go service by verifying that go.mod exists.
 ifeq ($(wildcard go.mod),)
   $(error Error: go.mod not found. Please ensure you are in the root directory of your Go service.)
 endif
+
+INCLUDED_GO_APP_LOCAL := 1
 
 
 ####################################
@@ -98,7 +102,10 @@ export APP_NAME := $(APP_NAME)
 export APP_PORT := $(APP_PORT)
 export MIGRATIONS_PATH := $(MIGRATIONS_PATH)
 export ENV := $(ENV)
-export HCP_ENCRYPTED_API_TOKEN ?= $(shell devops-toolkit/backend/scripts/fetch_hcp_token.sh encrypted)
+# To force a static assignment operation with '?=' behavior, we wrap the ':=' assignment in an ifndef check
+ifndef HCP_ENCRYPTED_API_TOKEN
+	export HCP_ENCRYPTED_API_TOKEN := $(shell devops-toolkit/backend/scripts/fetch_hcp_token.sh encrypted)
+endif
 export HCP_ORG_ID := a4c32123-5c1c-45cd-ad4e-9fe42a30d664
 export HCP_PROJECT_ID := d413f61e-00f1-4ddf-afaf-bf8b9c04957e
 
@@ -116,12 +123,16 @@ COMPOSE_CMD := docker compose \
 			   -p $(COMPOSE_PROJECT_NAME)
 
 
-.PHONY: up integration-test unit-test down ci clean
-
 # Include path relative to the root of the project
-include devops-toolkit/backend/make/utils/go_app_deps.mk
-include devops-toolkit/backend/make/utils/go_app_build.mk
-include devops-toolkit/backend/make/utils/go_app_migrate.mk
+ifndef INCLUDED_GO_APP_DEPS
+  include devops-toolkit/backend/make/utils/go_app_deps.mk
+endif
+ifndef INCLUDED_GO_APP_BUILD
+  include devops-toolkit/backend/make/utils/go_app_build.mk
+endif
+ifndef INCLUDED_GO_APP_MIGRATE
+  include devops-toolkit/backend/make/utils/go_app_migrate.mk
+endif
 
 
 ## Starts db + app in background (make with DB_ONLY=1 to start only the db)
@@ -193,7 +204,7 @@ down: _deps-down
 
 ## Cleans everything (containers, images, volumes)
 clean: _deps-clean
-	@echo "[INFO] [Clean] Running down target to stop all running containers..."
+	@echo "[INFO] [Clean] Running down target..."
 	@$(MAKE) down WITH_DEPS=0
 	@echo "[INFO] [Clean] Full nuke of containers, images, volumes, networks..."
 	$(COMPOSE_CMD) down --rmi local -v --remove-orphans

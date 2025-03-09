@@ -1,3 +1,14 @@
+# ----------------------
+# Help Target
+# ----------------------
+
+SHELL := /bin/bash
+
+.PHONY: help
+
+INCLUDED_HELP := 1
+
+
 ## Lists available targets
 help:
 	@echo "Available targets:"
