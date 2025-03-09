@@ -76,6 +76,7 @@ ifndef PACKAGES
 endif
 
 
+# Functions in make should always use '=', unless precomputing the value without dynamic args
 print-dep = $(info   $(word 1, $(subst :, ,$1)) = $(word 2, $(subst :, ,$1)))
 
 ifeq ($(WITH_DEPS),1)
@@ -178,12 +179,12 @@ integration-test: down up
 
 ## Shuts down all containers
 down: _deps-down
-	@echo "[INFO] [Clean-Volumes] Removing containers & volumes, keeping images..."
+	@echo "[INFO] [Down] Removing containers & volumes, keeping images..."
 	$(COMPOSE_CMD) down -v --remove-orphans
 
-	@echo "[INFO] [Clean-Volumes] Removing shared volume 'shared_pgdata'..."
+	@echo "[INFO] [Down] Removing shared volume 'shared_pgdata'..."
 	@docker volume rm shared_pgdata > /dev/null 2>&1 || \
-		echo "[WARN] [Clean-Volumes] 'volume rm shared_pgdata' failed (volume most likely not found) Ignoring..."
+		echo "[WARN] [Down] 'volume rm shared_pgdata' failed (volume most likely not found) Ignoring..."
 
 	@echo "[INFO] [Down] Removing shared network 'shared_service_network'..."
 	@docker network rm shared_service_network > /dev/null 2>&1 || \
