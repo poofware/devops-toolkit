@@ -32,6 +32,7 @@ ARG APP_PORT
 ARG ENV
 ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
+ARG HCP_ENCRYPTED_API_TOKEN
 
 # Validate the configuration
 RUN test -n "${APP_NAME}" || ( \
@@ -54,12 +55,10 @@ RUN test -n "${HCP_PROJECT_ID}" || ( \
   echo "Error: HCP_PROJECT_ID is not set! Use --build-arg HCP_PROJECT_ID=xxx" && \
   exit 1 \
 );
-RUN --mount=type=secret,id=hcp_api_token \
-    --mount=type=secret,id=hcp_token_enc_key \
-    if [ ! -s /run/secrets/hcp_api_token ] || [ ! -s /run/secrets/hcp_token_enc_key ]; then \
-      echo "Error: hcp_api_token or hcp_token_enc_key is missing/empty!" >&2 ; \
-      exit 1; \
-    fi;
+RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
+  echo "Error: HCP_ENCRYPTED_API_TOKEN is not set! Use --build-arg HCP_ENCRYPTED_API_TOKEN=xxx" && \
+  exit 1 \
+);
 
 #######################################
 # Stage 3: App Build Runner (compile app)
@@ -71,6 +70,7 @@ ARG APP_PORT
 ARG ENV
 ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
+ARG HCP_ENCRYPTED_API_TOKEN
 
 # Copy the entire source for building
 COPY internal/ ./internal/
@@ -78,24 +78,14 @@ COPY cmd/ ./cmd/
 
 # Compile the app binary
 # Transform ENV by replacing dashes (-) with underscores (_) to ensure valid Go 1.23 build tags
-# Encrypt the HCP_API_TOKEN using the HCP_TOKEN_ENC_KEY
-RUN --mount=type=secret,id=hcp_api_token \
-    --mount=type=secret,id=hcp_token_enc_key \
-    set -euxo pipefail; \
-    export HCP_TOKEN="$(cat /run/secrets/hcp_api_token)" && \
-    export HCP_TOKEN_ENC_KEY="$(cat /run/secrets/hcp_token_enc_key)" && \
-    export HCP_ENCRYPTED_TOKEN="$( \
-      echo -n "$HCP_TOKEN" \
-      | openssl enc -aes-256-cbc -iter 10000 -md sha256 -base64 -pbkdf2 -pass pass:"$HCP_TOKEN_ENC_KEY" -salt \
-    )" && \
-    go build \
+RUN go build \
       -ldflags "\
         -X 'github.com/poofware/${APP_NAME}/internal/config.AppPort=${APP_PORT}' \
         -X 'github.com/poofware/${APP_NAME}/internal/config.AppName=${APP_NAME}' \
         -X 'github.com/poofware/${APP_NAME}/internal/config.Env=${ENV}' \
         -X 'github.com/poofware/go-utils.HCPOrgID=${HCP_ORG_ID}' \
         -X 'github.com/poofware/go-utils.HCPProjectID=${HCP_PROJECT_ID}' \
-        -X 'github.com/poofware/go-utils.HCPEncryptedAPIToken=${HCP_ENCRYPTED_TOKEN}'" \
+        -X 'github.com/poofware/go-utils.HCPEncryptedAPIToken=${HCP_ENCRYPTED_API_TOKEN}'" \
       -v -o "/${APP_NAME}" ./cmd/main.go;
 
 #######################################
@@ -106,6 +96,7 @@ FROM config-validator AS integration-test-builder
 ARG ENV
 ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
+ARG HCP_ENCRYPTED_API_TOKEN
 
 # Copy the files needed for building integration tests
 COPY internal/ ./internal/
@@ -113,22 +104,14 @@ COPY internal/ ./internal/
 # Compile the integration test binary (from test/integration/)
 # Transform ENV by replacing dashes (-) with underscores (_) to ensure valid Go 1.23 build tags,
 # as dashes are not allowed in tag names per stricter parsing (alphanumeric and underscores only).
-RUN --mount=type=secret,id=hcp_api_token \
-    --mount=type=secret,id=hcp_token_enc_key \
-    set -euxo pipefail; \
-    export HCP_TOKEN="$(cat /run/secrets/hcp_api_token)" && \
-    export HCP_TOKEN_ENC_KEY="$(cat /run/secrets/hcp_token_enc_key)" && \
-    export HCP_ENCRYPTED_TOKEN="$( \
-      echo -n "$HCP_TOKEN" \
-      | openssl enc -aes-256-cbc -iter 10000 -md sha256 -base64 -pbkdf2 -pass pass:"$HCP_TOKEN_ENC_KEY" -salt \
-    )" && \
+RUN set -euxo pipefail; \
     ENV_TRANSFORMED=$(echo "${ENV}" | tr '-' '_') && \
     go test -c -tags "${ENV_TRANSFORMED},integration" \
       -ldflags "\
         -X 'github.com/poofware/${APP_NAME}/internal/integration.Env=${ENV}' \
         -X 'github.com/poofware/go-utils.HCPOrgID=${HCP_ORG_ID}' \
         -X 'github.com/poofware/go-utils.HCPProjectID=${HCP_PROJECT_ID}' \
-        -X 'github.com/poofware/go-utils.HCPEncryptedAPIToken=${HCP_ENCRYPTED_TOKEN}'" \
+        -X 'github.com/poofware/go-utils.HCPEncryptedAPIToken=${HCP_ENCRYPTED_API_TOKEN}'" \
       -v -o /integration_test ./internal/integration/...;
 
 #######################################
@@ -204,3 +187,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:$APP_PORT/health || exit 1;
 
 CMD ./$APP_NAME
+

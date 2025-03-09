@@ -3,7 +3,7 @@ FROM alpine:latest
 ##
 # Install Dependencies & Migrate CLI
 ##
-RUN apk add --no-cache ca-certificates bash postgresql-client curl jq \
+RUN apk add --no-cache ca-certificates bash postgresql-client curl jq openssl \
     && update-ca-certificates \
     && wget https://github.com/golang-migrate/migrate/releases/download/v4.16.2/migrate.linux-amd64.tar.gz \
     && tar xvf migrate.linux-amd64.tar.gz -C /usr/local/bin \
@@ -17,6 +17,7 @@ ARG APP_NAME
 ARG ENV
 ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
+ARG HCP_ENCRYPTED_API_TOKEN
 
 ##
 # Validate Required Build Args
@@ -41,6 +42,10 @@ RUN test -n "${HCP_PROJECT_ID}" || ( \
   echo "Error: HCP_PROJECT_ID is not set! Use --build-arg HCP_PROJECT_ID=xxx" >&2 && \
   exit 1 \
 );
+RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
+  echo "Error: HCP_ENCRYPTED_API_TOKEN is not set! Use --build-arg HCP_ENCRYPTED_API_TOKEN=xxx" >&2 && \
+  exit 1 \
+);
 
 ##
 # Transfer Build Args to Environment Variables
@@ -50,6 +55,7 @@ ENV APP_NAME=${APP_NAME}
 ENV ENV=${ENV}
 ENV HCP_ORG_ID=${HCP_ORG_ID}
 ENV HCP_PROJECT_ID=${HCP_PROJECT_ID}
+ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
 
 ##
 # Hard-code Secret Name
@@ -61,31 +67,33 @@ ENV DATABASE_URL_SECRET_NAME=DB_URL
 ##
 WORKDIR /app
 COPY ${MIGRATIONS_PATH} migrations
+COPY devops-toolkit/backend/scripts/encryption.sh encryption.sh
 
 ##
 # Final Command: Fetch DB URL from HCP & Run Migrations
 ##
-CMD set -e ; \
-    if [ ! -s /run/secrets/hcp_api_token ]; then \
-      echo "[ERROR]: No HCP_API_TOKEN secret found in /run/secrets/hcp_api_token." >&2 ; \
+CMD set -e; \
+    if [ -z "${HCP_TOKEN_ENC_KEY:-}" ]; then \
+      echo "[ERROR] HCP_TOKEN_ENC_KEY is not set! Required for decrypting the HCP token." >&2 ; \
       exit 1 ; \
     fi ; \
-    export HCP_API_TOKEN="$(cat /run/secrets/hcp_api_token)" ; \
-    echo "[INFO] [Migrate Container] Using HCP_API_TOKEN from secret mount..." ; \
+    source ./encryption.sh ; \
+    export HCP_API_TOKEN="$(decrypt_token "${HCP_ENCRYPTED_API_TOKEN}")" ; \
+    echo "[INFO] [Migrate Container] Using decrypted HCP_API_TOKEN from environment variable..." ; \
     HCP_APP_NAME="${APP_NAME}-${ENV}" ; \
     echo "[INFO] [Migrate Container] Fetching secret '${DATABASE_URL_SECRET_NAME}' for app '${HCP_APP_NAME}' from HCP..." ; \
     PAYLOAD="$(curl --silent --show-error --location \
       "https://api.cloud.hashicorp.com/secrets/2023-11-28/organizations/${HCP_ORG_ID}/projects/${HCP_PROJECT_ID}/apps/${HCP_APP_NAME}/secrets/${DATABASE_URL_SECRET_NAME}:open" \
       --header "Authorization: Bearer ${HCP_API_TOKEN}")" ; \
     if [ $? -ne 0 ]; then \
-      echo "[ERROR]: Failed to make request to HCP." >&2 ; \
+      echo "[ERROR] [Migrate Container] Failed to make request to HCP." >&2 ; \
       echo "Full response from HCP was:" >&2 ; \
       echo "$PAYLOAD" >&2 ; \
       exit 1 ; \
     fi ; \
     DB_URL="$(echo "$PAYLOAD" | jq -r '.secret.static_version.value // empty')" ; \
     if [ -z "$DB_URL" ]; then \
-      echo "[ERROR]: Could not retrieve the secret '${DATABASE_URL_SECRET_NAME}' for app '${HCP_APP_NAME}'." >&2 ; \
+      echo "[ERROR] [Migrate Container] Could not retrieve the secret '${DATABASE_URL_SECRET_NAME}' for app '${HCP_APP_NAME}'." >&2 ; \
       echo "Full response from HCP was:" >&2 ; \
       echo "$PAYLOAD" >&2 ; \
       exit 1 ; \
@@ -97,8 +105,9 @@ CMD set -e ; \
       sleep 1 ; \
     done ; \
     if [ $n -le 0 ]; then \
-      echo "[ERROR]: Failed to connect to DB after 10 attempts." >&2 ; \
+      echo "[ERROR] [Migrate Container] Failed to connect to DB after 10 attempts." >&2 ; \
       exit 1 ; \
     fi ; \
     echo "[INFO] [Migrate Container] Running migrations..." ; \
-    migrate -path migrations -database "$DB_URL" up ;
+    migrate -path migrations -database "$DB_URL" up
+

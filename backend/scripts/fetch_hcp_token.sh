@@ -8,7 +8,9 @@
 # We reuse the token until it's close to expiration (3540 seconds).
 #
 # Usage:
-#   export HCP_API_TOKEN=$(./fetch_hcp_token.sh)
+#   ./fetch_hcp_token.sh [plain|encrypted]  (defaults to 'plain')
+#     - plain: outputs the plaintext token
+#     - encrypted: outputs the encrypted token
 #
 # Requirements:
 #   - HCP_CLIENT_ID and HCP_CLIENT_SECRET (for fetching new token).
@@ -17,8 +19,16 @@
 
 set -euo pipefail
 
+# -----------------------------------------------------------------------------
+# Source the encryption library for encrypt_token / decrypt_token functions
+# -----------------------------------------------------------------------------
+source devops-toolkit/backend/scripts/encryption.sh
+
 CACHE_FILE=".hcp_token_cache"
 TOKEN_MAX_AGE=3540  # 59 minutes, to refresh a minute before actual 3600s expiry
+
+# Determine output mode from optional first argument (defaults to 'plain')
+OUTPUT_MODE="${1:-plain}"
 
 ###############################################################################
 # Function: fetch_new_token
@@ -58,17 +68,19 @@ fetch_new_token() {
   fi
 
   # Encrypt token -> cache file
-  # uses AES-256-CBC with PBKDF2 (sha256, 10000 iterations), salted + base64
-  echo -n "${hcp_token}" \
-    | openssl enc -aes-256-cbc -salt -pbkdf2 -md sha256 -iter 10000 -base64 \
-      -pass pass:"${HCP_TOKEN_ENC_KEY}" \
-      > "${CACHE_FILE}"
+  encrypt_token "${hcp_token}" > "${CACHE_FILE}"
 
   # Optionally secure the file (best effort)
   chmod 600 "${CACHE_FILE}" || true
 
   echo "[INFO] New HCP token fetched and cached (encrypted) successfully." >&2
-  echo "${hcp_token}"
+
+  # Output either encrypted or plain token
+  if [[ "${OUTPUT_MODE}" == "encrypted" ]]; then
+    cat "${CACHE_FILE}"
+  else
+    echo "${hcp_token}"
+  fi
 }
 
 ###############################################################################
@@ -87,9 +99,7 @@ decrypt_cached_token() {
   # Decrypt from base64
   local plaintext
   set +e
-  plaintext="$(echo -n "${ciphertext}" \
-    | openssl enc -d -aes-256-cbc -salt -pbkdf2 -md sha256 -iter 10000 -base64 \
-      -pass pass:"${HCP_TOKEN_ENC_KEY}" 2>/dev/null)"
+  plaintext="$(decrypt_token "${ciphertext}" 2>/dev/null)"
   local exit_code=$?
   set -e
 
@@ -122,7 +132,11 @@ if [[ -f "${CACHE_FILE}" ]]; then
     cached_token="$(decrypt_cached_token || true)"  # '|| true' so we don't exit on failure
     if [[ -n "${cached_token}" ]]; then
       # Successfully decrypted
-      echo "${cached_token}"
+      if [[ "${OUTPUT_MODE}" == "encrypted" ]]; then
+        cat "${CACHE_FILE}"
+      else
+        echo "${cached_token}"
+      fi
       exit 0
     else
       # Decryption failed - fetch a new token

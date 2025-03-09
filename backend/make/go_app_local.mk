@@ -81,12 +81,13 @@ print-dep = $(info   $(word 1, $(subst :, ,$1)) = $(word 2, $(subst :, ,$1)))
 ifeq ($(WITH_DEPS),1)
 $(info --------------------------------------------------)
 $(info [INFO] WITH_DEPS is enabled. Effective dependency services being used:)
+ifneq ($(DEPS),"")
 $(foreach dep, $(DEPS), $(call print-dep, $(dep)))
+endif
 $(info )
 $(info [INFO] To override, make with VAR=value)
 $(info --------------------------------------------------)
 endif
-
 
 # For updating go packages
 export PACKAGES := $(PACKAGES)
@@ -96,13 +97,13 @@ export APP_NAME := $(APP_NAME)
 export APP_PORT := $(APP_PORT)
 export MIGRATIONS_PATH := $(MIGRATIONS_PATH)
 export ENV := $(ENV)
-export HCP_API_TOKEN ?= $(shell devops-toolkit/backend/scripts/fetch_hcp_token.sh)
+export HCP_ENCRYPTED_API_TOKEN ?= $(shell devops-toolkit/backend/scripts/fetch_hcp_token.sh encrypted)
 export HCP_ORG_ID := a4c32123-5c1c-45cd-ad4e-9fe42a30d664
 export HCP_PROJECT_ID := d413f61e-00f1-4ddf-afaf-bf8b9c04957e
 
 # For docker compose
 # List in order of dependency, separate by ':'
-export COMPOSE_FILE := docker/db.compose.yaml:docker/go-app.compose.yaml
+export COMPOSE_FILE := devops-toolkit/backend/docker/db.compose.yaml:devops-toolkit/backend/docker/go-app.compose.yaml
 
 # For docker compose command options
 COMPOSE_PROJECT_DIR := ./
@@ -214,3 +215,4 @@ update:
 	fi
 	@devops-toolkit/backend/scripts/update_go_packages.sh
 	@echo "[INFO] [Update] Done."
+

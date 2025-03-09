@@ -2,11 +2,6 @@ x-networks: &networks
   networks:
     - shared_service_network
 
-x-secrets: &secrets
-  secrets:
-    - hcp_api_token
-    - hcp_token_enc_key
-
 x-environment: &environment
   environment:
     HCP_TOKEN_ENC_KEY: ${HCP_TOKEN_ENC_KEY?Docker Compose Config Error! HCP_TOKEN_ENC_KEY is not set!}
@@ -16,6 +11,7 @@ x-build-args: &build-args
   ENV: ${ENV?Docker Compose Config Error! ENV is not set!}
   HCP_ORG_ID: ${HCP_ORG_ID?Docker Compose Config Error! HCP_ORG_ID is not set!}
   HCP_PROJECT_ID: ${HCP_PROJECT_ID?Docker Compose Config Error! HCP_PROJECT_ID is not set!}
+  HCP_ENCRYPTED_API_TOKEN: ${HCP_ENCRYPTED_API_TOKEN?Docker Compose Config Error! HCP_ENCRYPTED_API_TOKEN is not set!}
 
 services:
   # ----------------------
@@ -24,9 +20,8 @@ services:
   app:
     build:
       context: .
-      dockerfile: docker/go-app.Dockerfile
+      dockerfile: devops-toolkit/backend/docker/go-app.Dockerfile
       target: app
-      <<: *secrets
       args:
         <<: *build-args
         APP_PORT: ${APP_PORT:-8080}
@@ -51,9 +46,8 @@ services:
   integration-test:
     build:
       context: .
-      dockerfile: docker/go-app.Dockerfile
+      dockerfile: devops-toolkit/backend/docker/go-app.Dockerfile
       target: integration-test-runner
-      <<: *secrets
       args:
         <<: *build-args
         APP_PORT: ${APP_PORT:-8080}
@@ -67,7 +61,7 @@ services:
   unit-test:
     build:
       context: .
-      dockerfile: docker/go-app.Dockerfile
+      dockerfile: devops-toolkit/backend/docker/go-app.Dockerfile
       target: unit-test-runner
     <<: *networks
 
@@ -77,21 +71,15 @@ services:
   migrate:
     build:
       context: .
-      dockerfile: docker/migrate.Dockerfile
+      dockerfile: devops-toolkit/backend/docker/migrate.Dockerfile
       args:
         <<: *build-args
         MIGRATIONS_PATH: ${MIGRATIONS_PATH?Docker Compose Config Error! MIGRATIONS_PATH is not set!}
     <<:
       - *networks
-      - *secrets
+      - *environment
 
 networks:
   shared_service_network:
     external: true
-
-secrets:
-  hcp_api_token:
-    environment: HCP_API_TOKEN
-  hcp_token_enc_key:
-    environment: HCP_TOKEN_ENC_KEY
 
