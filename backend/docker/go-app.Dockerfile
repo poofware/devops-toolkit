@@ -93,6 +93,7 @@ RUN go build \
 #######################################
 FROM config-validator AS integration-test-builder
 
+ARG APP_NAME
 ARG ENV
 ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
@@ -108,7 +109,8 @@ RUN set -euxo pipefail; \
     ENV_TRANSFORMED=$(echo "${ENV}" | tr '-' '_') && \
     go test -c -tags "${ENV_TRANSFORMED},integration" \
       -ldflags "\
-        -X 'github.com/poofware/${APP_NAME}/internal/integration.Env=${ENV}' \
+        -X 'github.com/poofware/${APP_NAME}/internal/config.AppName=${APP_NAME}' \
+        -X 'github.com/poofware/${APP_NAME}/internal/config.Env=${ENV}' \
         -X 'github.com/poofware/go-utils.HCPOrgID=${HCP_ORG_ID}' \
         -X 'github.com/poofware/go-utils.HCPProjectID=${HCP_PROJECT_ID}' \
         -X 'github.com/poofware/go-utils.HCPEncryptedAPIToken=${HCP_ENCRYPTED_API_TOKEN}'" \
