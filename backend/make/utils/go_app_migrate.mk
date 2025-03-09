@@ -15,9 +15,7 @@ INCLUDED_GO_APP_MIGRATE := 1
 
 
 # Include path relative to the root of the project
-ifndef INCLUDED_GO_APP_DEPS
-  include devops-toolkit/backend/make/utils/go_app_deps.mk
-endif
+include devops-toolkit/backend/make/utils/go_app_deps.mk
 
 
 ## Runs migrations in a one-off container

@@ -38,9 +38,7 @@ BUILD_SERVICES ?= $(DEFAULT_BUILD_SERVICES)
 
 
 # Include path relative to the root of the project
-ifndef INCLUDED_GO_APP_DEPS
-  include devops-toolkit/backend/make/utils/go_app_deps.mk
-endif
+include devops-toolkit/backend/make/utils/go_app_deps.mk
 
 
 ## Builds specified Docker images (defaults to app, db, migrate) found in COMPOSE_FILE (make with VERBOSE=1 for more info)

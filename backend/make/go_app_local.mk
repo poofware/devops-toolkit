@@ -124,15 +124,9 @@ COMPOSE_CMD := docker compose \
 
 
 # Include path relative to the root of the project
-ifndef INCLUDED_GO_APP_DEPS
-  include devops-toolkit/backend/make/utils/go_app_deps.mk
-endif
-ifndef INCLUDED_GO_APP_BUILD
-  include devops-toolkit/backend/make/utils/go_app_build.mk
-endif
-ifndef INCLUDED_GO_APP_MIGRATE
-  include devops-toolkit/backend/make/utils/go_app_migrate.mk
-endif
+include devops-toolkit/backend/make/utils/go_app_deps.mk
+include devops-toolkit/backend/make/utils/go_app_build.mk
+include devops-toolkit/backend/make/utils/go_app_migrate.mk
 
 
 ## Starts db + app in background (make with DB_ONLY=1 to start only the db)
