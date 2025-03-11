@@ -9,6 +9,7 @@ x-environment: &environment
 x-build-args: &build-args
   APP_NAME: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}
   ENV: ${ENV?Docker Compose Config Error! ENV is not set!}
+  APP_URL: ${APP_URL:-}
   HCP_ORG_ID: ${HCP_ORG_ID?Docker Compose Config Error! HCP_ORG_ID is not set!}
   HCP_PROJECT_ID: ${HCP_PROJECT_ID?Docker Compose Config Error! HCP_PROJECT_ID is not set!}
   HCP_ENCRYPTED_API_TOKEN: ${HCP_ENCRYPTED_API_TOKEN?Docker Compose Config Error! HCP_ENCRYPTED_API_TOKEN is not set!}
