@@ -185,7 +185,7 @@ up: _deps-up
 			echo "[WARN] [Up] '$(COMPOSE_CMD) up -d db' failed (container most likely already running) Ignoring..."; \
 		echo "[INFO] [Up] Done. $$COMPOSE_DB_NAME is running on port $$COMPOSE_DB_HOST_PORT"; \
 		echo "[INFO] [Up] Running migrate target to make sure the db is up to date..."; \
-		$(MAKE) migrate; \
+		$(MAKE) migrate WITH_DEPS=0; \
 	else \
 		echo "[INFO] [Up] COMPOSE_DB_NAME not set. Skipping database and migration steps."; \
 	fi
