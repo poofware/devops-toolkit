@@ -1,6 +1,6 @@
 x-networks: &networks
   networks:
-    - shared_service_network
+    - app_network
 
 x-environment: &environment
   environment:
@@ -29,11 +29,11 @@ services:
     image: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}
     container_name: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}_instance
     networks:
-      shared_service_network:
+      app_network:
         aliases:
           - ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}
     ports:
-      - "${HOST_PORT:-8080}:${APP_PORT:-8080}"
+      - "${APP_HOST_PORT:-8080}:${APP_PORT:-8080}"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:${APP_PORT:-8080}/health"]
       interval: 5s
@@ -74,12 +74,13 @@ services:
       dockerfile: devops-toolkit/backend/docker/migrate.Dockerfile
       args:
         <<: *build-args
-        MIGRATIONS_PATH: ${MIGRATIONS_PATH?Docker Compose Config Error! MIGRATIONS_PATH is not set!}
+        MIGRATIONS_PATH: ${MIGRATIONS_PATH:-migrations}
     <<:
       - *networks
       - *environment
 
 networks:
-  shared_service_network:
+  app_network:
     external: true
+    name: ${COMPOSE_NETWORK_NAME?Docker Compose Config Error! COMPOSE_NETWORK_NAME is not set!}
 

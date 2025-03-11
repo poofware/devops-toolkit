@@ -26,6 +26,7 @@ ifndef COMPOSE_PROJECT_DIR
 	Example: COMPOSE_PROJECT_DIR="./")
 endif
 
+
 SSH_DOCKER_BUILD_CMD := devops-toolkit/backend/scripts/ssh_docker_build.sh compose \
 						--project-directory $(COMPOSE_PROJECT_DIR) \
 						-p $(COMPOSE_PROJECT_NAME)

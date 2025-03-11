@@ -1,4 +1,4 @@
-FROM alpine:latest
+FROM alpine:latest AS migrate
 
 ##
 # Install Dependencies & Migrate CLI
@@ -51,10 +51,9 @@ RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
 # Transfer Build Args to Environment Variables
 ##
 ENV MIGRATIONS_PATH=${MIGRATIONS_PATH}
-ENV APP_NAME=${APP_NAME}
-ENV ENV=${ENV}
 ENV HCP_ORG_ID=${HCP_ORG_ID}
 ENV HCP_PROJECT_ID=${HCP_PROJECT_ID}
+ENV HCP_APP_NAME=${APP_NAME}-${ENV}
 ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
 
 ##
@@ -68,46 +67,12 @@ ENV DATABASE_URL_SECRET_NAME=DB_URL
 WORKDIR /app
 COPY ${MIGRATIONS_PATH} migrations
 COPY devops-toolkit/backend/scripts/encryption.sh encryption.sh
+COPY devops-toolkit/backend/scripts/fetch_hcp_secret.sh fetch_hcp_secret.sh
+COPY devops-toolkit/backend/docker/scripts/migrate_cmd.sh migrate_cmd.sh
+
+RUN chmod +x encryption.sh fetch_hcp_secret.sh migrate_cmd.sh;
 
 ##
 # Final Command: Fetch DB URL from HCP & Run Migrations
 ##
-CMD set -e; \
-    if [ -z "${HCP_TOKEN_ENC_KEY:-}" ]; then \
-      echo "[ERROR] HCP_TOKEN_ENC_KEY is not set! Required for decrypting the HCP token." >&2 ; \
-      exit 1 ; \
-    fi ; \
-    source ./encryption.sh ; \
-    export HCP_API_TOKEN="$(decrypt_token "${HCP_ENCRYPTED_API_TOKEN}")" ; \
-    echo "[INFO] [Migrate Container] Using decrypted HCP_API_TOKEN from environment variable..." ; \
-    HCP_APP_NAME="${APP_NAME}-${ENV}" ; \
-    echo "[INFO] [Migrate Container] Fetching secret '${DATABASE_URL_SECRET_NAME}' for app '${HCP_APP_NAME}' from HCP..." ; \
-    PAYLOAD="$(curl --silent --show-error --location \
-      "https://api.cloud.hashicorp.com/secrets/2023-11-28/organizations/${HCP_ORG_ID}/projects/${HCP_PROJECT_ID}/apps/${HCP_APP_NAME}/secrets/${DATABASE_URL_SECRET_NAME}:open" \
-      --header "Authorization: Bearer ${HCP_API_TOKEN}")" ; \
-    if [ $? -ne 0 ]; then \
-      echo "[ERROR] [Migrate Container] Failed to make request to HCP." >&2 ; \
-      echo "Full response from HCP was:" >&2 ; \
-      echo "$PAYLOAD" >&2 ; \
-      exit 1 ; \
-    fi ; \
-    DB_URL="$(echo "$PAYLOAD" | jq -r '.secret.static_version.value // empty')" ; \
-    if [ -z "$DB_URL" ]; then \
-      echo "[ERROR] [Migrate Container] Could not retrieve the secret '${DATABASE_URL_SECRET_NAME}' for app '${HCP_APP_NAME}'." >&2 ; \
-      echo "Full response from HCP was:" >&2 ; \
-      echo "$PAYLOAD" >&2 ; \
-      exit 1 ; \
-    fi ; \
-    echo "[INFO] [Migrate Container] Checking database readiness..." ; \
-    n=10 ; \
-    while ! pg_isready -d "$DB_URL" -t 1 >/dev/null 2>&1 && [ $((n--)) -gt 0 ]; do \
-      echo "  Waiting for DB to become ready..." ; \
-      sleep 1 ; \
-    done ; \
-    if [ $n -le 0 ]; then \
-      echo "[ERROR] [Migrate Container] Failed to connect to DB after 10 attempts." >&2 ; \
-      exit 1 ; \
-    fi ; \
-    echo "[INFO] [Migrate Container] Running migrations..." ; \
-    migrate -path migrations -database "$DB_URL" up
-
+CMD ./migrate_cmd.sh

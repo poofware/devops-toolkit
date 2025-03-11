@@ -20,19 +20,19 @@ INCLUDED_GO_APP_LOCAL := 1
 ####################################
 # Runtime/Ci environment variables #
 ####################################
-ifndef HCP_CLIENT_ID
+ifneq ($(origin HCP_CLIENT_ID), environment)
   $(error HCP_CLIENT_ID is not set. Please define it in your runtime/ci environment. \
-	Example: export HCP_CLIENT_ID="my_client_id")
+    Example: export HCP_CLIENT_ID="my_client_id")
 endif
 
-ifndef HCP_CLIENT_SECRET
+ifneq ($(origin HCP_CLIENT_SECRET), environment)
   $(error HCP_CLIENT_SECRET is not set. Please define it in your runtime/ci environment. \
-	Example: export HCP_CLIENT_SECRET="my_client_secret")
+    Example: export HCP_CLIENT_SECRET="my_client_secret")
 endif
 
-ifndef HCP_TOKEN_ENC_KEY
+ifneq ($(origin HCP_TOKEN_ENC_KEY), environment)
   $(error HCP_TOKEN_ENC_KEY is not set. Please define it in your runtime/ci environment. \
-	Example: export HCP_TOKEN_ENC_KEY="my_encryption_key")
+    Example: export HCP_TOKEN_ENC_KEY="my_encryption_key")
 endif
 
 ###################################################################
@@ -54,29 +54,53 @@ ifndef APP_PORT
 	Example: APP_PORT=8080)
 endif
 
+ifndef COMPOSE_NETWORK_NAME
+  $(error COMPOSE_NETWORK_NAME is not set. Please define it in your local Makefile or environment. \
+	Example: COMPOSE_NETWORK_NAME="shared_service_network")
+endif
+
 ifndef WITH_DEPS
   $(error WITH_DEPS is not set. Please define it in your local Makefile or environment. \
 	Example: WITH_DEPS=1)
 endif
 
-ifndef DEPS
-  $(error DEPS is not set. Please define it in your local Makefile or environment. Define it empty if not needed. \
-	Example: DEPS="/path/to/auth-service /path/to/worker-account-service" or DEPS="")
-endif
-
 ###########################
 # Root Makefile variables #
 ###########################
-ifndef MIGRATIONS_PATH
-  $(error MIGRATIONS_PATH is not set. Please define it in your local Makefile or environment. \
-    Example: MIGRATIONS_PATH="migrations")
-else
-  $(if $(wildcard $(MIGRATIONS_PATH)),,$(error MIGRATIONS_PATH error: Directory '$(MIGRATIONS_PATH)' does not exist.))
+ifneq ($(origin PACKAGES), file)
+  $(error PACKAGES is either not set or set as a runtime/ci environment variable, should be hardcoded in the root Makefile. \
+	Define it empty if your app has no dependency packages. \
+    Example: export PACKAGES="go-middleware go-repositories go-utils go-models" or PACKAGES="")
 endif
 
-ifndef PACKAGES
-  $(error PACKAGES is not set. Please define it in your local Makefile or environment. \
-	Example: PACKAGES="go-middleware go-repositories go-utils go-models")
+ifneq ($(origin DEPS), file)
+  $(error DEPS is either not set or set as a runtime/ci environment variable, should be hardcoded in the root Makefile. \
+	Define it empty if your app has no dependency apps. \
+	Example: export DEPS="/path/to/auth-service /path/to/worker-account-service" or DEPS="")
+endif
+
+ifneq ($(origin COMPOSE_DB_NAME), file)
+  $(error COMPOSE_DB_NAME is either not set or set as a runtime/ci environment variable, should be hardcoded in the root Makefile. \
+	Define it empty if a db is not needed. \
+	Example: export COMPOSE_DB_NAME="shared_pg_db" or COMPOSE_DB_NAME="")
+endif
+
+ifneq ($(origin MIGRATIONS_PATH), file)
+  $(error MIGRATIONS_PATH is either not set or set as a runtime/ci environment variable, should be hardcoded in the root Makefile. \
+	Define it empty if a db is not needed. \
+	Example: export MIGRATIONS_PATH="migrations" or MIGRATIONS_PATH="")
+endif
+
+####################################
+# Optional configuration variables #
+####################################
+
+### Env variable only variables ###
+ifdef APP_URL
+  ifeq ($(origin APP_URL), file)
+    $(error APP_URL should be set as a runtime/ci environment variable, do not hardcode it in the root Makefile. \
+  	  Example: export APP_URL="http://backend:8080")
+  endif
 endif
 
 
@@ -84,29 +108,37 @@ endif
 print-dep = $(info   $(word 1, $(subst :, ,$1)) = $(word 2, $(subst :, ,$1)))
 
 ifeq ($(WITH_DEPS),1)
-$(info --------------------------------------------------)
-$(info [INFO] WITH_DEPS is enabled. Effective dependency services being used:)
-ifneq ($(DEPS),"")
-$(foreach dep, $(DEPS), $(call print-dep, $(dep)))
-endif
-$(info )
-$(info [INFO] To override, make with VAR=value)
-$(info --------------------------------------------------)
+  $(info --------------------------------------------------)
+  $(info [INFO] WITH_DEPS is enabled. Effective dependency services being used:)
+  ifneq ($(DEPS),"")
+    $(foreach dep, $(DEPS), $(call print-dep, $(dep)))
+  endif
+  $(info )
+  $(info [INFO] To override, make with VAR=value)
+  $(info --------------------------------------------------)
 endif
 
 # For updating go packages
-export PACKAGES := $(PACKAGES)
+export PACKAGES
 
 # For specific docker compose fields in our configuration
-export APP_NAME := $(APP_NAME)
-export APP_PORT := $(APP_PORT)
-export MIGRATIONS_PATH := $(MIGRATIONS_PATH)
-export ENV := $(ENV)
+export APP_NAME
+export APP_PORT
+export APP_URL
+export COMPOSE_NETWORK_NAME
+export COMPOSE_DB_NAME
+ifdef COMPOSE_DB_NAME
+  export COMPOSE_DB_VOLUME_NAME := $(COMPOSE_DB_NAME)_data
+endif
+export MIGRATIONS_PATH
+export ENV
 # To force a static assignment operation with '?=' behavior, we wrap the ':=' assignment in an ifndef check
 ifndef HCP_ENCRYPTED_API_TOKEN
-	export HCP_ENCRYPTED_API_TOKEN := $(shell devops-toolkit/backend/scripts/fetch_hcp_token.sh encrypted)
+	export HCP_ENCRYPTED_API_TOKEN := $(shell devops-toolkit/backend/scripts/fetch_hcp_api_token.sh encrypted)
 endif
+# Poof
 export HCP_ORG_ID := a4c32123-5c1c-45cd-ad4e-9fe42a30d664
+# Backend
 export HCP_PROJECT_ID := d413f61e-00f1-4ddf-afaf-bf8b9c04957e
 
 # For docker compose
@@ -131,32 +163,42 @@ include devops-toolkit/backend/make/utils/go_app_migrate.mk
 
 ## Starts db + app in background (make with DB_ONLY=1 to start only the db)
 up: _deps-up
+	@echo "[INFO] [Up] Running down target to ensure clean state..."
+	@$(MAKE) down WITH_DEPS=0
+
 	@echo "[INFO] [Up] Running build target..."
 	@$(MAKE) build WITH_DEPS=0
-	@echo "[INFO] [Up] Creating shared service network..."
-	@docker network create shared_service_network > /dev/null 2>&1 || \
-		echo "[WARN] [Up] 'network create shared_service_network' failed (network most likely already exists) Ignoring..."
 
-	@echo "[INFO] [Up] Creating shared volume 'shared_pgdata'..."
-	@docker volume create shared_pgdata > /dev/null 2>&1 || \
-		echo "[WARN] [Up] 'volume create shared_pgdata' failed (volume most likely already exists) Ignoring..."
+	@echo "[INFO] [Up] Creating network '$(COMPOSE_NETWORK_NAME)'..."
+	@docker network create $(COMPOSE_NETWORK_NAME) > /dev/null 2>&1 || \
+		echo "[WARN] [Up] 'network create $(COMPOSE_NETWORK_NAME)' failed (network most likely already exists) Ignoring..."
 
-	@echo "[INFO] [Up] Spinning up db..."
-	@($(COMPOSE_CMD) up -d db > /dev/null 2>&1 && echo "[INFO] [Up] Database spun up successfully.") || \
-	  echo "[WARN] [Up] '$(COMPOSE_CMD) up -d db' failed (container most likely already running) Ignoring..."
-
-	@echo "[INFO] [Up] Running migrate target to make sure the db is up to date..."
-	@$(MAKE) migrate
+	@if [ -n "$(COMPOSE_DB_NAME)" ]; then \
+		echo "[INFO] [Up] Creating volume '$(COMPOSE_DB_VOLUME_NAME)'..."; \
+		docker volume create $(COMPOSE_DB_VOLUME_NAME) > /dev/null 2>&1 || \
+			echo "[WARN] [Up] 'volume create $(COMPOSE_DB_VOLUME_NAME)' failed (volume most likely already exists) Ignoring..."; \
+		echo "[INFO] [Up] Spinning up db..."; \
+		echo "[INFO] [Up] Finding free host port for db to bind to..."; \
+		export COMPOSE_DB_HOST_PORT=$$(devops-toolkit/backend/scripts/find_available_port.sh 5432); \
+		echo "[INFO] [Up] Found free host port: $$COMPOSE_DB_HOST_PORT"; \
+		($(COMPOSE_CMD) up -d db > /dev/null 2>&1 && echo "[INFO] [Up] Database spun up successfully.") || \
+			echo "[WARN] [Up] '$(COMPOSE_CMD) up -d db' failed (container most likely already running) Ignoring..."; \
+		echo "[INFO] [Up] Done. $$COMPOSE_DB_NAME is running on port $$COMPOSE_DB_HOST_PORT"; \
+		echo "[INFO] [Up] Running migrate target to make sure the db is up to date..."; \
+		$(MAKE) migrate; \
+	else \
+		echo "[INFO] [Up] COMPOSE_DB_NAME not set. Skipping database and migration steps."; \
+	fi
 
 	@if [ "$(DB_ONLY)" = "1" ]; then \
 	  echo "[INFO] [Up] DB_ONLY=1 set. Skipping app spin-up..."; \
 	else \
 	  echo "[INFO] [Up] Spinning up app..."; \
 	  echo "[INFO] [Up] Finding free host port for app to bind to..."; \
-	  export HOST_PORT=$$(devops-toolkit/backend/scripts/find_available_port.sh); \
-	  echo "[INFO] [Up] Found free host port: $$HOST_PORT"; \
+	  export APP_HOST_PORT=$$(devops-toolkit/backend/scripts/find_available_port.sh 8080); \
+	  echo "[INFO] [Up] Found free host port: $$APP_HOST_PORT"; \
 	  $(COMPOSE_CMD) up -d app; \
-	  echo "[INFO] [Up] Done. $$APP_NAME is running on http://localhost:$$HOST_PORT"; \
+	  echo "[INFO] [Up] Done. $$APP_NAME is running on http://localhost:$$APP_HOST_PORT"; \
 	fi
 
 # TODO: implement unit tests!!!
@@ -170,7 +212,7 @@ up: _deps-up
 # TODO: implement unit tests!!!
 
 ## Runs integration tests in a one-off container
-integration-test: down up
+integration-test:
 	@echo "[INFO] [Integration Test] Running build target for integration-test service exclusively..."
 	@$(MAKE) build BUILD_SERVICES="integration-test" WITH_DEPS=0
 	@echo "[INFO] [Integration Test] Starting...";
@@ -187,13 +229,15 @@ down: _deps-down
 	@echo "[INFO] [Down] Removing containers & volumes, keeping images..."
 	$(COMPOSE_CMD) down -v --remove-orphans
 
-	@echo "[INFO] [Down] Removing shared volume 'shared_pgdata'..."
-	@docker volume rm shared_pgdata > /dev/null 2>&1 || \
-		echo "[WARN] [Down] 'volume rm shared_pgdata' failed (volume most likely not found) Ignoring..."
+	@if [ -n "$(COMPOSE_DB_NAME)" ]; then \
+		echo "[INFO] [Down] Removing volume '$(COMPOSE_DB_VOLUME_NAME)'..."; \
+		docker volume rm $(COMPOSE_DB_VOLUME_NAME) > /dev/null 2>&1 || \
+			echo "[WARN] [Down] 'volume rm $(COMPOSE_DB_VOLUME_NAME)' failed (volume most likely not found) Ignoring..."; \
+	fi
 
-	@echo "[INFO] [Down] Removing shared network 'shared_service_network'..."
-	@docker network rm shared_service_network > /dev/null 2>&1 || \
-		echo "[WARN] [Down] 'network rm shared_service_network' failed (network most likely already removed) Ignoring..."
+	@echo "[INFO] [Down] Removing network '$(COMPOSE_NETWORK_NAME)'..."
+	@docker network rm $(COMPOSE_NETWORK_NAME) > /dev/null 2>&1 || \
+		echo "[WARN] [Down] 'network rm $(COMPOSE_NETWORK_NAME)' failed (network most likely already removed) Ignoring..."
 	@echo "[INFO] [Down] Done."
 
 ## Cleans everything (containers, images, volumes)
@@ -207,6 +251,7 @@ clean: _deps-clean
 ## CI pipeline: Runs both integration and unit tests, and then shuts down all containers
 ci:
 	@echo "[INFO] [CI] Starting pipeline..."
+	$(MAKE) up
 	$(MAKE) integration-test
 	@# $(MAKE) unit-test  # TODO: implement unit tests
 	$(MAKE) down
@@ -217,6 +262,10 @@ update:
 	@echo "[INFO] [Update] Updating Go packages..."
 	@if [ -z "$(BRANCH)" ]; then \
 		echo "[ERROR] [Update] BRANCH is not set. Please pass it as an argument to the make command. Example: BRANCH=main make update"; \
+		exit 1; \
+	fi
+	@if [ -z "$(PACKAGES)" ]; then \
+		echo "[ERROR] [Update] PACKAGES is empty. No packages to update."; \
 		exit 1; \
 	fi
 	@devops-toolkit/backend/scripts/update_go_packages.sh

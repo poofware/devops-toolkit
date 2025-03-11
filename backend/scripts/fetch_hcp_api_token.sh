@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# fetch_hcp_token.sh
+# fetch_hcp_api_token.sh
 #
 # A script to retrieve and output a HashiCorp Cloud Platform (HCP) access token
 # using environment variables HCP_CLIENT_ID and HCP_CLIENT_SECRET.
@@ -8,7 +8,7 @@
 # We reuse the token until it's close to expiration (3540 seconds).
 #
 # Usage:
-#   ./fetch_hcp_token.sh [plain|encrypted]  (defaults to 'plain')
+#   ./fetch_hcp_api_token.sh [plain|encrypted]  (defaults to 'plain')
 #     - plain: outputs the plaintext token
 #     - encrypted: outputs the encrypted token
 #
@@ -39,7 +39,7 @@ fetch_new_token() {
   # Check that required environment variables are set
   if [[ -z "${HCP_CLIENT_ID:-}" || -z "${HCP_CLIENT_SECRET:-}" ]]; then
     echo "[ERROR] HCP_CLIENT_ID and HCP_CLIENT_SECRET environment variables must be set." >&2
-    echo "[ERROR] Usage: HCP_CLIENT_ID=... HCP_CLIENT_SECRET=... ./fetch_hcp_token.sh" >&2
+    echo "[ERROR] Usage: HCP_CLIENT_ID=... HCP_CLIENT_SECRET=... ./fetch_hcp_api_token.sh" >&2
     exit 1
   fi
   if [[ -z "${HCP_TOKEN_ENC_KEY:-}" ]]; then

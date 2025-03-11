@@ -133,28 +133,30 @@ RUN go test -c -o /unit_test ./internal/...;
 FROM alpine:latest AS integration-test-runner
 
 ARG APP_NAME
-ARG APP_PORT
 ARG ENV
+ARG APP_URL
+ARG HCP_ORG_ID
+ARG HCP_PROJECT_ID
+ARG HCP_ENCRYPTED_API_TOKEN
 
-RUN apk add --no-cache curl;
+RUN apk add --no-cache curl jq openssl bash ca-certificates && update-ca-certificates;
 
 WORKDIR /root/
 COPY --from=integration-test-builder /integration_test ./integration_test
+COPY devops-toolkit/backend/scripts/encryption.sh encryption.sh
+COPY devops-toolkit/backend/scripts/fetch_hcp_secret.sh fetch_hcp_secret.sh
+COPY devops-toolkit/backend/docker/scripts/integration_test_runner_cmd.sh integration_test_runner_cmd.sh
+
+RUN chmod +x encryption.sh fetch_hcp_secret.sh integration_test_runner_cmd.sh;
 
 # Convert ARG to ENV for runtime use
-ENV APP_NAME=${APP_NAME}
-ENV SERVICE_URL="http://${APP_NAME}:${APP_PORT}"
+ENV APP_URL=${APP_URL}
+ENV HCP_ORG_ID=${HCP_ORG_ID}
+ENV HCP_PROJECT_ID=${HCP_PROJECT_ID}
+ENV HCP_APP_NAME=${APP_NAME}-${ENV}
+ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
 
-ENTRYPOINT : ${SERVICE_URL:?Docker Entrypoint Error: SERVICE_URL not set! Check env files.}; \
-    n=10; \
-    while ! curl -sf "$SERVICE_URL/health" && [ $((n--)) -gt 0 ]; do \
-      echo "Waiting for service health from $SERVICE_URL..."; \
-      sleep 2; \
-    done; \
-    [ $n -le 0 ] && echo "Error: Failed to connect after 10 attempts." && exit 1; \
-    exec "$0" "$@";
-
-CMD ./integration_test -test.v;
+CMD ./integration_test_runner_cmd.sh;
 
 #######################################
 # Stage 7: Unit Test Runner
