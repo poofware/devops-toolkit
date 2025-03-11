@@ -229,16 +229,16 @@ down: _deps-down
 	@echo "[INFO] [Down] Removing containers & volumes, keeping images..."
 	$(COMPOSE_CMD) down -v --remove-orphans
 
+	@echo "[INFO] [Down] Removing network '$(COMPOSE_NETWORK_NAME)'..."
+	@docker network rm $(COMPOSE_NETWORK_NAME) > /dev/null 2>&1 || \
+		echo "[WARN] [Down] 'network rm $(COMPOSE_NETWORK_NAME)' failed (network most likely already removed) Ignoring..."
+	@echo "[INFO] [Down] Done."
+
 	@if [ -n "$(COMPOSE_DB_NAME)" ]; then \
 		echo "[INFO] [Down] Removing volume '$(COMPOSE_DB_VOLUME_NAME)'..."; \
 		docker volume rm $(COMPOSE_DB_VOLUME_NAME) > /dev/null 2>&1 || \
 			echo "[WARN] [Down] 'volume rm $(COMPOSE_DB_VOLUME_NAME)' failed (volume most likely not found) Ignoring..."; \
 	fi
-
-	@echo "[INFO] [Down] Removing network '$(COMPOSE_NETWORK_NAME)'..."
-	@docker network rm $(COMPOSE_NETWORK_NAME) > /dev/null 2>&1 || \
-		echo "[WARN] [Down] 'network rm $(COMPOSE_NETWORK_NAME)' failed (network most likely already removed) Ignoring..."
-	@echo "[INFO] [Down] Done."
 
 ## Cleans everything (containers, images, volumes)
 clean: _deps-clean
