@@ -161,7 +161,7 @@ include devops-toolkit/backend/make/utils/go_app_build.mk
 include devops-toolkit/backend/make/utils/go_app_migrate.mk
 
 
-## Starts db + app in background (make with DB_ONLY=1 to start only the db)
+## Starts db + app in background (make with DB_ONLY=1 to start only the db) (make with WITH_DEPS=1 to 'up' dependency services as well)
 up: _deps-up
 	@echo "[INFO] [Up] Running down target to ensure clean state..."
 	@$(MAKE) down WITH_DEPS=0
@@ -224,7 +224,7 @@ integration-test:
 	fi
 	@echo "[INFO] [Integration Test] Completed successfully!"
 
-## Shuts down all containers
+## Shuts down all containers (make with WITH_DEPS=1 to 'down' dependency services as well)
 down: _deps-down
 	@echo "[INFO] [Down] Removing containers & volumes, keeping images..."
 	$(COMPOSE_CMD) down -v --remove-orphans
@@ -240,7 +240,7 @@ down: _deps-down
 			echo "[WARN] [Down] 'volume rm $(COMPOSE_DB_VOLUME_NAME)' failed (volume most likely not found) Ignoring..."; \
 	fi
 
-## Cleans everything (containers, images, volumes)
+## Cleans everything (containers, images, volumes) (make with WITH_DEPS=1 to 'clean' dependency services as well)
 clean: _deps-clean
 	@echo "[INFO] [Clean] Running down target..."
 	@$(MAKE) down WITH_DEPS=0
