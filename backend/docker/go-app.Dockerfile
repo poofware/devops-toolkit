@@ -203,6 +203,12 @@ ENV APP_PORT=${APP_PORT}
 ENV ENV=${ENV}
 ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
 
+# Copy all envs into a .env file for potential children images to access
+RUN echo "APP_NAME=${APP_NAME}" > .env && \
+    echo "APP_PORT=${APP_PORT}" >> .env && \
+    echo "ENV=${ENV}" >> .env && \
+    echo "HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}" >> .env;
+
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:$APP_PORT/health || exit 1;
 

@@ -37,9 +37,8 @@ _deps-%:
 			echo "[INFO] [Deps-$*] Running 'make $* WITH_DEPS=1' in $$dep_path..."; \
 			env -i \
 				WITH_DEPS=1 \
-				HCP_CLIENT_ID="$(HCP_CLIENT_ID)" \
-				HCP_CLIENT_SECRET="$(HCP_CLIENT_SECRET)" \
 				HCP_TOKEN_ENC_KEY="$(HCP_TOKEN_ENC_KEY)" \
+				HCP_ENCRYPTED_API_TOKEN="$(HCP_ENCRYPTED_API_TOKEN)" \
 				ENV="$(ENV)" \
 				$(MAKE) -C $$dep_path $* || exit $$?; \
 		done; \
