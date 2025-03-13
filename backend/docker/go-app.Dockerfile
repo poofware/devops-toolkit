@@ -23,16 +23,14 @@ COPY go.mod go.sum ./
 RUN --mount=type=ssh go mod download;
 
 #######################################
-# Stage 2: Configuration Validation
+# Stage 2: Builder Config Validator
 #######################################
-FROM base AS config-validator
+FROM base AS builder-config-validator
 
 ARG APP_NAME
 ARG APP_PORT
-ARG ENV
 ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
-ARG HCP_ENCRYPTED_API_TOKEN
 
 # Validate the configuration
 RUN test -n "${APP_NAME}" || ( \
@@ -43,10 +41,6 @@ RUN test -n "${APP_PORT}" || ( \
   echo "Error: APP_PORT is not set! Use --build-arg APP_PORT=xxx" && \
   exit 1 \
 );
-RUN test -n "${ENV}" || ( \
-  echo "Error: ENV is not set! Use --build-arg ENV=xxx" && \
-  exit 1 \
-);
 RUN test -n "${HCP_ORG_ID}" || ( \
   echo "Error: HCP_ORG_ID is not set! Use --build-arg HCP_ORG_ID=xxx" && \
   exit 1 \
@@ -55,22 +49,16 @@ RUN test -n "${HCP_PROJECT_ID}" || ( \
   echo "Error: HCP_PROJECT_ID is not set! Use --build-arg HCP_PROJECT_ID=xxx" && \
   exit 1 \
 );
-RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
-  echo "Error: HCP_ENCRYPTED_API_TOKEN is not set! Use --build-arg HCP_ENCRYPTED_API_TOKEN=xxx" && \
-  exit 1 \
-);
 
 #######################################
 # Stage 3: App Build Runner (compile app)
 #######################################
-FROM config-validator AS app-builder
+FROM builder-config-validator AS app-builder
 
 ARG APP_NAME
 ARG APP_PORT
-ARG ENV
 ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
-ARG HCP_ENCRYPTED_API_TOKEN
 
 # Copy the entire source for building
 COPY internal/ ./internal/
@@ -82,22 +70,27 @@ RUN go build \
       -ldflags "\
         -X 'github.com/poofware/${APP_NAME}/internal/config.AppPort=${APP_PORT}' \
         -X 'github.com/poofware/${APP_NAME}/internal/config.AppName=${APP_NAME}' \
-        -X 'github.com/poofware/${APP_NAME}/internal/config.Env=${ENV}' \
         -X 'github.com/poofware/go-utils.HCPOrgID=${HCP_ORG_ID}' \
-        -X 'github.com/poofware/go-utils.HCPProjectID=${HCP_PROJECT_ID}' \
-        -X 'github.com/poofware/go-utils.HCPEncryptedAPIToken=${HCP_ENCRYPTED_API_TOKEN}'" \
+        -X 'github.com/poofware/go-utils.HCPProjectID=${HCP_PROJECT_ID}'" \
       -v -o "/${APP_NAME}" ./cmd/main.go;
 
 #######################################
 # Stage 4: Integration Test Builder 
 #######################################
-FROM config-validator AS integration-test-builder
+FROM builder-config-validator AS integration-test-builder
 
 ARG APP_NAME
 ARG ENV
 ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
-ARG HCP_ENCRYPTED_API_TOKEN
+
+# Not in builder-config-validator stage, as this changes somewhat often, 
+# and we don't want to invalidate the builder stage cache for other builders every time we change it
+RUN test -n "${ENV}" || ( \
+  echo "Error: ENV is not set! Use --build-arg ENV=xxx" && \
+  exit 1 \
+);
+
 
 # Copy the files needed for building integration tests
 COPY internal/ ./internal/
@@ -110,10 +103,8 @@ RUN set -euxo pipefail; \
     go test -c -tags "${ENV_TRANSFORMED},integration" \
       -ldflags "\
         -X 'github.com/poofware/${APP_NAME}/internal/config.AppName=${APP_NAME}' \
-        -X 'github.com/poofware/${APP_NAME}/internal/config.Env=${ENV}' \
         -X 'github.com/poofware/go-utils.HCPOrgID=${HCP_ORG_ID}' \
-        -X 'github.com/poofware/go-utils.HCPProjectID=${HCP_PROJECT_ID}' \
-        -X 'github.com/poofware/go-utils.HCPEncryptedAPIToken=${HCP_ENCRYPTED_API_TOKEN}'" \
+        -X 'github.com/poofware/go-utils.HCPProjectID=${HCP_PROJECT_ID}'" \
       -v -o /integration_test ./internal/integration/...;
 
 #######################################
@@ -128,9 +119,29 @@ COPY internal/ ./internal/
 RUN go test -c -o /unit_test ./internal/...;
 
 #######################################
-# Stage 6: Integration Test Runner
+# Stage 6: Runner Config Validator
 #######################################
-FROM alpine:latest AS integration-test-runner
+
+FROM alpine:latest AS runner-config-validator
+
+ARG ENV
+ARG HCP_ENCRYPTED_API_TOKEN
+
+# Run these validations here instead of the builder-config-validator stage, as these change often, and we don't want to invalidate
+# the builder stage cache every time we change them
+RUN test -n "${ENV}" || ( \
+  echo "Error: ENV is not set! Use --build-arg ENV=xxx" && \
+  exit 1 \
+);
+RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
+  echo "Error: HCP_ENCRYPTED_API_TOKEN is not set! Use --build-arg HCP_ENCRYPTED_API_TOKEN=xxx" && \
+  exit 1 \
+);
+
+#######################################
+# Stage 7: Integration Test Runner
+#######################################
+FROM runner-config-validator AS integration-test-runner
 
 ARG APP_NAME
 ARG ENV
@@ -150,6 +161,7 @@ COPY devops-toolkit/backend/docker/scripts/integration_test_runner_cmd.sh integr
 RUN chmod +x encryption.sh fetch_hcp_secret.sh integration_test_runner_cmd.sh;
 
 # Convert ARG to ENV for runtime use
+ENV ENV=${ENV}
 ENV APP_URL=${APP_URL}
 ENV HCP_ORG_ID=${HCP_ORG_ID}
 ENV HCP_PROJECT_ID=${HCP_PROJECT_ID}
@@ -159,7 +171,7 @@ ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
 CMD ./integration_test_runner_cmd.sh;
 
 #######################################
-# Stage 7: Unit Test Runner
+# Stage 8: Unit Test Runner
 #######################################
 FROM alpine:latest AS unit-test-runner
 
@@ -169,12 +181,14 @@ COPY --from=unit-test-builder /unit_test ./unit_test
 CMD ./unit_test -test.v;
 
 #######################################
-# Stage 8: Minimal Final App Image
+# Stage 9: Minimal Final App Image
 #######################################
-FROM alpine:latest AS app
+FROM runner-config-validator AS app-runner
 
 ARG APP_NAME
 ARG APP_PORT
+ARG ENV
+ARG HCP_ENCRYPTED_API_TOKEN
 
 RUN apk add --no-cache curl;
 
@@ -186,6 +200,8 @@ EXPOSE ${APP_PORT}
 # Convert ARG to ENV for runtime use with CMD
 ENV APP_NAME=${APP_NAME}
 ENV APP_PORT=${APP_PORT}
+ENV ENV=${ENV}
+ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:$APP_PORT/health || exit 1;

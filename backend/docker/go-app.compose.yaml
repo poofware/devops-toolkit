@@ -22,7 +22,7 @@ services:
     build:
       context: .
       dockerfile: devops-toolkit/backend/docker/go-app.Dockerfile
-      target: app
+      target: app-runner
       args:
         <<: *build-args
         APP_PORT: ${APP_PORT:-8080}
@@ -56,15 +56,17 @@ services:
       - *networks
       - *environment
 
+  # TODO: Uncomment when unit tests are implemented
   # ----------------------
   # 3) Unit Test Service - Ephemeral
   # ----------------------
-  unit-test:
-    build:
-      context: .
-      dockerfile: devops-toolkit/backend/docker/go-app.Dockerfile
-      target: unit-test-runner
-    <<: *networks
+  # unit-test:
+  #   build:
+  #     context: .
+  #     dockerfile: devops-toolkit/backend/docker/go-app.Dockerfile
+  #     target: unit-test-runner
+  #   <<: *networks
+  # TODO: Uncomment when unit tests are implemented
 
   # ----------------------
   # 4) Database Migration Service
