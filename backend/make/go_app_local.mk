@@ -144,6 +144,9 @@ endif
 export HCP_ORG_ID := a4c32123-5c1c-45cd-ad4e-9fe42a30d664
 # Backend
 export HCP_PROJECT_ID := d413f61e-00f1-4ddf-afaf-bf8b9c04957e
+# LaunchDarkly
+export LD_SERVER_CONTEXT_KEY := server
+export LD_SERVER_CONTEXT_KIND := user
 
 # For docker compose
 # List in order of dependency, separate by ':'

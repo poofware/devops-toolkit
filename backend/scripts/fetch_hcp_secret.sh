@@ -38,9 +38,9 @@ RESPONSE="$(curl --silent --show-error --location \
   --header "Authorization: Bearer ${HCP_API_TOKEN}")"
 
 if [ $? -ne 0 ]; then
-  echo "[ERROR] Failed to make request to HCP."
-  echo "Full response from HCP was:"
-  echo "$RESPONSE"
+  echo "[ERROR] Failed to make request to HCP." >&2
+  echo "Full response from HCP was:" >&2
+  echo "$RESPONSE" >&2
   exit 1
 fi
 
@@ -49,9 +49,9 @@ fi
 if [ -n "$SECRET_NAME" ]; then
   SECRET_VALUE="$(echo "$RESPONSE" | jq -r '.secret.static_version.value // empty')"
   if [ -z "$SECRET_VALUE" ]; then
-    echo "[ERROR] Could not retrieve the secret '$SECRET_NAME' for app '$HCP_APP_NAME'."
-    echo "Full response from HCP was:"
-    echo "$RESPONSE"
+    echo "[ERROR] Could not retrieve the secret '$SECRET_NAME' for app '$HCP_APP_NAME'." >&2
+    echo "Full response from HCP was:" >&2
+    echo "$RESPONSE" >&2
     exit 1
   fi
   # Print as simple JSON with key=SECRET_NAME, value=secret_value
@@ -67,9 +67,9 @@ else
   ')"
 
   if [ -z "$ALL_SECRETS" ] || [ "$ALL_SECRETS" = "null" ]; then
-    echo "[ERROR] No secrets found for app '$HCP_APP_NAME' or invalid response."
-    echo "Full response from HCP was:"
-    echo "$RESPONSE"
+    echo "[ERROR] No secrets found for app '$HCP_APP_NAME' or invalid response." >&2
+    echo "Full response from HCP was:" >&2
+    echo "$RESPONSE" >&2
     exit 1
   fi
 

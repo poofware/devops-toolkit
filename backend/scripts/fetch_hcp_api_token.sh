@@ -47,15 +47,22 @@ fetch_new_token() {
     exit 1
   fi
 
-  echo "[INFO] No valid cached token (or it's expired). Fetching a new one..." >&2
+  echo "[INFO] No valid cached HCP token (or it's expired). Fetching a new one..." >&2
 
   # Retrieve the token from HashiCorp's auth endpoint
-  response="$(curl --fail --silent --show-error --location "https://auth.idp.hashicorp.com/oauth2/token" \
+  response="$(curl --silent --show-error --location "https://auth.idp.hashicorp.com/oauth2/token" \
     --header "Content-Type: application/x-www-form-urlencoded" \
     --data-urlencode "client_id=${HCP_CLIENT_ID}" \
     --data-urlencode "client_secret=${HCP_CLIENT_SECRET}" \
     --data-urlencode "grant_type=client_credentials" \
     --data-urlencode "audience=https://api.hashicorp.cloud")"
+
+  if [ $? -ne 0 ]; then
+    echo "[ERROR] Failed to retrieve token (curl failed with non-zero exit code)." >&2
+    echo "[ERROR] Full response from HCP was:" >&2
+    echo "${response}" >&2
+    exit 1
+  fi
 
   # Extract the token using jq
   hcp_token="$(echo "${response}" | jq -r '.access_token')"

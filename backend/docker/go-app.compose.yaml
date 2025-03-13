@@ -13,6 +13,8 @@ x-build-args: &build-args
   HCP_ORG_ID: ${HCP_ORG_ID?Docker Compose Config Error! HCP_ORG_ID is not set!}
   HCP_PROJECT_ID: ${HCP_PROJECT_ID?Docker Compose Config Error! HCP_PROJECT_ID is not set!}
   HCP_ENCRYPTED_API_TOKEN: ${HCP_ENCRYPTED_API_TOKEN?Docker Compose Config Error! HCP_ENCRYPTED_API_TOKEN is not set!}
+  LD_SERVER_CONTEXT_KEY: ${LD_SERVER_CONTEXT_KEY?Docker Compose Config Error! LD_SERVER_CONTEXT_KEY is not set!}
+  LD_SERVER_CONTEXT_KIND: ${LD_SERVER_CONTEXT_KIND?Docker Compose Config Error! LD_SERVER_CONTEXT_KIND is not set!}
 
 services:
   # ----------------------

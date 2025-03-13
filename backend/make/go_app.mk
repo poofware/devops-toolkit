@@ -11,6 +11,8 @@ ifeq ($(wildcard go.mod),)
   $(error Error: go.mod not found. Please ensure you are in the root directory of your Go service.)
 endif
 
+INCLUDED_GO_APP := 1
+
 
 include devops-toolkit/backend/make/go_app_local.mk
 # TODO: Add more targets here: go_app_deploy.mk, etc.

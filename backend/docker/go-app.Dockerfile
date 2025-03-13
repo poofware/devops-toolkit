@@ -31,6 +31,8 @@ ARG APP_NAME
 ARG APP_PORT
 ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
+ARG LD_SERVER_CONTEXT_KEY
+ARG LD_SERVER_CONTEXT_KIND
 
 # Validate the configuration
 RUN test -n "${APP_NAME}" || ( \
@@ -49,6 +51,14 @@ RUN test -n "${HCP_PROJECT_ID}" || ( \
   echo "Error: HCP_PROJECT_ID is not set! Use --build-arg HCP_PROJECT_ID=xxx" && \
   exit 1 \
 );
+RUN test -n "${LD_SERVER_CONTEXT_KEY}" || ( \
+  echo "Error: LD_SERVER_CONTEXT_KEY is not set! Use --build-arg LD_SERVER_CONTEXT_KEY=xxx" && \
+  exit 1 \
+);
+RUN test -n "${LD_SERVER_CONTEXT_KIND}" || ( \
+  echo "Error: LD_SERVER_CONTEXT_KIND is not set! Use --build-arg LD_SERVER_CONTEXT_KIND=xxx" && \
+  exit 1 \
+);
 
 #######################################
 # Stage 3: App Build Runner (compile app)
@@ -59,6 +69,8 @@ ARG APP_NAME
 ARG APP_PORT
 ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
+ARG LD_SERVER_CONTEXT_KEY
+ARG LD_SERVER_CONTEXT_KIND
 
 # Copy the entire source for building
 COPY internal/ ./internal/
@@ -70,6 +82,8 @@ RUN go build \
       -ldflags "\
         -X 'github.com/poofware/${APP_NAME}/internal/config.AppPort=${APP_PORT}' \
         -X 'github.com/poofware/${APP_NAME}/internal/config.AppName=${APP_NAME}' \
+        -X 'github.com/poofware/${APP_NAME}/internal/config.LDServerContextKey=${LD_SERVER_CONTEXT_KEY}' \
+        -X 'github.com/poofware/${APP_NAME}/internal/config.LDServerContextKind=${LD_SERVER_CONTEXT_KIND}' \
         -X 'github.com/poofware/go-utils.HCPOrgID=${HCP_ORG_ID}' \
         -X 'github.com/poofware/go-utils.HCPProjectID=${HCP_PROJECT_ID}'" \
       -v -o "/${APP_NAME}" ./cmd/main.go;
@@ -83,6 +97,8 @@ ARG APP_NAME
 ARG ENV
 ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
+ARG LD_SERVER_CONTEXT_KEY
+ARG LD_SERVER_CONTEXT_KIND
 
 # Not in builder-config-validator stage, as this changes somewhat often, 
 # and we don't want to invalidate the builder stage cache for other builders every time we change it
@@ -90,7 +106,6 @@ RUN test -n "${ENV}" || ( \
   echo "Error: ENV is not set! Use --build-arg ENV=xxx" && \
   exit 1 \
 );
-
 
 # Copy the files needed for building integration tests
 COPY internal/ ./internal/
@@ -103,6 +118,8 @@ RUN set -euxo pipefail; \
     go test -c -tags "${ENV_TRANSFORMED},integration" \
       -ldflags "\
         -X 'github.com/poofware/${APP_NAME}/internal/config.AppName=${APP_NAME}' \
+        -X 'github.com/poofware/${APP_NAME}/internal/config.LDServerContextKey=${LD_SERVER_CONTEXT_KEY}' \
+        -X 'github.com/poofware/${APP_NAME}/internal/config.LDServerContextKind=${LD_SERVER_CONTEXT_KIND}' \
         -X 'github.com/poofware/go-utils.HCPOrgID=${HCP_ORG_ID}' \
         -X 'github.com/poofware/go-utils.HCPProjectID=${HCP_PROJECT_ID}'" \
       -v -o /integration_test ./internal/integration/...;
@@ -156,9 +173,10 @@ WORKDIR /root/
 COPY --from=integration-test-builder /integration_test ./integration_test
 COPY devops-toolkit/backend/scripts/encryption.sh encryption.sh
 COPY devops-toolkit/backend/scripts/fetch_hcp_secret.sh fetch_hcp_secret.sh
+COPY devops-toolkit/backend/scripts/fetch_ld_flag.sh fetch_ld_flag.sh
 COPY devops-toolkit/backend/docker/scripts/integration_test_runner_cmd.sh integration_test_runner_cmd.sh
 
-RUN chmod +x encryption.sh fetch_hcp_secret.sh integration_test_runner_cmd.sh;
+RUN chmod +x encryption.sh fetch_hcp_secret.sh fetch_ld_flag.sh integration_test_runner_cmd.sh;
 
 # Convert ARG to ENV for runtime use
 ENV ENV=${ENV}
