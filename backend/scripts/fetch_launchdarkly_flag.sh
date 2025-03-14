@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Usage:
-#   ./fetch_ld_flag.sh [FLAG_NAME]
+#   ./fetch_launchdarkly_flag.sh [FLAG_NAME]
 #
 # If FLAG_NAME is provided, fetch only that one LaunchDarkly flag’s default (fallthrough/off) value,
 # using the nested `"key"` attribute from the flag definition as the JSON key.
@@ -12,8 +12,8 @@
 #
 # Examples:
 #   export LD_SDK_KEY="sdk-1234567890abcdef"
-#   ./fetch_ld_flag.sh          # Fetch all flags
-#   ./fetch_ld_flag.sh app_url  # Fetch a single flag named "app_url"
+#   ./fetch_launchdarkly_flag.sh          # Fetch all flags
+#   ./fetch_launchdarkly_flag.sh app_url  # Fetch a single flag named "app_url"
 #
 
 set -e

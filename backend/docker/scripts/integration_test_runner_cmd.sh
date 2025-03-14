@@ -2,7 +2,7 @@
 set -e
 
 # If APP_URL is empty, attempt to decrypt the HCP token, fetch LD_SDK_KEY from HCP,
-# and then use it to get the APP_URL from LaunchDarkly (via fetch_ld_flag.sh).
+# and then use it to get the APP_URL from LaunchDarkly (via fetch_launchdarkly_flag.sh).
 if [ -z "${APP_URL}" ]; then
   if [ -z "${HCP_TOKEN_ENC_KEY:-}" ]; then
     echo "[ERROR] HCP_TOKEN_ENC_KEY is not set! Required for decrypting the HCP token." >&2
@@ -29,15 +29,15 @@ if [ -z "${APP_URL}" ]; then
   export LD_SDK_KEY="$LD_SDK_KEY_VALUE"
   echo "[INFO] Successfully fetched LD_SDK_KEY from HCP."
 
-  # Now use fetch_ld_flag.sh to retrieve 'app_url' from LaunchDarkly
+  # Now use fetch_launchdarkly_flag.sh to retrieve 'app_url' from LaunchDarkly
   # We expect JSON like: {"APP_URL":"https://my-app.example.com"}
   echo "[INFO] Using LD_SDK_KEY to fetch 'app_url' from LaunchDarkly..."
-  FLAG_PAYLOAD="$(./fetch_ld_flag.sh app_url)"
+  FLAG_PAYLOAD="$(./fetch_launchdarkly_flag.sh app_url)"
   NEW_APP_URL="$(echo "$FLAG_PAYLOAD" | jq -r '.app_url // empty')"
 
   if [ -z "$NEW_APP_URL" ] || [ "$NEW_APP_URL" = "null" ]; then
     echo "[ERROR] Could not retrieve 'app_url' from LaunchDarkly." >&2
-    echo "Full response from fetch_ld_flag.sh was:" >&2
+    echo "Full response from fetch_launchdarkly_flag.sh was:" >&2
     echo "$FLAG_PAYLOAD" >&2
     exit 1
   fi

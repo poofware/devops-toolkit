@@ -173,10 +173,10 @@ WORKDIR /root/
 COPY --from=integration-test-builder /integration_test ./integration_test
 COPY devops-toolkit/backend/scripts/encryption.sh encryption.sh
 COPY devops-toolkit/backend/scripts/fetch_hcp_secret.sh fetch_hcp_secret.sh
-COPY devops-toolkit/backend/scripts/fetch_ld_flag.sh fetch_ld_flag.sh
+COPY devops-toolkit/backend/scripts/fetch_launchdarkly_flag.sh fetch_launchdarkly_flag.sh
 COPY devops-toolkit/backend/docker/scripts/integration_test_runner_cmd.sh integration_test_runner_cmd.sh
 
-RUN chmod +x encryption.sh fetch_hcp_secret.sh fetch_ld_flag.sh integration_test_runner_cmd.sh;
+RUN chmod +x encryption.sh fetch_hcp_secret.sh fetch_launchdarkly_flag.sh integration_test_runner_cmd.sh;
 
 # Convert ARG to ENV for runtime use
 ENV ENV=${ENV}
