@@ -141,11 +141,11 @@ RUN go test -c -o /unit_test ./internal/...;
 
 FROM alpine:latest AS runner-config-validator
 
-ARG ENV
-ARG HCP_ENCRYPTED_API_TOKEN
-
 # Minimally install curl for healthcheck and validation
 RUN apk add --no-cache curl;
+
+ARG ENV
+ARG HCP_ENCRYPTED_API_TOKEN
 
 # Run these validations here instead of the builder-config-validator stage, as these change often, and we don't want to invalidate
 # the builder stage cache every time we change them
