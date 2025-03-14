@@ -144,6 +144,9 @@ FROM alpine:latest AS runner-config-validator
 ARG ENV
 ARG HCP_ENCRYPTED_API_TOKEN
 
+# Minimally install curl for healthcheck and validation
+RUN apk add --no-cache curl;
+
 # Run these validations here instead of the builder-config-validator stage, as these change often, and we don't want to invalidate
 # the builder stage cache every time we change them
 RUN test -n "${ENV}" || ( \
@@ -207,8 +210,6 @@ ARG APP_NAME
 ARG APP_PORT
 ARG ENV
 ARG HCP_ENCRYPTED_API_TOKEN
-
-RUN apk add --no-cache curl;
 
 WORKDIR /root/
 COPY --from=app-builder /${APP_NAME} ./${APP_NAME}
