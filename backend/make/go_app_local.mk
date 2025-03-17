@@ -23,15 +23,15 @@ INCLUDED_GO_APP_LOCAL := 1
 # Will need the client id and client secret to fetch the HCP API token
 # if HCP_ENCRYPTED_API_TOKEN is not already set
 ifndef HCP_ENCRYPTED_API_TOKEN
-	ifneq ($(origin HCP_CLIENT_ID), environment)
-	  $(error HCP_CLIENT_ID is not set. Please define it in your runtime/ci environment. \
-		Example: export HCP_CLIENT_ID="my_client_id")
-	endif
+  ifneq ($(origin HCP_CLIENT_ID), environment)
+    $(error HCP_CLIENT_ID is not set. Please define it in your runtime/ci environment. \
+	  Example: export HCP_CLIENT_ID="my_client_id")
+  endif
 
-	ifneq ($(origin HCP_CLIENT_SECRET), environment)
-	  $(error HCP_CLIENT_SECRET is not set. Please define it in your runtime/ci environment. \
-		Example: export HCP_CLIENT_SECRET="my_client_secret")
-	endif
+  ifneq ($(origin HCP_CLIENT_SECRET), environment)
+    $(error HCP_CLIENT_SECRET is not set. Please define it in your runtime/ci environment. \
+      Example: export HCP_CLIENT_SECRET="my_client_secret")
+  endif
 endif
 
 ifneq ($(origin HCP_TOKEN_ENC_KEY), environment)
