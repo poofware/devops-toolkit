@@ -80,7 +80,7 @@ endif
 ifneq ($(origin DEPS), file)
   $(error DEPS is either not set or set as a runtime/ci environment variable, should be hardcoded in the root Makefile. \
 	Define it empty if your app has no dependency apps. \
-	Example: export DEPS="/path/to/auth-service /path/to/worker-account-service" or DEPS="")
+	Example: export DEPS="/path/to/auth-service /path/to/account-service" or DEPS="")
 endif
 
 ifneq ($(origin COMPOSE_DB_NAME), file)

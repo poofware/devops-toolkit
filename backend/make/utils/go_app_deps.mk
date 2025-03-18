@@ -17,7 +17,7 @@ INCLUDED_GO_APP_DEPS := 1
 # Do not do existence checks, the target that uses this will do the check
 ifndef DEPS
   $(error DEPS is not set. Please define it in your local Makefile or environment. Define it empty if not needed. \
-    Example: DEPS="/path/to/auth-service /path/to/worker-account-service" or DEPS="")
+    Example: DEPS="/path/to/auth-service /path/to/account-service" or DEPS="")
 endif
 
 ifndef WITH_DEPS
