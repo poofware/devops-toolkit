@@ -10,27 +10,26 @@
 set -e
 
 : "${HCP_ENCRYPTED_API_TOKEN:?HCP_ENCRYPTED_API_TOKEN env var is required}"
-: "${DATABASE_URL_SECRET_NAME:?DATABASE_URL_SECRET_NAME env var is required}"
 
 # Source the encryption script to get `decrypt_token` function
 source ./encryption.sh
 
 # Decrypt the token
 export HCP_API_TOKEN="$(decrypt_token "${HCP_ENCRYPTED_API_TOKEN}")"
-
-echo "[INFO] [Migrate Container] Using decrypted HCP_API_TOKEN to fetch DB_URL..."
+echo "[INFO] [Migrate Container] Using decrypted HCP_API_TOKEN to fetch 'DB_URL' from HCP..."
 
 # Now fetch the single secret for the DB URL
-SECRET_JSON="$(./fetch_hcp_secret.sh "${DATABASE_URL_SECRET_NAME}")"
+PAYLOAD="$(./fetch_hcp_secret.sh DB_URL)"
+DB_URL="$(echo "$PAYLOAD" | jq -r '.DB_URL // empty')"
 
-# Extract the DB URL from the JSON
-DB_URL="$(echo "$SECRET_JSON" | jq -r ".[\"$DATABASE_URL_SECRET_NAME\"]")"
-if [ -z "$DB_URL" ]; then
-  echo "[ERROR] [Migrate Container] Could not retrieve the secret '${DATABASE_URL_SECRET_NAME}'"
-  echo "Full response was:"
-  echo "$SECRET_JSON"
+if [ -z "$DB_URL" ] || [ "$DB_URL" = "null" ]; then
+  echo "[ERROR] Could not retrieve 'DB_URL' from HCP."
+  echo "Full response from fetch_hcp_secret.sh was:"
+  echo "$PAYLOAD"
   exit 1
 fi
+
+echo "[INFO] Successfully fetched 'DB_URL' from HCP."
 
 echo "[INFO] [Migrate Container] Checking database readiness..."
 n=10

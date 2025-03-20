@@ -145,12 +145,17 @@ FROM alpine:latest AS runner-config-validator
 RUN apk add --no-cache curl;
 
 ARG ENV
+ARG APP_URL
 ARG HCP_ENCRYPTED_API_TOKEN
 
 # Run these validations here instead of the builder-config-validator stage, as these change often, and we don't want to invalidate
 # the builder stage cache every time we change them
 RUN test -n "${ENV}" || ( \
   echo "Error: ENV is not set! Use --build-arg ENV=xxx" && \
+  exit 1 \
+);
+RUN test -n "${APP_URL}" || ( \
+  echo "Error: APP_URL is not set! Use --build-arg APP_URL=xxx" && \
   exit 1 \
 );
 RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
@@ -174,19 +179,13 @@ RUN apk add --no-cache curl jq openssl bash ca-certificates && update-ca-certifi
 
 WORKDIR /root/
 COPY --from=integration-test-builder /integration_test ./integration_test
-COPY devops-toolkit/backend/scripts/encryption.sh encryption.sh
-COPY devops-toolkit/backend/scripts/fetch_hcp_secret.sh fetch_hcp_secret.sh
-COPY devops-toolkit/backend/scripts/fetch_launchdarkly_flag.sh fetch_launchdarkly_flag.sh
 COPY devops-toolkit/backend/docker/scripts/integration_test_runner_cmd.sh integration_test_runner_cmd.sh
 
-RUN chmod +x encryption.sh fetch_hcp_secret.sh fetch_launchdarkly_flag.sh integration_test_runner_cmd.sh;
+RUN chmod +x integration_test_runner_cmd.sh;
 
 # Convert ARG to ENV for runtime use
 ENV ENV=${ENV}
 ENV APP_URL=${APP_URL}
-ENV HCP_ORG_ID=${HCP_ORG_ID}
-ENV HCP_PROJECT_ID=${HCP_PROJECT_ID}
-ENV HCP_APP_NAME=${APP_NAME}-${ENV}
 ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
 
 CMD ./integration_test_runner_cmd.sh;

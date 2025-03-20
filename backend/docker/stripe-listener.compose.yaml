@@ -1,0 +1,30 @@
+services:
+  # ----------------------
+  # 1) Stripe Listener Service
+  # ----------------------
+  stripe-listener:
+    build:
+      context: .
+      dockerfile: devops-toolkit/backend/docker/stripe-listener.Dockerfile
+      target: stripe-listener-runner
+      args:
+        ENV: ${ENV?Docker Compose Config Error! ENV is not set!}
+        APP_URL: ${APP_URL?Docker Compose Config Error! APP_URL is not set!}
+        HCP_ORG_ID: ${HCP_ORG_ID?Docker Compose Config Error! HCP_ORG_ID is not set!}
+        HCP_PROJECT_ID: ${HCP_PROJECT_ID?Docker Compose Config Error! HCP_PROJECT_ID is not set!}
+        HCP_ENCRYPTED_API_TOKEN: ${HCP_ENCRYPTED_API_TOKEN?Docker Compose Config Error! HCP_ENCRYPTED_API_TOKEN is not set!}
+    image: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-stripe-listener
+    container_name: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-stripe-listener_instance
+    environment:
+      HCP_TOKEN_ENC_KEY: ${HCP_TOKEN_ENC_KEY?Docker Compose Config Error! HCP_TOKEN_ENC_KEY is not set!}
+    networks:
+      app_network:
+        aliases:
+          - ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-stripe-listener
+    profiles:
+      - "${COMPOSE_PROFILE_APP_PRE_START?Docker Compose Config Error! COMPOSE_PROFILE_APP_PRE_START is not set!}"
+
+networks:
+  app_network:
+    external: true
+    name: ${COMPOSE_NETWORK_NAME?Docker Compose Config Error! COMPOSE_NETWORK_NAME is not set!}

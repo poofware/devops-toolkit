@@ -31,6 +31,9 @@ ifndef COMPOSE_PROJECT_DIR
 	Example: COMPOSE_PROJECT_DIR="./")
 endif
 
+
+export MIGRATIONS_PATH
+
 COMPOSE_CMD := docker compose \
 		       --project-directory $(COMPOSE_PROJECT_DIR) \
 			   -p $(COMPOSE_PROJECT_NAME)

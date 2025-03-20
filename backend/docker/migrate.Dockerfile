@@ -57,11 +57,6 @@ ENV HCP_APP_NAME=${APP_NAME}-${ENV}
 ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
 
 ##
-# Hard-code Secret Name
-##
-ENV DATABASE_URL_SECRET_NAME=DB_URL
-
-##
 # Copy Migrations into Image
 ##
 WORKDIR /app

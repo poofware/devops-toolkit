@@ -24,86 +24,108 @@ INCLUDED_GO_APP_LOCAL := 1
 # if HCP_ENCRYPTED_API_TOKEN is not already set
 ifndef HCP_ENCRYPTED_API_TOKEN
   ifneq ($(origin HCP_CLIENT_ID), environment)
-    $(error HCP_CLIENT_ID is not set. Please define it in your runtime/ci environment. \
+    $(error HCP_CLIENT_ID is either not set or set in the root Makefile. Please define it in your runtime/ci environment only. \
 	  Example: export HCP_CLIENT_ID="my_client_id")
   endif
 
   ifneq ($(origin HCP_CLIENT_SECRET), environment)
-    $(error HCP_CLIENT_SECRET is not set. Please define it in your runtime/ci environment. \
+    $(error HCP_CLIENT_SECRET is either not set or set in the root Makefile. Please define it in your runtime/ci environment only. \
       Example: export HCP_CLIENT_SECRET="my_client_secret")
   endif
 endif
 
 ifneq ($(origin HCP_TOKEN_ENC_KEY), environment)
-  $(error HCP_TOKEN_ENC_KEY is not set. Please define it in your runtime/ci environment. \
+  $(error HCP_TOKEN_ENC_KEY is either not set or set in the root Makefile. Please define it in your runtime/ci environment only. \
     Example: export HCP_TOKEN_ENC_KEY="my_encryption_key")
+endif
+
+ifneq ($(origin UNIQUE_RUNNER_ID), environment)
+  $(error UNIQUE_RUNNER_ID is either not set or set in the root Makefile. Please define it in your runtime/ci environment only. \
+	Example: export UNIQUE_RUNNER_ID="john_snow")
 endif
 
 ###################################################################
 # Root Makefile variables, possibly overridden by the environment #
 ###################################################################
-ifndef ENV
-  $(error ENV is not set. Please define it in your local Makefile or environment. \
-    Example: ENV=dev, Options: dev, dev-test, staging, staging-test, prod)
-endif
 
-ifndef APP_NAME
-  $(error APP_NAME is not set. Please define it in your local Makefile or environment. \
-	This variable should be unique to each go service. \
-	Example: APP_NAME="my_project")
+# Env validation
+DEV_TEST_ENV := dev-test
+DEV_ENV := dev
+STAGING_TEST_ENV := staging-test
+STAGING_ENV := staging
+PROD_ENV := prod
+ALLOWED_ENVS := $(DEV_TEST_ENV) $(DEV_ENV) $(STAGING_TEST_ENV) $(STAGING_ENV) $(PROD_ENV)
+ifdef ENV
+  ifeq (,$(filter $(ENV),$(ALLOWED_ENVS)))
+    $(error ENV is set to an invalid value. Allowed values are: $(ALLOWED_ENVS))
+  endif
+else
+  $(error ENV is not set. Please define it in your local Makefile or runtime/ci environment. \
+    Example: ENV=dev, Options: $(ALLOWED_ENVS))
 endif
 
 ifndef APP_PORT
-  $(error APP_PORT is not set. Please define it in your local Makefile or environment. \
+  $(error APP_PORT is not set. Please define it in your local Makefile or runtime/ci environment. \
 	Example: APP_PORT=8080)
 endif
 
 ifndef COMPOSE_NETWORK_NAME
-  $(error COMPOSE_NETWORK_NAME is not set. Please define it in your local Makefile or environment. \
+  $(error COMPOSE_NETWORK_NAME is not set. Please define it in your local Makefile or runtime/ci environment. \
 	Example: COMPOSE_NETWORK_NAME="shared_service_network")
 endif
 
 ifndef WITH_DEPS
-  $(error WITH_DEPS is not set. Please define it in your local Makefile or environment. \
+  $(error WITH_DEPS is not set. Please define it in your local Makefile or runtime/ci environment. \
 	Example: WITH_DEPS=1)
 endif
 
 ###########################
 # Root Makefile variables #
 ###########################
+ifneq ($(origin APP_NAME), file)
+  $(error APP_NAME is either not set or set as a runtime/ci environment variable, should be hardcoded in the root Makefile. \
+	Example: APP_NAME="account-service")
+endif
+
 ifneq ($(origin PACKAGES), file)
   $(error PACKAGES is either not set or set as a runtime/ci environment variable, should be hardcoded in the root Makefile. \
 	Define it empty if your app has no dependency packages. \
-    Example: export PACKAGES="go-middleware go-repositories go-utils go-models" or PACKAGES="")
+    Example: PACKAGES="go-middleware go-repositories go-utils go-models" or PACKAGES="")
 endif
 
 ifneq ($(origin DEPS), file)
   $(error DEPS is either not set or set as a runtime/ci environment variable, should be hardcoded in the root Makefile. \
 	Define it empty if your app has no dependency apps. \
-	Example: export DEPS="/path/to/auth-service /path/to/account-service" or DEPS="")
+	Example: DEPS="/path/to/auth-service /path/to/account-service" or DEPS="")
 endif
 
 ifneq ($(origin COMPOSE_DB_NAME), file)
   $(error COMPOSE_DB_NAME is either not set or set as a runtime/ci environment variable, should be hardcoded in the root Makefile. \
 	Define it empty if a db is not needed. \
-	Example: export COMPOSE_DB_NAME="shared_pg_db" or COMPOSE_DB_NAME="")
+	Example: COMPOSE_DB_NAME="shared_pg_db" or COMPOSE_DB_NAME="")
 endif
 
 ifneq ($(origin MIGRATIONS_PATH), file)
   $(error MIGRATIONS_PATH is either not set or set as a runtime/ci environment variable, should be hardcoded in the root Makefile. \
 	Define it empty if a db is not needed. \
-	Example: export MIGRATIONS_PATH="migrations" or MIGRATIONS_PATH="")
+	Example: MIGRATIONS_PATH="migrations" or MIGRATIONS_PATH="")
 endif
 
-####################################
-# Optional configuration variables #
-####################################
+ifneq ($(origin ADDITIONAL_COMPOSE_FILES), file)
+  $(error ADDITIONAL_COMPOSE_FILES is either not set or set as a runtime/ci environment variable, should be hardcoded in the root Makefile. \
+	Should be a colon-separated list of additional compose files to include in the docker compose command. \
+	Define it empty if no additional compose files are needed. \
+	Example: ADDITIONAL_COMPOSE_FILES="devops-toolkit/backend/docker/additional.compose.yaml:./override.compose.yaml" or ADDITIONAL_COMPOSE_FILES="")
+endif
 
-### Env variable only variables ###
+#################################################
+# Optional override configuration env variables #
+#################################################
+
 ifdef APP_URL
-  ifeq ($(origin APP_URL), file)
-    $(error APP_URL should be set as a runtime/ci environment variable, do not hardcode it in the root Makefile. \
-  	  Example: export APP_URL="http://backend:8080")
+  ifneq ($(origin APP_URL), environment)
+    $(error APP_URL override should be set as a runtime/ci environment variable, do not hardcode it in the root Makefile. \
+	  Example: APP_URL="http://meta-service:8080" make integration-test)
   endif
 endif
 
@@ -128,22 +150,48 @@ export PACKAGES
 # For specific docker compose fields in our configuration
 export APP_NAME
 export APP_PORT
-export APP_URL
 export COMPOSE_NETWORK_NAME
-export COMPOSE_DB_NAME
-ifdef COMPOSE_DB_NAME
+export ENV
+# For isolation of CI runs, and use of 3rd party services (e.g. Stripe)
+export UNIQUE_RUN_NUMBER ?= 9005
+export UNIQUE_RUNNER_ID
+
+ifneq ($(COMPOSE_DB_NAME), "")
+  export COMPOSE_DB_NAME
   export COMPOSE_DB_VOLUME_NAME := $(COMPOSE_DB_NAME)_data
 endif
-export MIGRATIONS_PATH
-export ENV
+
+# Allow for APP_URL override
+ifndef APP_URL
+  ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
+  	export APP_URL := http://$(APP_NAME):$(APP_PORT)
+  else
+    # Staging and prod not supported at this time.
+  endif
+endif
 
 # For docker compose
 # List in order of dependency, separate by ':'
 export COMPOSE_FILE := devops-toolkit/backend/docker/db.compose.yaml:devops-toolkit/backend/docker/go-app.compose.yaml
+ifneq ($(ADDITIONAL_COMPOSE_FILES), "")
+  export COMPOSE_FILE := $(COMPOSE_FILE):$(ADDITIONAL_COMPOSE_FILES)
+endif
 
 # For docker compose command options
 COMPOSE_PROJECT_DIR := ./
 COMPOSE_PROJECT_NAME := $(APP_NAME)
+
+export COMPOSE_PROFILE_APP_DEFAULT := app_default
+export COMPOSE_PROFILE_APP_PRE_START := app_pre_start
+export COMPOSE_PROFILE_DB_DEFAULT := db_default
+export COMPOSE_PROFILE_APP_TEST := app_test
+
+# Needed by build target
+COMPOSE_PROFILE_FLAGS := --profile $(COMPOSE_PROFILE_APP_DEFAULT)
+COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_APP_PRE_START)
+ifneq ($(COMPOSE_DB_NAME), "")
+  COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_DB_DEFAULT)
+endif
 
 # Variable for app run/up/down docker compose commands
 COMPOSE_CMD := docker compose \
@@ -171,6 +219,11 @@ up: _deps-up
 	@docker network create $(COMPOSE_NETWORK_NAME) > /dev/null 2>&1 || \
 		echo "[WARN] [Up] 'network create $(COMPOSE_NETWORK_NAME)' failed (network most likely already exists) Ignoring..."
 
+	@echo "[INFO] [Up] Starting any pre-start services found matching the '$(COMPOSE_PROFILE_APP_PRE_START)' profile..."
+	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_PRE_START) up -d > /dev/null 2>&1 || \
+		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_PRE_START) up -d' failed (most likely no services found matching the '$(COMPOSE_PROFILE_APP_PRE_START)' profile) Ignoring..."
+	@echo "[INFO] [Up] Done. Any pre-start services found are up and running."
+
 	@if [ -n "$(COMPOSE_DB_NAME)" ]; then \
 		echo "[INFO] [Up] Creating volume '$(COMPOSE_DB_VOLUME_NAME)'..."; \
 		docker volume create $(COMPOSE_DB_VOLUME_NAME) > /dev/null 2>&1 || \
@@ -180,7 +233,7 @@ up: _deps-up
 		export COMPOSE_DB_HOST_PORT=$$(devops-toolkit/backend/scripts/find_available_port.sh 5432); \
 		echo "[INFO] [Up] Found free host port: $$COMPOSE_DB_HOST_PORT"; \
 		($(COMPOSE_CMD) up -d db > /dev/null 2>&1 && echo "[INFO] [Up] Database spun up successfully.") || \
-			echo "[WARN] [Up] '$(COMPOSE_CMD) up -d db' failed (container most likely already running) Ignoring..."; \
+			echo "[WARN] [Up] '$(COMPOSE_CMD) up -d db' failed (db with name '$(COMPOSE_DB_NAME)' most likely already running) Ignoring..."; \
 		echo "[INFO] [Up] Done. $$COMPOSE_DB_NAME is running on port $$COMPOSE_DB_HOST_PORT"; \
 		echo "[INFO] [Up] Running migrate target to make sure the db is up to date..."; \
 		$(MAKE) migrate WITH_DEPS=0; \
@@ -225,7 +278,7 @@ integration-test:
 ## Shuts down all containers (make with WITH_DEPS=1 to 'down' dependency services as well)
 down: _deps-down
 	@echo "[INFO] [Down] Removing containers & volumes, keeping images..."
-	$(COMPOSE_CMD) down -v --remove-orphans
+	$(COMPOSE_CMD) $(COMPOSE_PROFILE_FLAGS) down -v --remove-orphans
 
 	@echo "[INFO] [Down] Removing network '$(COMPOSE_NETWORK_NAME)'..."
 	@docker network rm $(COMPOSE_NETWORK_NAME) > /dev/null 2>&1 || \
@@ -243,7 +296,7 @@ clean: _deps-clean
 	@echo "[INFO] [Clean] Running down target..."
 	@$(MAKE) down WITH_DEPS=0
 	@echo "[INFO] [Clean] Full nuke of containers, images, volumes, networks..."
-	$(COMPOSE_CMD) down --rmi local -v --remove-orphans
+	$(COMPOSE_CMD) $(COMPOSE_PROFILE_FLAGS) down --rmi local -v --remove-orphans
 	@echo "[INFO] [Clean] Done."
 
 ## CI pipeline: Runs both integration and unit tests, and then shuts down all containers
