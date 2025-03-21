@@ -5,16 +5,13 @@
 #######################################
 FROM stripe/stripe-cli:latest AS runner-config-validator
 
-# The official 'stripe/stripe-cli' image is Debian-based, so install any extra tools you need
-# (bash, curl, jq, openssl, etc.) via apt-get:
-RUN apt-get update \
- && apt-get install -y --no-install-recommends \
+RUN apk update \
+ && apk add --no-cache \
       bash \
       curl \
       jq \
       openssl \
-      ca-certificates \
- && rm -rf /var/lib/apt/lists/*;
+      ca-certificates;
 
 ARG APP_URL
 ARG ENV
@@ -72,8 +69,9 @@ WORKDIR /root/
 
 COPY devops-toolkit/backend/scripts/encryption.sh encryption.sh
 COPY devops-toolkit/backend/scripts/fetch_hcp_secret.sh fetch_hcp_secret.sh
-COPY devops-toolkit/backend/docker/scripts/stripe-listener-cmd.sh stripe-listener-cmd.sh
+COPY devops-toolkit/backend/docker/scripts/stripe-listener-entrypoint.sh stripe-listener-entrypoint.sh
 
-RUN chmod +x encryption.sh fetch_hcp_secret.sh stripe-listener-cmd.sh;
+RUN chmod +x encryption.sh fetch_hcp_secret.sh stripe-listener-entrypoint.sh;
 
-CMD ./stripe-listener-cmd.sh
+# Override the stripe default entrypoint
+ENTRYPOINT ./stripe-listener-entrypoint.sh
