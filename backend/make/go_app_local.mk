@@ -1,5 +1,5 @@
 # ------------------------------
-# Go App Local Testing Targets
+# Go App Makefile
 #  
 # This Makefile is intended to be included in the main Makefile
 # in the root of a Go service.
@@ -14,7 +14,7 @@ ifeq ($(wildcard go.mod),)
   $(error Error: go.mod not found. Please ensure you are in the root directory of your Go service.)
 endif
 
-INCLUDED_GO_APP_LOCAL := 1
+INCLUDED_GO_APP := 1
 
 
 ####################################
@@ -47,22 +47,7 @@ endif
 ###################################################################
 # Root Makefile variables, possibly overridden by the environment #
 ###################################################################
-
-# Env validation
-DEV_TEST_ENV := dev-test
-DEV_ENV := dev
-STAGING_TEST_ENV := staging-test
-STAGING_ENV := staging
-PROD_ENV := prod
-ALLOWED_ENVS := $(DEV_TEST_ENV) $(DEV_ENV) $(STAGING_TEST_ENV) $(STAGING_ENV) $(PROD_ENV)
-ifdef ENV
-  ifeq (,$(filter $(ENV),$(ALLOWED_ENVS)))
-    $(error ENV is set to an invalid value. Allowed values are: $(ALLOWED_ENVS))
-  endif
-else
-  $(error ENV is not set. Please define it in your local Makefile or runtime/ci environment. \
-    Example: ENV=dev, Options: $(ALLOWED_ENVS))
-endif
+include devops-toolkit/backend/make/utils/env_validation.mk
 
 ifndef APP_PORT
   $(error APP_PORT is not set. Please define it in your local Makefile or runtime/ci environment. \
@@ -190,9 +175,10 @@ include devops-toolkit/backend/make/utils/hcp_constants.mk
 include devops-toolkit/backend/make/utils/launchdarkly_constants.mk
 include devops-toolkit/backend/make/utils/go_app_deps.mk
 include devops-toolkit/backend/make/utils/go_app_build.mk
+include devops-toolkit/shared/make/help.mk
 
 
-## Starts db + app in background (make with PRE_START_PROFILES_ONLY=1 or POST_START_PROFILES_ONLY=1) (make with WITH_DEPS=1 to 'up' dependency services as well)
+## Starts services for all compose profiles in order (PRE_START_PROFILES_ONLY=1 or POST_START_PROFILES_ONLY=1 to exclude app - WITH_DEPS=1 to 'up' dependency services as well)
 up: _deps-up
 	@echo "[INFO] [Up] Running down target to ensure clean state..."
 	@$(MAKE) down WITH_DEPS=0
@@ -254,18 +240,18 @@ integration-test:
 	fi
 	@echo "[INFO] [Integration Test] Completed successfully!"
 
-## Shuts down all containers (make with WITH_DEPS=1 to 'down' dependency services as well)
+## Shuts down all containers (WITH_DEPS=1 to 'down' dependency services as well)
 down: _deps-down
 	@echo "[INFO] [Down] Removing containers & volumes, keeping images..."
 	$(COMPOSE_CMD) $(COMPOSE_PROFILE_FLAGS) down -v --remove-orphans
 
-## Cleans everything (containers, images, volumes) (make with WITH_DEPS=1 to 'clean' dependency services as well)
+## Cleans everything (containers, images, volumes) (WITH_DEPS=1 to 'clean' dependency services as well)
 clean: _deps-clean
 	@echo "[INFO] [Clean] Full nuke of containers, images, volumes, networks..."
 	$(COMPOSE_CMD) $(COMPOSE_PROFILE_FLAGS) down --rmi local -v --remove-orphans
 	@echo "[INFO] [Clean] Done."
 
-## CI pipeline: Runs both integration and unit tests, and then shuts down all containers
+## CI pipeline: Starts services, runs both integration and unit tests, and then shuts down all containers
 ci:
 	@echo "[INFO] [CI] Starting pipeline..."
 	$(MAKE) up
@@ -287,4 +273,8 @@ update:
 	fi
 	@devops-toolkit/backend/scripts/update_go_packages.sh
 	@echo "[INFO] [Update] Done."
+
+## Lists available targets
+help: _help
+ 
 

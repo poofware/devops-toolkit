@@ -41,6 +41,7 @@ _deps-%:
 				HCP_ENCRYPTED_API_TOKEN="$(HCP_ENCRYPTED_API_TOKEN)" \
 				ENV="$(ENV)" \
 				UNIQUE_RUNNER_ID="$(UNIQUE_RUNNER_ID)" \
+				UNIQUE_RUN_NUMBER="$(UNIQUE_RUN_NUMBER)" \
 				$(MAKE) -C $$dep_path $* || exit $$?; \
 		done; \
 	fi

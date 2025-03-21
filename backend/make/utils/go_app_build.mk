@@ -42,7 +42,7 @@ SSH_DOCKER_BUILD_CMD := devops-toolkit/backend/scripts/ssh_docker_build.sh compo
 include devops-toolkit/backend/make/utils/go_app_deps.mk
 
 
-## Builds Docker images for services found in COMPOSE_FILE matching specified profile flags (make with BUILD_SERVICES to build specific services)
+## Builds services for all compose profiles (BUILD_SERVICES= to build specific services)
 build: _deps-build
 	@if [ -n "$(BUILD_SERVICES)" ]; then \
 		echo "[INFO] [Build] Building Docker images for services: $(BUILD_SERVICES)..."; \
