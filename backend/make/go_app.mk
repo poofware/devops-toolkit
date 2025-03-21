@@ -178,7 +178,8 @@ include devops-toolkit/backend/make/utils/go_app_build.mk
 include devops-toolkit/shared/make/help.mk
 
 
-## Starts services for all compose profiles in order (PRE_START_PROFILES_ONLY=1 or POST_START_PROFILES_ONLY=1 to exclude app - WITH_DEPS=1 to 'up' dependency services as well)
+## Starts services for all compose profiles in order (EXCLUDE_COMPOSE_PROFILE_APP to exclude app from 'up' - WITH_DEPS=1 to 'up' dependency services as well)
+up: EXCLUDE_COMPOSE_PROFILE_APP ?= 0
 up: _deps-up
 	@echo "[INFO] [Up] Running down target to ensure clean state..."
 	@$(MAKE) down WITH_DEPS=0
@@ -205,8 +206,8 @@ up: _deps-up
 		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_PRE_START) up -d' failed (most likely no services found matching the '$(COMPOSE_PROFILE_APP_PRE_START)' profile) Ignoring..."
 	@echo "[INFO] [Up] Done. Any pre-start services found are up and running."
 
-	@if [ "$(PRE_START_PROFILES_ONLY)" = "1" ] || [ "$(POST_START_PROFILES_ONLY)" = "1" ]; then \
-	  echo "[INFO] [Up] Skipping app startup as PRE_START_PROFILES_ONLY or POST_START_PROFILES_ONLY is set to 1..."; \
+	@if [ "$(EXCLUDE_COMPOSE_PROFILE_APP)" -eq 1 ]; then \
+	  echo "[INFO] [Up] Skipping app startup...EXCLUDE_COMPOSE_PROFILE_APP is set to 1"; \
 	else \
 	  echo "[INFO] [Up] Spinning up app..."; \
 	  echo "[INFO] [Up] Finding free host port for app to bind to..."; \
