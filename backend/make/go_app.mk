@@ -191,17 +191,17 @@ up: _deps-up
 		echo "[WARN] [Up] 'network create $(COMPOSE_NETWORK_NAME)' failed (network most likely already exists) Ignoring..."
 
 	@echo "[INFO] [Up] Starting any db services found matching the '$(COMPOSE_PROFILE_DB)' profile..."
-	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_DB) up -d 2>/dev/null || \
+	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_DB) up -d || \
 		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_DB) up -d' failed (most likely no services found matching the '$(COMPOSE_PROFILE_DB)' profile OR the same db is already running) Ignoring..."
 	@echo "[INFO] [Up] Done. Any db services found are up and running."
 
 	@echo "[INFO] [Up] Starting any migration services found matching the '$(COMPOSE_PROFILE_MIGRATE)' profile..."
-	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_MIGRATE) up 2>/dev/null || \
+	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_MIGRATE) up || \
 		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_MIGRATE) up -d' failed (most likely no services found matching the '$(COMPOSE_PROFILE_MIGRATE)' profile) Ignoring..."
 	@echo "[INFO] [Up] Done. Any migration services found were run."
 
 	@echo "[INFO] [Up] Starting any pre-start services found matching the '$(COMPOSE_PROFILE_APP_PRE_START)' profile..."
-	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_PRE_START) up -d > /dev/null 2>&1 || \
+	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_PRE_START) up -d || \
 		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_PRE_START) up -d' failed (most likely no services found matching the '$(COMPOSE_PROFILE_APP_PRE_START)' profile) Ignoring..."
 	@echo "[INFO] [Up] Done. Any pre-start services found are up and running."
 
@@ -217,7 +217,7 @@ up: _deps-up
 	fi
 
 	@echo "[INFO] [Up] Starting any post-start services found matching the '$(COMPOSE_PROFILE_APP_POST_START)' profile..."
-	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_POST_START) up -d > /dev/null 2>&1 || \
+	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_POST_START) up -d || \
 		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_POST_START) up -d' failed (most likely no services found matching the '$(COMPOSE_PROFILE_APP_POST_START)' profile) Ignoring..."
 	@echo "[INFO] [Up] Done. Any post-start services found are up and running."
 
