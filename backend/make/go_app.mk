@@ -186,6 +186,10 @@ up: _deps-up
 	@echo "[INFO] [Up] Running build target..."
 	@$(MAKE) build WITH_DEPS=0
 
+	@echo "[INFO] [Up] Creating network '$(COMPOSE_NETWORK_NAME)'..."
+	@docker network create $(COMPOSE_NETWORK_NAME) > /dev/null 2>&1 || \
+		echo "[WARN] [Up] 'network create $(COMPOSE_NETWORK_NAME)' failed (network most likely already exists) Ignoring..."
+
 	@echo "[INFO] [Up] Starting any db services found matching the '$(COMPOSE_PROFILE_DB)' profile..."
 	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_DB) up -d 2>/dev/null || \
 		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_DB) up -d' failed (most likely no services found matching the '$(COMPOSE_PROFILE_DB)' profile OR the same db is already running) Ignoring..."
@@ -245,8 +249,16 @@ down: _deps-down
 	@echo "[INFO] [Down] Removing containers & volumes, keeping images..."
 	$(COMPOSE_CMD) $(COMPOSE_PROFILE_FLAGS) down -v --remove-orphans
 
+	@echo "[INFO] [Down] Removing network '$(COMPOSE_NETWORK_NAME)'..."
+	@docker network rm $(COMPOSE_NETWORK_NAME) > /dev/null 2>&1 || \
+		echo "[WARN] [Down] 'network rm $(COMPOSE_NETWORK_NAME)' failed (network most likely already removed) Ignoring..."
+
+	@echo "[INFO] [Down] Done."
+
 ## Cleans everything (containers, images, volumes) (WITH_DEPS=1 to 'clean' dependency services as well)
 clean: _deps-clean
+	@echo "[INFO] [Clean] Running down target..."
+	@$(MAKE) down WITH_DEPS=0
 	@echo "[INFO] [Clean] Full nuke of containers, images, volumes, networks..."
 	$(COMPOSE_CMD) $(COMPOSE_PROFILE_FLAGS) down --rmi local -v --remove-orphans
 	@echo "[INFO] [Clean] Done."

@@ -1,6 +1,6 @@
 x-networks: &networks
   networks:
-    - default_network
+    - app_network
 
 x-environment: &environment
   environment:
@@ -38,7 +38,7 @@ services:
       timeout: 2s
       retries: 5
     networks:
-      default_network:
+      app_network:
         aliases:
           - ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}
     profiles:
@@ -75,6 +75,7 @@ services:
   # TODO: Uncomment when unit tests are implemented
 
 networks:
-  default_network:
+  app_network:
+    external: true
     name: ${COMPOSE_NETWORK_NAME?Docker Compose Config Error! COMPOSE_NETWORK_NAME is not set!}
 

@@ -168,11 +168,8 @@ RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
 #######################################
 FROM runner-config-validator AS integration-test-runner
 
-ARG APP_NAME
 ARG ENV
 ARG APP_URL
-ARG HCP_ORG_ID
-ARG HCP_PROJECT_ID
 ARG HCP_ENCRYPTED_API_TOKEN
 
 RUN apk add --no-cache curl jq openssl bash ca-certificates && update-ca-certificates;

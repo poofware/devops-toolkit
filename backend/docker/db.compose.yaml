@@ -19,7 +19,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      default_network:
+      db_network:
         aliases:
           - ${COMPOSE_DB_NAME?Docker Compose Config Error! COMPOSE_DB_NAME is not set!}
     profiles:
@@ -44,7 +44,7 @@ services:
     profiles:
       - "${COMPOSE_PROFILE_MIGRATE?Docker Compose Config Error! COMPOSE_PROFILE_MIGRATE is not set!}"
     networks:
-      - default_network
+      - db_network
     environment:
       HCP_TOKEN_ENC_KEY: ${HCP_TOKEN_ENC_KEY?Docker Compose Config Error! HCP_TOKEN_ENC_KEY is not set!}
 
@@ -53,5 +53,6 @@ volumes:
     name: ${COMPOSE_DB_NAME?Docker Compose Config Error! COMPOSE_DB_NAME is not set!}_data
 
 networks:
-  default_network:
+  db_network:
+    external: true
     name: ${COMPOSE_NETWORK_NAME?Docker Compose Config Error! COMPOSE_NETWORK_NAME is not set!}
