@@ -187,7 +187,7 @@ up: _deps-up
 	@$(MAKE) build WITH_DEPS=0
 
 	@echo "[INFO] [Up] Creating network '$(COMPOSE_NETWORK_NAME)'..."
-	@docker network create $(COMPOSE_NETWORK_NAME) > /dev/null 2>&1 || \
+	@docker network create $(COMPOSE_NETWORK_NAME) && echo "[INFO] [Up] Network '$(COMPOSE_NETWORK_NAME)' successfully created." || \
 		echo "[WARN] [Up] 'network create $(COMPOSE_NETWORK_NAME)' failed (network most likely already exists) Ignoring..."
 
 	@echo "[INFO] [Up] Starting any db services found matching the '$(COMPOSE_PROFILE_DB)' profile..."
@@ -250,8 +250,8 @@ down: _deps-down
 	$(COMPOSE_CMD) $(COMPOSE_PROFILE_FLAGS) down -v --remove-orphans
 
 	@echo "[INFO] [Down] Removing network '$(COMPOSE_NETWORK_NAME)'..."
-	@docker network rm $(COMPOSE_NETWORK_NAME) > /dev/null 2>&1 || \
-		echo "[WARN] [Down] 'network rm $(COMPOSE_NETWORK_NAME)' failed (network most likely already removed) Ignoring..."
+	@docker network rm $(COMPOSE_NETWORK_NAME) && echo "[INFO] [Down] Network '$(COMPOSE_NETWORK_NAME)' successfully removed." || \
+		echo "[WARN] [Down] 'network rm $(COMPOSE_NETWORK_NAME)' failed (network most likely already removed or still being used) Ignoring..."
 
 	@echo "[INFO] [Down] Done."
 
