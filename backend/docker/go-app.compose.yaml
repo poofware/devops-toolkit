@@ -42,7 +42,7 @@ services:
         aliases:
           - ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}
     profiles:
-      - "${COMPOSE_PROFILE_APP_DEFAULT?Docker Compose Config Error! COMPOSE_PROFILE_APP_DEFAULT is not set!}"
+      - "${COMPOSE_PROFILE_APP?Docker Compose Config Error! COMPOSE_PROFILE_APP is not set!}"
     <<: *environment
 
   # ----------------------

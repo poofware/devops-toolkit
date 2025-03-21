@@ -153,20 +153,20 @@ ifndef APP_URL
   endif
 endif
 
-export COMPOSE_PROFILE_APP_DEFAULT := app_default
+export COMPOSE_PROFILE_APP := app
+export COMPOSE_PROFILE_DB := db
+export COMPOSE_PROFILE_MIGRATE := migrate
 export COMPOSE_PROFILE_APP_PRE_START := app_pre_start
-export COMPOSE_PROFILE_APP_PRE_PRE_START := app_pre_pre_start
 export COMPOSE_PROFILE_APP_POST_START := app_post_start
-export COMPOSE_PROFILE_APP_POST_POST_START := app_post_post_start
 # Only export this for name consistency compose, not used in the makefile
 export COMPOSE_PROFILE_APP_TEST := app_test
 
 # Needed by build target
-COMPOSE_PROFILE_FLAGS := --profile $(COMPOSE_PROFILE_APP_DEFAULT)
+COMPOSE_PROFILE_FLAGS := --profile $(COMPOSE_PROFILE_APP)
+COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_DB)
+COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_MIGRATE)
 COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_APP_PRE_START)
-COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_APP_PRE_PRE_START)
 COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_APP_POST_START)
-COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_APP_POST_POST_START)
 
 # For docker compose
 # List in order of dependency, separate by ':'
@@ -200,10 +200,15 @@ up: _deps-up
 	@echo "[INFO] [Up] Running build target..."
 	@$(MAKE) build WITH_DEPS=0
 
-	@echo "[INFO] [Up] Starting any pre-pre-start services found matching the '$(COMPOSE_PROFILE_APP_PRE_PRE_START)' profile..."
-	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_PRE_PRE_START) up -d > /dev/null 2>&1 || \
-		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_PRE_PRE_START) up -d' failed (most likely no services found matching the '$(COMPOSE_PROFILE_APP_PRE_PRE_START)' profile) Ignoring..."
-	@echo "[INFO] [Up] Done. Any pre-pre-start services found are up and running."
+	@echo "[INFO] [Up] Starting any db services found matching the '$(COMPOSE_PROFILE_DB)' profile..."
+	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_DB) up -d 2>/dev/null || \
+		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_DB) up -d' failed (most likely no services found matching the '$(COMPOSE_PROFILE_DB)' profile OR the same db is already running) Ignoring..."
+	@echo "[INFO] [Up] Done. Any db services found are up and running."
+
+	@echo "[INFO] [Up] Starting any migration services found matching the '$(COMPOSE_PROFILE_MIGRATE)' profile..."
+	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_MIGRATE) up 2>/dev/null || \
+		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_MIGRATE) up -d' failed (most likely no services found matching the '$(COMPOSE_PROFILE_MIGRATE)' profile) Ignoring..."
+	@echo "[INFO] [Up] Done. Any migration services found were run."
 
 	@echo "[INFO] [Up] Starting any pre-start services found matching the '$(COMPOSE_PROFILE_APP_PRE_START)' profile..."
 	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_PRE_START) up -d > /dev/null 2>&1 || \
@@ -217,7 +222,7 @@ up: _deps-up
 	  echo "[INFO] [Up] Finding free host port for app to bind to..."; \
 	  export APP_HOST_PORT=$$(devops-toolkit/backend/scripts/find_available_port.sh 8080); \
 	  echo "[INFO] [Up] Found free host port: $$APP_HOST_PORT"; \
-	  $(COMPOSE_CMD) up -d app; \
+	  $(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP) up -d; \
 	  echo "[INFO] [Up] Done. $$APP_NAME is running on http://localhost:$$APP_HOST_PORT"; \
 	fi
 
@@ -225,11 +230,6 @@ up: _deps-up
 	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_POST_START) up -d > /dev/null 2>&1 || \
 		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_POST_START) up -d' failed (most likely no services found matching the '$(COMPOSE_PROFILE_APP_POST_START)' profile) Ignoring..."
 	@echo "[INFO] [Up] Done. Any post-start services found are up and running."
-
-	@echo "[INFO] [Up] Starting any post-post-start services found matching the '$(COMPOSE_PROFILE_APP_POST_POST_START)' profile..."
-	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_POST_POST_START) up -d > /dev/null 2>&1 || \
-		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_POST_POST_START) up -d' failed (most likely no services found matching the '$(COMPOSE_PROFILE_APP_POST_POST_START)' profile) Ignoring..."
-	@echo "[INFO] [Up] Done. Any post-post-start services found are up and running."
 
 # TODO: implement unit tests!!!
 ## 2) Run unit tests in a one-off container

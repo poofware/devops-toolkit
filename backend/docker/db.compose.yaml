@@ -23,7 +23,7 @@ services:
         aliases:
           - ${COMPOSE_DB_NAME?Docker Compose Config Error! COMPOSE_DB_NAME is not set!}
     profiles:
-      - "${COMPOSE_PROFILE_APP_PRE_PRE_START?Docker Compose Config Error! COMPOSE_PROFILE_APP_PRE_PRE_START is not set!}"
+      - "${COMPOSE_PROFILE_DB?Docker Compose Config Error! COMPOSE_PROFILE_DB is not set!}"
 
   # ----------------------
   # 2) Database Migration Service
@@ -39,8 +39,10 @@ services:
         HCP_PROJECT_ID: ${HCP_PROJECT_ID?Docker Compose Config Error! HCP_PROJECT_ID is not set!}
         HCP_ENCRYPTED_API_TOKEN: ${HCP_ENCRYPTED_API_TOKEN?Docker Compose Config Error! HCP_ENCRYPTED_API_TOKEN is not set!}
         MIGRATIONS_PATH: ${MIGRATIONS_PATH?Docker Compose Config Error! MIGRATIONS_PATH is not set!}
+    image: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-migrate
+    container_name: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-migrate_instance
     profiles:
-      - "${COMPOSE_PROFILE_APP_PRE_START?Docker Compose Config Error! COMPOSE_PROFILE_APP_PRE_START is not set!}"
+      - "${COMPOSE_PROFILE_MIGRATE?Docker Compose Config Error! COMPOSE_PROFILE_MIGRATE is not set!}"
     networks:
       - default_network
     environment:
