@@ -99,18 +99,6 @@ ifneq ($(origin DEPS), file)
 	Example: DEPS="/path/to/auth-service /path/to/account-service" or DEPS="")
 endif
 
-ifneq ($(origin COMPOSE_DB_NAME), file)
-  $(error COMPOSE_DB_NAME is either not set or set as a runtime/ci environment variable, should be hardcoded in the root Makefile. \
-	Define it empty if a db is not needed. \
-	Example: COMPOSE_DB_NAME="shared_pg_db" or COMPOSE_DB_NAME="")
-endif
-
-ifneq ($(origin MIGRATIONS_PATH), file)
-  $(error MIGRATIONS_PATH is either not set or set as a runtime/ci environment variable, should be hardcoded in the root Makefile. \
-	Define it empty if a db is not needed. \
-	Example: MIGRATIONS_PATH="migrations" or MIGRATIONS_PATH="")
-endif
-
 ifneq ($(origin ADDITIONAL_COMPOSE_FILES), file)
   $(error ADDITIONAL_COMPOSE_FILES is either not set or set as a runtime/ci environment variable, should be hardcoded in the root Makefile. \
 	Should be a colon-separated list of additional compose files to include in the docker compose command. \
@@ -156,11 +144,6 @@ export ENV
 export UNIQUE_RUN_NUMBER ?= 9005
 export UNIQUE_RUNNER_ID
 
-ifneq ($(COMPOSE_DB_NAME), "")
-  export COMPOSE_DB_NAME
-  export COMPOSE_DB_VOLUME_NAME := $(COMPOSE_DB_NAME)_data
-endif
-
 # Allow for APP_URL override
 ifndef APP_URL
   ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
@@ -170,28 +153,31 @@ ifndef APP_URL
   endif
 endif
 
-# For docker compose
-# List in order of dependency, separate by ':'
-export COMPOSE_FILE := devops-toolkit/backend/docker/db.compose.yaml:devops-toolkit/backend/docker/go-app.compose.yaml
-ifneq ($(ADDITIONAL_COMPOSE_FILES), "")
-  export COMPOSE_FILE := $(COMPOSE_FILE):$(ADDITIONAL_COMPOSE_FILES)
-endif
-
-# For docker compose command options
-COMPOSE_PROJECT_DIR := ./
-COMPOSE_PROJECT_NAME := $(APP_NAME)
-
 export COMPOSE_PROFILE_APP_DEFAULT := app_default
 export COMPOSE_PROFILE_APP_PRE_START := app_pre_start
-export COMPOSE_PROFILE_DB_DEFAULT := db_default
+export COMPOSE_PROFILE_APP_PRE_PRE_START := app_pre_pre_start
+export COMPOSE_PROFILE_APP_POST_START := app_post_start
+export COMPOSE_PROFILE_APP_POST_POST_START := app_post_post_start
+# Only export this for name consistency compose, not used in the makefile
 export COMPOSE_PROFILE_APP_TEST := app_test
 
 # Needed by build target
 COMPOSE_PROFILE_FLAGS := --profile $(COMPOSE_PROFILE_APP_DEFAULT)
 COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_APP_PRE_START)
-ifneq ($(COMPOSE_DB_NAME), "")
-  COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_DB_DEFAULT)
+COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_APP_PRE_PRE_START)
+COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_APP_POST_START)
+COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_APP_POST_POST_START)
+
+# For docker compose
+# List in order of dependency, separate by ':'
+export COMPOSE_FILE := devops-toolkit/backend/docker/go-app.compose.yaml
+ifneq ($(ADDITIONAL_COMPOSE_FILES), "")
+  export COMPOSE_FILE := $(ADDITIONAL_COMPOSE_FILES):$(COMPOSE_FILE)
 endif
+
+# For docker compose command options
+COMPOSE_PROJECT_DIR := ./
+COMPOSE_PROJECT_NAME := $(APP_NAME)
 
 # Variable for app run/up/down docker compose commands
 COMPOSE_CMD := docker compose \
@@ -204,10 +190,9 @@ include devops-toolkit/backend/make/utils/hcp_constants.mk
 include devops-toolkit/backend/make/utils/launchdarkly_constants.mk
 include devops-toolkit/backend/make/utils/go_app_deps.mk
 include devops-toolkit/backend/make/utils/go_app_build.mk
-include devops-toolkit/backend/make/utils/go_app_migrate.mk
 
 
-## Starts db + app in background (make with DB_ONLY=1 to start only the db) (make with WITH_DEPS=1 to 'up' dependency services as well)
+## Starts db + app in background (make with PRE_START_PROFILES_ONLY=1 or POST_START_PROFILES_ONLY=1) (make with WITH_DEPS=1 to 'up' dependency services as well)
 up: _deps-up
 	@echo "[INFO] [Up] Running down target to ensure clean state..."
 	@$(MAKE) down WITH_DEPS=0
@@ -215,34 +200,18 @@ up: _deps-up
 	@echo "[INFO] [Up] Running build target..."
 	@$(MAKE) build WITH_DEPS=0
 
-	@echo "[INFO] [Up] Creating network '$(COMPOSE_NETWORK_NAME)'..."
-	@docker network create $(COMPOSE_NETWORK_NAME) > /dev/null 2>&1 || \
-		echo "[WARN] [Up] 'network create $(COMPOSE_NETWORK_NAME)' failed (network most likely already exists) Ignoring..."
+	@echo "[INFO] [Up] Starting any pre-pre-start services found matching the '$(COMPOSE_PROFILE_APP_PRE_PRE_START)' profile..."
+	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_PRE_PRE_START) up -d > /dev/null 2>&1 || \
+		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_PRE_PRE_START) up -d' failed (most likely no services found matching the '$(COMPOSE_PROFILE_APP_PRE_PRE_START)' profile) Ignoring..."
+	@echo "[INFO] [Up] Done. Any pre-pre-start services found are up and running."
 
 	@echo "[INFO] [Up] Starting any pre-start services found matching the '$(COMPOSE_PROFILE_APP_PRE_START)' profile..."
 	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_PRE_START) up -d > /dev/null 2>&1 || \
 		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_PRE_START) up -d' failed (most likely no services found matching the '$(COMPOSE_PROFILE_APP_PRE_START)' profile) Ignoring..."
 	@echo "[INFO] [Up] Done. Any pre-start services found are up and running."
 
-	@if [ -n "$(COMPOSE_DB_NAME)" ]; then \
-		echo "[INFO] [Up] Creating volume '$(COMPOSE_DB_VOLUME_NAME)'..."; \
-		docker volume create $(COMPOSE_DB_VOLUME_NAME) > /dev/null 2>&1 || \
-			echo "[WARN] [Up] 'volume create $(COMPOSE_DB_VOLUME_NAME)' failed (volume most likely already exists) Ignoring..."; \
-		echo "[INFO] [Up] Spinning up db..."; \
-		echo "[INFO] [Up] Finding free host port for db to bind to..."; \
-		export COMPOSE_DB_HOST_PORT=$$(devops-toolkit/backend/scripts/find_available_port.sh 5432); \
-		echo "[INFO] [Up] Found free host port: $$COMPOSE_DB_HOST_PORT"; \
-		($(COMPOSE_CMD) up -d db > /dev/null 2>&1 && echo "[INFO] [Up] Database spun up successfully.") || \
-			echo "[WARN] [Up] '$(COMPOSE_CMD) up -d db' failed (db with name '$(COMPOSE_DB_NAME)' most likely already running) Ignoring..."; \
-		echo "[INFO] [Up] Done. $$COMPOSE_DB_NAME is running on port $$COMPOSE_DB_HOST_PORT"; \
-		echo "[INFO] [Up] Running migrate target to make sure the db is up to date..."; \
-		$(MAKE) migrate WITH_DEPS=0; \
-	else \
-		echo "[INFO] [Up] COMPOSE_DB_NAME not set. Skipping database and migration steps."; \
-	fi
-
-	@if [ "$(DB_ONLY)" = "1" ]; then \
-	  echo "[INFO] [Up] DB_ONLY=1 set. Skipping app spin-up..."; \
+	@if [ "$(PRE_START_PROFILES_ONLY)" = "1" ] || [ "$(POST_START_PROFILES_ONLY)" = "1" ]; then \
+	  echo "[INFO] [Up] Skipping app startup as PRE_START_PROFILES_ONLY or POST_START_PROFILES_ONLY is set to 1..."; \
 	else \
 	  echo "[INFO] [Up] Spinning up app..."; \
 	  echo "[INFO] [Up] Finding free host port for app to bind to..."; \
@@ -251,6 +220,16 @@ up: _deps-up
 	  $(COMPOSE_CMD) up -d app; \
 	  echo "[INFO] [Up] Done. $$APP_NAME is running on http://localhost:$$APP_HOST_PORT"; \
 	fi
+
+	@echo "[INFO] [Up] Starting any post-start services found matching the '$(COMPOSE_PROFILE_APP_POST_START)' profile..."
+	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_POST_START) up -d > /dev/null 2>&1 || \
+		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_POST_START) up -d' failed (most likely no services found matching the '$(COMPOSE_PROFILE_APP_POST_START)' profile) Ignoring..."
+	@echo "[INFO] [Up] Done. Any post-start services found are up and running."
+
+	@echo "[INFO] [Up] Starting any post-post-start services found matching the '$(COMPOSE_PROFILE_APP_POST_POST_START)' profile..."
+	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_POST_POST_START) up -d > /dev/null 2>&1 || \
+		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_POST_POST_START) up -d' failed (most likely no services found matching the '$(COMPOSE_PROFILE_APP_POST_POST_START)' profile) Ignoring..."
+	@echo "[INFO] [Up] Done. Any post-post-start services found are up and running."
 
 # TODO: implement unit tests!!!
 ## 2) Run unit tests in a one-off container
@@ -280,21 +259,8 @@ down: _deps-down
 	@echo "[INFO] [Down] Removing containers & volumes, keeping images..."
 	$(COMPOSE_CMD) $(COMPOSE_PROFILE_FLAGS) down -v --remove-orphans
 
-	@echo "[INFO] [Down] Removing network '$(COMPOSE_NETWORK_NAME)'..."
-	@docker network rm $(COMPOSE_NETWORK_NAME) > /dev/null 2>&1 || \
-		echo "[WARN] [Down] 'network rm $(COMPOSE_NETWORK_NAME)' failed (network most likely already removed) Ignoring..."
-	@echo "[INFO] [Down] Done."
-
-	@if [ -n "$(COMPOSE_DB_NAME)" ]; then \
-		echo "[INFO] [Down] Removing volume '$(COMPOSE_DB_VOLUME_NAME)'..."; \
-		docker volume rm $(COMPOSE_DB_VOLUME_NAME) > /dev/null 2>&1 || \
-			echo "[WARN] [Down] 'volume rm $(COMPOSE_DB_VOLUME_NAME)' failed (volume most likely not found) Ignoring..."; \
-	fi
-
 ## Cleans everything (containers, images, volumes) (make with WITH_DEPS=1 to 'clean' dependency services as well)
 clean: _deps-clean
-	@echo "[INFO] [Clean] Running down target..."
-	@$(MAKE) down WITH_DEPS=0
 	@echo "[INFO] [Clean] Full nuke of containers, images, volumes, networks..."
 	$(COMPOSE_CMD) $(COMPOSE_PROFILE_FLAGS) down --rmi local -v --remove-orphans
 	@echo "[INFO] [Clean] Done."

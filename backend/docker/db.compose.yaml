@@ -4,7 +4,7 @@ services:
   # ----------------------
   db:
     image: postgres:13
-    container_name: ${COMPOSE_DB_NAME:-db}_instance
+    container_name: ${COMPOSE_DB_NAME?Docker Compose Config Error! COMPOSE_DB_NAME is not set!}_instance
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
@@ -12,18 +12,18 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
     ports:
-      - "${COMPOSE_DB_HOST_PORT:-5432}:5432"
+      - "0:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d mydatabase || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
-      db_network:
+      default_network:
         aliases:
-          - ${COMPOSE_DB_NAME:-db}
+          - ${COMPOSE_DB_NAME?Docker Compose Config Error! COMPOSE_DB_NAME is not set!}
     profiles:
-      - "${COMPOSE_PROFILE_DB_DEFAULT?Docker Compose Config Error! COMPOSE_PROFILE_DB_DEFAULT is not set!}"
+      - "${COMPOSE_PROFILE_APP_PRE_PRE_START?Docker Compose Config Error! COMPOSE_PROFILE_APP_PRE_PRE_START is not set!}"
 
   # ----------------------
   # 2) Database Migration Service
@@ -38,20 +38,18 @@ services:
         HCP_ORG_ID: ${HCP_ORG_ID?Docker Compose Config Error! HCP_ORG_ID is not set!}
         HCP_PROJECT_ID: ${HCP_PROJECT_ID?Docker Compose Config Error! HCP_PROJECT_ID is not set!}
         HCP_ENCRYPTED_API_TOKEN: ${HCP_ENCRYPTED_API_TOKEN?Docker Compose Config Error! HCP_ENCRYPTED_API_TOKEN is not set!}
-        MIGRATIONS_PATH: ${MIGRATIONS_PATH:-migrations}
+        MIGRATIONS_PATH: ${MIGRATIONS_PATH?Docker Compose Config Error! MIGRATIONS_PATH is not set!}
     profiles:
-      - "${COMPOSE_PROFILE_DB_DEFAULT?Docker Compose Config Error! COMPOSE_PROFILE_DB_DEFAULT is not set!}"
+      - "${COMPOSE_PROFILE_APP_PRE_START?Docker Compose Config Error! COMPOSE_PROFILE_APP_PRE_START is not set!}"
     networks:
-      - db_network
+      - default_network
     environment:
       HCP_TOKEN_ENC_KEY: ${HCP_TOKEN_ENC_KEY?Docker Compose Config Error! HCP_TOKEN_ENC_KEY is not set!}
 
 volumes:
   db_data:
-    external: true
-    name: ${COMPOSE_DB_VOLUME_NAME:-db_data}
+    name: ${COMPOSE_DB_NAME?Docker Compose Config Error! COMPOSE_DB_NAME is not set!}_data
 
 networks:
-  db_network:
-    external: true
+  default_network:
     name: ${COMPOSE_NETWORK_NAME?Docker Compose Config Error! COMPOSE_NETWORK_NAME is not set!}

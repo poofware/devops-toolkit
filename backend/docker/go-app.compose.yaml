@@ -1,6 +1,6 @@
 x-networks: &networks
   networks:
-    - app_network
+    - default_network
 
 x-environment: &environment
   environment:
@@ -38,13 +38,12 @@ services:
       timeout: 2s
       retries: 5
     networks:
-      app_network:
+      default_network:
         aliases:
           - ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}
     profiles:
       - "${COMPOSE_PROFILE_APP_DEFAULT?Docker Compose Config Error! COMPOSE_PROFILE_APP_DEFAULT is not set!}"
     <<: *environment
-
 
   # ----------------------
   # 2) Integration Test Service - Ephemeral
@@ -67,7 +66,7 @@ services:
   # ----------------------
   # 3) Unit Test Service - Ephemeral
   # ----------------------
-  # unit-test:
+  # ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-unit-test:
   #   build:
   #     context: .
   #     dockerfile: devops-toolkit/backend/docker/go-app.Dockerfile
@@ -76,7 +75,6 @@ services:
   # TODO: Uncomment when unit tests are implemented
 
 networks:
-  app_network:
-    external: true
+  default_network:
     name: ${COMPOSE_NETWORK_NAME?Docker Compose Config Error! COMPOSE_NETWORK_NAME is not set!}
 
