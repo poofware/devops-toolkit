@@ -18,6 +18,7 @@ ARG ENV
 ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
 ARG HCP_ENCRYPTED_API_TOKEN
+ARG STRIPE_WEBHOOK_ROUTE
 
 # Validate build-args that we'll rely on at runtime
 RUN test -n "${APP_URL}" || ( \
@@ -40,6 +41,10 @@ RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
   echo "Error: HCP_ENCRYPTED_API_TOKEN is not set! Use --build-arg HCP_ENCRYPTED_API_TOKEN=xxx" && \
   exit 1 \
 );
+RUN test -n "${STRIPE_WEBHOOK_ROUTE}" || ( \
+  echo "Error: STRIPE_WEBHOOK_ROUTE is not set! Use --build-arg STRIPE_WEBHOOK_ROUTE=xxx" && \
+  exit 1 \
+);
 
 #######################################
 # Stage 2: Stripe Listener Runner
@@ -52,17 +57,15 @@ ARG ENV
 ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
 ARG HCP_ENCRYPTED_API_TOKEN
+ARG STRIPE_WEBHOOK_ROUTE
 
 # Set environment variables for runtime
-ENV APP_URL=${APP_URL}
 ENV ENV=${ENV}
 ENV HCP_ORG_ID=${HCP_ORG_ID}
 ENV HCP_PROJECT_ID=${HCP_PROJECT_ID}
 ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
 ENV HCP_APP_NAME=shared-${ENV}
-
-# Hard-code the secret name
-ENV STRIPE_SECRET_KEY_SECRET_NAME=STRIPE_SECRET_KEY
+ENV FORWARD_TO_URL=${APP_URL}${STRIPE_WEBHOOK_ROUTE}
 
 USER root
 WORKDIR /root/

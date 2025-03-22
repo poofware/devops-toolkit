@@ -1,9 +1,10 @@
 #!/bin/bash
 set -e
 
-echo "[INFO] Starting Stripe listener with forward-to: ${APP_URL}"
-
 : "${HCP_ENCRYPTED_API_TOKEN:?HCP_ENCRYPTED_API_TOKEN env var is required}"
+: "${FORWARD_TO_URL:?FORWARD_TO_URL env var is required}"
+
+echo "[INFO] Starting Stripe listener with forward-to: ${FORWARD_TO_URL}"
 
 # Source encryption script to get decrypt_token function
 source ./encryption.sh
@@ -25,7 +26,7 @@ if [ -z "$STRIPE_SECRET_KEY" ] || [ "$STRIPE_SECRET_KEY" = "null" ]; then
 fi
 
 echo "[INFO] Successfully fetched 'STRIPE_SECRET_KEY' from HCP."
-echo "[INFO] Starting 'stripe listen'..."
+echo "[INFO] Starting 'stripe listen --forward-to ${FORWARD_TO_URL}' with the provided secret key."
 
-exec stripe listen --forward-to "${APP_URL}" --api-key "${STRIPE_SECRET_KEY}"
+exec stripe listen --forward-to "${FORWARD_TO_URL}" --api-key "${STRIPE_SECRET_KEY}"
 
