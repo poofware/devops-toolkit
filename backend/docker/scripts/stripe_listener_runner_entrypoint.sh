@@ -2,7 +2,10 @@
 set -e
 
 : "${HCP_ENCRYPTED_API_TOKEN:?HCP_ENCRYPTED_API_TOKEN env var is required}"
-: "${FORWARD_TO_URL:?FORWARD_TO_URL env var is required}"
+: "${APP_URL:?APP_URL env var is required}"
+: "${STRIPE_WEBHOOK_ROUTE:?STRIPE_WEBHOOK_ROUTE env var is required}"
+
+FORWARD_TO_URL="${APP_URL}${STRIPE_WEBHOOK_ROUTE}"
 
 echo "[INFO] Starting Stripe listener with forward-to: ${FORWARD_TO_URL}"
 

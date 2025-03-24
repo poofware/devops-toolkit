@@ -18,7 +18,6 @@ ARG ENV
 ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
 ARG HCP_ENCRYPTED_API_TOKEN
-ARG STRIPE_WEBHOOK_ROUTE
 
 # Validate build-args that we'll rely on at runtime
 RUN test -n "${APP_URL}" || ( \
@@ -41,40 +40,63 @@ RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
   echo "Error: HCP_ENCRYPTED_API_TOKEN is not set! Use --build-arg HCP_ENCRYPTED_API_TOKEN=xxx" && \
   exit 1 \
 );
-RUN test -n "${STRIPE_WEBHOOK_ROUTE}" || ( \
-  echo "Error: STRIPE_WEBHOOK_ROUTE is not set! Use --build-arg STRIPE_WEBHOOK_ROUTE=xxx" && \
-  exit 1 \
-);
 
-#######################################
-# Stage 2: Stripe Listener Runner
-#######################################
-FROM runner-config-validator AS stripe-listener-runner
-
-# Re-declare the same ARGs so the final stage can use them
-ARG APP_URL
-ARG ENV
-ARG HCP_ORG_ID
-ARG HCP_PROJECT_ID
-ARG HCP_ENCRYPTED_API_TOKEN
-ARG STRIPE_WEBHOOK_ROUTE
-
-# Set environment variables for runtime
+ENV APP_URL=${APP_URL}
 ENV ENV=${ENV}
 ENV HCP_ORG_ID=${HCP_ORG_ID}
 ENV HCP_PROJECT_ID=${HCP_PROJECT_ID}
 ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
 ENV HCP_APP_NAME=shared-${ENV}
-ENV FORWARD_TO_URL=${APP_URL}${STRIPE_WEBHOOK_ROUTE}
 
 USER root
 WORKDIR /root/
 
 COPY devops-toolkit/backend/scripts/encryption.sh encryption.sh
 COPY devops-toolkit/backend/scripts/fetch_hcp_secret.sh fetch_hcp_secret.sh
-COPY devops-toolkit/backend/docker/scripts/stripe-listener-entrypoint.sh stripe-listener-entrypoint.sh
 
-RUN chmod +x encryption.sh fetch_hcp_secret.sh stripe-listener-entrypoint.sh;
+RUN chmod +x encryption.sh fetch_hcp_secret.sh;
 
-# Override the stripe default entrypoint
-ENTRYPOINT ./stripe-listener-entrypoint.sh
+#######################################
+# Stage 2: Stripe Webhook Check Runner
+#######################################
+FROM runner-config-validator AS stripe-webhook-check-runner
+
+ARG STRIPE_WEBHOOK_CHECK_EVENTS
+ARG STRIPE_WEBHOOK_CHECK_ROUTE
+
+ENV STRIPE_WEBHOOK_CHECK_EVENTS="${STRIPE_WEBHOOK_CHECK_EVENTS}"
+ENV STRIPE_WEBHOOK_CHECK_ROUTE=${STRIPE_WEBHOOK_CHECK_ROUTE}
+
+RUN test -n "${STRIPE_WEBHOOK_CHECK_EVENTS}" || ( \
+  echo "Warning: STRIPE_WEBHOOK_CHECK_EVENTS is empty! Use --build-arg STRIPE_WEBHOOK_CHECK_EVENTS='...'" \
+);
+RUN test -n "${STRIPE_WEBHOOK_CHECK_ROUTE}" || ( \
+  echo "Error: STRIPE_WEBHOOK_CHECK_ROUTE is not set! Use --build-arg STRIPE_WEBHOOK_CHECK_ROUTE=xxx" && \
+  exit 1 \
+);
+
+COPY devops-toolkit/backend/docker/scripts/stripe_webhook_check_runner_entrypoint.sh stripe_webhook_check_runner_entrypoint.sh
+  
+RUN chmod +x encryption.sh fetch_hcp_secret.sh stripe_webhook_check_runner_entrypoint.sh;
+  
+ENTRYPOINT ./stripe_webhook_check_runner_entrypoint.sh; 
+   
+#######################################
+# Stage 3: Stripe Listener Runner
+#######################################
+FROM runner-config-validator AS stripe-listener-runner
+
+ARG STRIPE_WEBHOOK_ROUTE
+
+RUN test -n "${STRIPE_WEBHOOK_ROUTE}" || ( \
+  echo "Error: STRIPE_WEBHOOK_ROUTE is not set! Use --build-arg STRIPE_WEBHOOK_ROUTE=xxx" && \
+  exit 1 \
+);
+
+ENV STRIPE_WEBHOOK_ROUTE=${STRIPE_WEBHOOK_ROUTE}
+
+COPY devops-toolkit/backend/docker/scripts/stripe_listener_runner_entrypoint.sh stripe_listener_runner_entrypoint.sh
+
+RUN chmod +x stripe_listener_runner_entrypoint.sh;
+
+ENTRYPOINT ./stripe_listener_runner_entrypoint.sh
