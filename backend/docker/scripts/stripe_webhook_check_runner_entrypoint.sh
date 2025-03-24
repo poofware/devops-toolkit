@@ -6,6 +6,7 @@ echo "[INFO] Starting stripe-webhook-test-entrypoint..."
 : "${HCP_ENCRYPTED_API_TOKEN:?HCP_ENCRYPTED_API_TOKEN env var is required}"
 : "${APP_URL:?APP_URL env var is required}"
 : "${STRIPE_WEBHOOK_CHECK_ROUTE:?STRIPE_WEBHOOK_CHECK_ROUTE env var is required}"
+: "${STRIPE_TEST_EVENTS:?No test events were provided. Please set STRIPE_TEST_EVENTS}"
 
 # 1) Ensure the main service is healthy
 n=10
@@ -36,9 +37,7 @@ fi
 echo "[INFO] 'STRIPE_SECRET_KEY' fetched from HCP."
 
 # 4) Trigger each event in the list
-: "${STRIPE_TEST_EVENTS:?No test events were provided. Please set STRIPE_TEST_EVENTS}"
 EVENT_IDS=()
-
 echo "[INFO] Triggering events: $STRIPE_TEST_EVENTS"
 for EVENT_TYPE in $STRIPE_TEST_EVENTS; do
   echo "[INFO] Triggering Stripe event: $EVENT_TYPE with metadata 'generated_by=webhook_test'"
