@@ -6,7 +6,7 @@ echo "[INFO] Starting stripe-webhook-test-entrypoint..."
 : "${HCP_ENCRYPTED_API_TOKEN:?HCP_ENCRYPTED_API_TOKEN env var is required}"
 : "${APP_URL:?APP_URL env var is required}"
 : "${STRIPE_WEBHOOK_CHECK_ROUTE:?STRIPE_WEBHOOK_CHECK_ROUTE env var is required}"
-: "${STRIPE_TEST_EVENTS:?No test events were provided. Please set STRIPE_TEST_EVENTS}"
+: "${STRIPE_WEBHOOK_CHECK_EVENTS:?No test events were provided. Please set STRIPE_WEBHOOK_CHECK_EVENTS}"
 
 # 1) Ensure the main service is healthy
 n=10
@@ -38,8 +38,8 @@ echo "[INFO] 'STRIPE_SECRET_KEY' fetched from HCP."
 
 # 4) Trigger each event in the list
 EVENT_IDS=()
-echo "[INFO] Triggering events: $STRIPE_TEST_EVENTS"
-for EVENT_TYPE in $STRIPE_TEST_EVENTS; do
+echo "[INFO] Triggering events: $STRIPE_WEBHOOK_CHECK_EVENTS"
+for EVENT_TYPE in $STRIPE_WEBHOOK_CHECK_EVENTS; do
   echo "[INFO] Triggering Stripe event: $EVENT_TYPE with metadata 'generated_by=webhook_test'"
   TRIGGER_OUTPUT=$(stripe trigger "$EVENT_TYPE" \
     --add "${EVENT_TYPE%%.*}:metadata[generated_by]=webhook_test" \
@@ -48,6 +48,31 @@ for EVENT_TYPE in $STRIPE_TEST_EVENTS; do
 
   if [ -z "$TRIGGER_OUTPUT" ]; then
     echo "[ERROR] 'stripe trigger' command produced empty output for event: $EVENT_TYPE"
+    exit 1
+  fi
+
+  # Attempt to parse the event ID with jq
+  # If jq fails to parse valid JSON, we'll capture the error.
+  set +e
+  EVENT_ID=$(echo "$TRIGGER_OUTPUT" | jq -r '.id // empty' 2> /tmp/jq_error.log)
+  JQ_EXIT_CODE=$?
+  set -e
+
+  if [ $JQ_EXIT_CODE -ne 0 ]; then
+    echo "[ERROR] jq parse error while reading the trigger output for $EVENT_TYPE."
+    echo "==== FULL TRIGGER OUTPUT ===="
+    echo "$TRIGGER_OUTPUT"
+    echo "==== END TRIGGER OUTPUT ===="
+    echo "[ERROR] jq error was:"
+    cat /tmp/jq_error.log
+    exit 1
+  fi
+
+  if [ -z "$EVENT_ID" ] || [ "$EVENT_ID" = "null" ]; then
+    echo "[ERROR] Could not parse 'id' from stripe trigger output for event $EVENT_TYPE."
+    echo "==== FULL TRIGGER OUTPUT ===="
+    echo "$TRIGGER_OUTPUT"
+    echo "==== END TRIGGER OUTPUT ===="
     exit 1
   fi
 
