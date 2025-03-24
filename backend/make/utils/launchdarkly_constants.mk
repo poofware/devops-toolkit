@@ -6,6 +6,8 @@
 
 SHELL := /bin/bash
 
+INCLUDED_LAUNCHDARKLY_CONSTANTS := 1
+
 
 export LD_SERVER_CONTEXT_KEY := server
 export LD_SERVER_CONTEXT_KIND := user

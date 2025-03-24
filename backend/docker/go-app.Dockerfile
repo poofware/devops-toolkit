@@ -71,6 +71,17 @@ ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
 ARG LD_SERVER_CONTEXT_KEY
 ARG LD_SERVER_CONTEXT_KIND
+ARG UNIQUE_RUN_NUMBER
+ARG UNIQUE_RUNNER_ID
+
+RUN test -n "${UNIQUE_RUN_NUMBER}" || ( \
+  echo "Error: UNIQUE_RUN_NUMBER is not set! Use --build-arg UNIQUE_RUN_NUMBER=xxx" && \
+  exit 1 \
+);
+RUN test -n "${UNIQUE_RUNNER_ID}" || ( \
+  echo "Error: UNIQUE_RUNNER_ID is not set! Use --build-arg UNIQUE_RUNNER_ID=xxx" && \
+  exit 1 \
+);
 
 # Copy the entire source for building
 COPY internal/ ./internal/
@@ -82,6 +93,8 @@ RUN go build \
       -ldflags "\
         -X 'github.com/poofware/${APP_NAME}/internal/config.AppPort=${APP_PORT}' \
         -X 'github.com/poofware/${APP_NAME}/internal/config.AppName=${APP_NAME}' \
+        -X 'github.com/poofware/${APP_NAME}/internal/config.UniqueRunNumber=${UNIQUE_RUN_NUMBER}' \
+        -X 'github.com/poofware/${APP_NAME}/internal/config.UniqueRunnerID=${UNIQUE_RUNNER_ID}' \
         -X 'github.com/poofware/${APP_NAME}/internal/config.LDServerContextKey=${LD_SERVER_CONTEXT_KEY}' \
         -X 'github.com/poofware/${APP_NAME}/internal/config.LDServerContextKind=${LD_SERVER_CONTEXT_KIND}' \
         -X 'github.com/poofware/go-utils.HCPOrgID=${HCP_ORG_ID}' \
@@ -145,17 +158,12 @@ FROM alpine:latest AS runner-config-validator
 RUN apk add --no-cache curl;
 
 ARG ENV
-ARG APP_URL
 ARG HCP_ENCRYPTED_API_TOKEN
 
 # Run these validations here instead of the builder-config-validator stage, as these change often, and we don't want to invalidate
 # the builder stage cache every time we change them
 RUN test -n "${ENV}" || ( \
   echo "Error: ENV is not set! Use --build-arg ENV=xxx" && \
-  exit 1 \
-);
-RUN test -n "${APP_URL}" || ( \
-  echo "Error: APP_URL is not set! Use --build-arg APP_URL=xxx" && \
   exit 1 \
 );
 RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
@@ -172,13 +180,19 @@ ARG ENV
 ARG APP_URL
 ARG HCP_ENCRYPTED_API_TOKEN
 
+RUN test -n "${APP_URL}" || ( \
+  echo "Error: APP_URL is not set! Use --build-arg APP_URL=xxx" && \
+  exit 1 \
+);
+
 RUN apk add --no-cache curl jq openssl bash ca-certificates && update-ca-certificates;
 
 WORKDIR /root/
 COPY --from=integration-test-builder /integration_test ./integration_test
+COPY devops-toolkit/backend/scripts/health_check.sh health_check.sh
 COPY devops-toolkit/backend/docker/scripts/integration_test_runner_cmd.sh integration_test_runner_cmd.sh
 
-RUN chmod +x integration_test_runner_cmd.sh;
+RUN chmod +x health_check.sh integration_test_runner_cmd.sh;
 
 # Convert ARG to ENV for runtime use
 ENV ENV=${ENV}
@@ -197,8 +211,30 @@ COPY --from=unit-test-builder /unit_test ./unit_test
 
 CMD ./unit_test -test.v;
 
+######################################
+# Stage 9: Health Check Runner
+######################################
+
+FROM alpine:latest AS health-check-runner
+
+RUN apk add --no-cache curl bash;
+
+ARG APP_URL
+
+RUN test -n "${APP_URL}" || ( \
+  echo "Error: APP_URL is not set! Use --build-arg APP_URL=xxx" && \
+  exit 1 \
+);
+
+ENV APP_URL=${APP_URL}
+
+WORKDIR /root/
+COPY devops-toolkit/backend/scripts/health_check.sh health_check.sh
+
+CMD ./health_check.sh;
+
 #######################################
-# Stage 9: Minimal Final App Image
+# Stage 10: Minimal Final App Image
 #######################################
 FROM runner-config-validator AS app-runner
 

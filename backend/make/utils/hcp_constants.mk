@@ -6,6 +6,8 @@
 
 SHELL := /bin/bash
 
+INCLUDED_HCP_CONSTANTS := 1
+
 
 # To force a static assignment operation with '?=' behavior, we wrap the ':=' assignment in an ifndef check
 ifndef HCP_ENCRYPTED_API_TOKEN

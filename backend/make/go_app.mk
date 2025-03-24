@@ -7,7 +7,7 @@
 
 SHELL := /bin/bash
 
-.PHONY: up integration-test unit-test down ci clean
+.PHONY: ci update help
 
 # Check that the current working directory is the root of a Go service by verifying that go.mod exists.
 ifeq ($(wildcard go.mod),)
@@ -47,7 +47,9 @@ endif
 ###################################################################
 # Root Makefile variables, possibly overridden by the environment #
 ###################################################################
-include devops-toolkit/backend/make/utils/env_validation.mk
+ifndef INCLUDED_ENV_VALIDATION
+  include devops-toolkit/backend/make/utils/env_validation.mk
+endif
 
 ifndef APP_PORT
   $(error APP_PORT is not set. Please define it in your local Makefile or runtime/ci environment. \
@@ -141,8 +143,8 @@ endif
 export COMPOSE_PROFILE_APP := app
 export COMPOSE_PROFILE_DB := db
 export COMPOSE_PROFILE_MIGRATE := migrate
-export COMPOSE_PROFILE_APP_PRE_START := app_pre_start
-export COMPOSE_PROFILE_APP_POST_START := app_post_start
+export COMPOSE_PROFILE_APP_PRE := app_pre
+export COMPOSE_PROFILE_APP_POST_CHECK := app_post_check
 # Only export this for name consistency compose, not used in the makefile
 export COMPOSE_PROFILE_APP_TEST := app_test
 
@@ -150,8 +152,8 @@ export COMPOSE_PROFILE_APP_TEST := app_test
 COMPOSE_PROFILE_FLAGS := --profile $(COMPOSE_PROFILE_APP)
 COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_DB)
 COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_MIGRATE)
-COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_APP_PRE_START)
-COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_APP_POST_START)
+COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_APP_PRE)
+COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_APP_POST_CHECK)
 
 # For docker compose
 # List in order of dependency, separate by ':'
@@ -171,98 +173,34 @@ COMPOSE_CMD := docker compose \
 
 
 # Include path relative to the root of the project
-include devops-toolkit/backend/make/utils/hcp_constants.mk
-include devops-toolkit/backend/make/utils/launchdarkly_constants.mk
-include devops-toolkit/backend/make/utils/go_app_deps.mk
-include devops-toolkit/backend/make/utils/go_app_build.mk
-include devops-toolkit/shared/make/help.mk
+ifndef INCLUDED_HCP_CONSTANTS
+  include devops-toolkit/backend/make/utils/hcp_constants.mk
+endif
+ifndef INCLUDED_LAUNCHDARKLY_CONSTANTS
+  include devops-toolkit/backend/make/utils/launchdarkly_constants.mk
+endif
+ifndef INCLUDED_GO_APP_DEPS
+  include devops-toolkit/backend/make/utils/go_app_deps.mk
+endif
+ifndef INCLUDED_GO_APP_DOWN
+  include devops-toolkit/backend/make/utils/go_app_down.mk
+endif
+ifndef INCLUDED_GO_APP_BUILD
+  include devops-toolkit/backend/make/utils/go_app_build.mk
+endif
+ifndef INCLUDED_GO_APP_UP
+  include devops-toolkit/backend/make/utils/go_app_up.mk
+endif
+ifndef INCLUDED_GO_APP_TEST
+  include devops-toolkit/backend/make/utils/go_app_test.mk
+endif
+ifndef INCLUDED_GO_APP_CLEAN
+  include devops-toolkit/backend/make/utils/go_app_clean.mk
+endif
+ifndef INCLUDED_HELP
+  include devops-toolkit/shared/make/help.mk
+endif
 
-
-## Starts services for all compose profiles in order (EXCLUDE_COMPOSE_PROFILE_APP to exclude app from 'up' - WITH_DEPS=1 to 'up' dependency services as well)
-up: EXCLUDE_COMPOSE_PROFILE_APP ?= 0
-up: _deps-up
-	@echo "[INFO] [Up] Running down target to ensure clean state..."
-	@$(MAKE) down WITH_DEPS=0
-
-	@echo "[INFO] [Up] Running build target..."
-	@$(MAKE) build WITH_DEPS=0
-
-	@echo "[INFO] [Up] Creating network '$(COMPOSE_NETWORK_NAME)'..."
-	@docker network create $(COMPOSE_NETWORK_NAME) && echo "[INFO] [Up] Network '$(COMPOSE_NETWORK_NAME)' successfully created." || \
-		echo "[WARN] [Up] 'network create $(COMPOSE_NETWORK_NAME)' failed (network most likely already exists) Ignoring..."
-
-	@echo "[INFO] [Up] Starting any db services found matching the '$(COMPOSE_PROFILE_DB)' profile..."
-	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_DB) up -d || \
-		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_DB) up -d' failed (most likely no services found matching the '$(COMPOSE_PROFILE_DB)' profile OR the same db is already running) Ignoring..."
-	@echo "[INFO] [Up] Done. Any db services found are up and running."
-
-	@echo "[INFO] [Up] Starting any migration services found matching the '$(COMPOSE_PROFILE_MIGRATE)' profile..."
-	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_MIGRATE) up || \
-		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_MIGRATE) up -d' failed (most likely no services found matching the '$(COMPOSE_PROFILE_MIGRATE)' profile) Ignoring..."
-	@echo "[INFO] [Up] Done. Any migration services found were run."
-
-	@echo "[INFO] [Up] Starting any pre-start services found matching the '$(COMPOSE_PROFILE_APP_PRE_START)' profile..."
-	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_PRE_START) up -d || \
-		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_PRE_START) up -d' failed (most likely no services found matching the '$(COMPOSE_PROFILE_APP_PRE_START)' profile) Ignoring..."
-	@echo "[INFO] [Up] Done. Any pre-start services found are up and running."
-
-	@if [ "$(EXCLUDE_COMPOSE_PROFILE_APP)" -eq 1 ]; then \
-	  echo "[INFO] [Up] Skipping app startup...EXCLUDE_COMPOSE_PROFILE_APP is set to 1"; \
-	else \
-	  echo "[INFO] [Up] Spinning up app..."; \
-	  echo "[INFO] [Up] Finding free host port for app to bind to..."; \
-	  export APP_HOST_PORT=$$(devops-toolkit/backend/scripts/find_available_port.sh 8080); \
-	  echo "[INFO] [Up] Found free host port: $$APP_HOST_PORT"; \
-	  $(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP) up -d; \
-	  echo "[INFO] [Up] Done. $$APP_NAME is running on http://localhost:$$APP_HOST_PORT"; \
-	fi
-
-	@echo "[INFO] [Up] Starting any post-start services found matching the '$(COMPOSE_PROFILE_APP_POST_START)' profile..."
-	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_POST_START) up -d || \
-		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_POST_START) up -d' failed (most likely no services found matching the '$(COMPOSE_PROFILE_APP_POST_START)' profile) Ignoring..."
-	@echo "[INFO] [Up] Done. Any post-start services found are up and running."
-
-# TODO: implement unit tests!!!
-## 2) Run unit tests in a one-off container
-# unit-test: build 
-#	@echo "[INFO] [Unit Test] Running build target for unit-test service exclusively..."
-#	@$(MAKE) build BUILD_SERVICES="unit-test"
-#	@echo "[INFO] [Unit Test] 
-#	$(COMPOSE_CMD) run --rm unit-test
-#	@echo "[INFO] [Unit Test] Completed successfully!"
-# TODO: implement unit tests!!!
-
-## Runs integration tests in a one-off container
-integration-test:
-	@echo "[INFO] [Integration Test] Running build target for integration-test service exclusively..."
-	@$(MAKE) build BUILD_SERVICES="integration-test" WITH_DEPS=0
-	@echo "[INFO] [Integration Test] Starting...";
-	@if ! $(COMPOSE_CMD) run --rm integration-test; then \
-	  echo ""; \
-	  echo "[ERROR] [Integration Test] FAILED. Collecting logs..."; \
-	  $(COMPOSE_CMD) logs db app; \
-	  exit 1; \
-	fi
-	@echo "[INFO] [Integration Test] Completed successfully!"
-
-## Shuts down all containers (WITH_DEPS=1 to 'down' dependency services as well)
-down: _deps-down
-	@echo "[INFO] [Down] Removing containers & volumes, keeping images..."
-	$(COMPOSE_CMD) $(COMPOSE_PROFILE_FLAGS) down -v --remove-orphans
-
-	@echo "[INFO] [Down] Removing network '$(COMPOSE_NETWORK_NAME)'..."
-	@docker network rm $(COMPOSE_NETWORK_NAME) && echo "[INFO] [Down] Network '$(COMPOSE_NETWORK_NAME)' successfully removed." || \
-		echo "[WARN] [Down] 'network rm $(COMPOSE_NETWORK_NAME)' failed (network most likely already removed or still being used) Ignoring..."
-
-	@echo "[INFO] [Down] Done."
-
-## Cleans everything (containers, images, volumes) (WITH_DEPS=1 to 'clean' dependency services as well)
-clean: _deps-clean
-	@echo "[INFO] [Clean] Running down target..."
-	@$(MAKE) down WITH_DEPS=0
-	@echo "[INFO] [Clean] Full nuke of containers, images, volumes, networks..."
-	$(COMPOSE_CMD) $(COMPOSE_PROFILE_FLAGS) down --rmi local -v --remove-orphans
-	@echo "[INFO] [Clean] Done."
 
 ## CI pipeline: Starts services, runs both integration and unit tests, and then shuts down all containers
 ci:

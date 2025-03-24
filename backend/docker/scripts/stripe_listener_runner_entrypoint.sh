@@ -3,6 +3,7 @@ set -e
 
 : "${HCP_ENCRYPTED_API_TOKEN:?HCP_ENCRYPTED_API_TOKEN env var is required}"
 : "${APP_URL:?APP_URL env var is required}"
+: "${STRIPE_WEBHOOK_EVENTS:?STRIPE_WEBHOOK_EVENTS env var is required (comma-separated list of events)}"
 : "${STRIPE_WEBHOOK_ROUTE:?STRIPE_WEBHOOK_ROUTE env var is required}"
 
 FORWARD_TO_URL="${APP_URL}${STRIPE_WEBHOOK_ROUTE}"
@@ -31,5 +32,5 @@ fi
 echo "[INFO] Successfully fetched 'STRIPE_SECRET_KEY' from HCP."
 echo "[INFO] Starting 'stripe listen --forward-to ${FORWARD_TO_URL}' with the provided secret key."
 
-exec stripe listen --forward-to "${FORWARD_TO_URL}" --api-key "${STRIPE_SECRET_KEY}"
+exec stripe listen -e "${STRIPE_WEBHOOK_EVENTS}" --forward-connect-to "${FORWARD_TO_URL}" --api-key "${STRIPE_SECRET_KEY}"
 

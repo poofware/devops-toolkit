@@ -1,5 +1,5 @@
 # ----------------------
-# Go App Build Targets
+# Go App Build Target
 # ----------------------
 
 SHELL := /bin/bash

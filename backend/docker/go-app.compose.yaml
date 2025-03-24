@@ -15,6 +15,8 @@ x-build-args: &build-args
   HCP_ENCRYPTED_API_TOKEN: ${HCP_ENCRYPTED_API_TOKEN?Docker Compose Config Error! HCP_ENCRYPTED_API_TOKEN is not set!}
   LD_SERVER_CONTEXT_KEY: ${LD_SERVER_CONTEXT_KEY?Docker Compose Config Error! LD_SERVER_CONTEXT_KEY is not set!}
   LD_SERVER_CONTEXT_KIND: ${LD_SERVER_CONTEXT_KIND?Docker Compose Config Error! LD_SERVER_CONTEXT_KIND is not set!}
+  UNIQUE_RUN_NUMBER: ${UNIQUE_RUN_NUMBER?Docker Compose Config Error! UNIQUE_RUN_NUMBER is not set!}
+  UNIQUE_RUNNER_ID: ${UNIQUE_RUNNER_ID?Docker Compose Config Error! UNIQUE_RUNNER_ID is not set!}
 
 services:
   # ----------------------
@@ -73,6 +75,20 @@ services:
   #     target: unit-test-runner
   #   <<: *networks
   # TODO: Uncomment when unit tests are implemented
+  
+  # ----------------------
+  # 3) App Service Health Check
+  # ----------------------
+  health-check:
+    build:
+      context: .
+      dockerfile: devops-toolkit/backend/docker/go-app.Dockerfile
+      target: health-check-runner
+      args:
+        APP_URL: ${APP_URL?Docker Compose Config Error! APP_URL is not set!}
+    profiles:
+      - "${COMPOSE_PROFILE_APP_POST_CHECK?Docker Compose Config Error! COMPOSE_PROFILE_APP_POST_CHECK is not set!}"
+    <<: *networks
 
 networks:
   app_network:
