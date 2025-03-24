@@ -128,7 +128,7 @@ export APP_PORT
 export COMPOSE_NETWORK_NAME
 export ENV
 # For isolation of CI runs, and use of 3rd party services (e.g. Stripe)
-export UNIQUE_RUN_NUMBER ?= 9005
+export UNIQUE_RUN_NUMBER ?= 0
 export UNIQUE_RUNNER_ID
 
 # Allow for APP_URL override

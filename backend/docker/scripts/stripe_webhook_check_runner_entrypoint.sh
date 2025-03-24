@@ -5,8 +5,8 @@ echo "[INFO] Starting stripe-webhook-check-entrypoint..."
 
 : "${HCP_ENCRYPTED_API_TOKEN:?HCP_ENCRYPTED_API_TOKEN env var is required}"
 : "${APP_URL:?APP_URL env var is required}"
-: "${STRIPE_WEBHOOK_EVENTS:?STRIPE_WEBHOOK_EVENTS env var is required (comma-separated list of events)}"
 : "${STRIPE_WEBHOOK_CHECK_ROUTE:?STRIPE_WEBHOOK_CHECK_ROUTE env var is required}"
+: "${APP_NAME:?APP_NAME env var is required}"
 : "${UNIQUE_RUN_NUMBER:?UNIQUE_RUN_NUMBER env var is required}"
 : "${UNIQUE_RUNNER_ID:?UNIQUE_RUNNER_ID env var is required}"
 
@@ -29,99 +29,105 @@ if [ -z "$STRIPE_SECRET_KEY" ] || [ "$STRIPE_SECRET_KEY" = "null" ]; then
 fi
 echo "[INFO] 'STRIPE_SECRET_KEY' fetched from HCP."
 
-# 4) Trigger each event in the list
-EVENT_IDS=()
-echo "[INFO] Triggering events: $STRIPE_WEBHOOK_EVENTS"
+# 4) Trigger a single 'payment_intent.created' event with identifying metadata
+echo "[INFO] Triggering Stripe event: payment_intent.created"
+METADATA_VALUE="webhook_check-${APP_NAME}-${UNIQUE_RUNNER_ID}-${UNIQUE_RUN_NUMBER}"
+echo "[INFO] Using metadata 'generated_by=${METADATA_VALUE}'"
 
-for EVENT_TYPE in $(echo "$STRIPE_WEBHOOK_EVENTS" | tr ',' ' '); do
-  echo "[INFO] Triggering Stripe event: $EVENT_TYPE with metadata 'generated_by=webhook_check'"
+set +e
+TRIGGER_OUTPUT=$(timeout 15s stripe trigger payment_intent.created \
+  --add "payment_intent:metadata.generated_by=${METADATA_VALUE}" \
+  --api-key "$STRIPE_SECRET_KEY" 2>&1)
+TRIGGER_EXIT=$?
+set -e
 
-  # Use a timeout of 15s so we don't hang indefinitely
-  set +e
-  TRIGGER_OUTPUT=$(timeout 15s stripe trigger "$EVENT_TYPE" \
-    --add "${EVENT_TYPE%%.*}:metadata.generated_by=webhook_check-${UNIQUE_RUNNER_ID}-${UNIQUE_RUN_NUMBER}" \
-    --api-key "$STRIPE_SECRET_KEY" 2>&1)
-  CMD_EXIT=$?
-  set -e
-
-  if [ $CMD_EXIT -ne 0 ]; then
-    echo "[WARN] 'stripe trigger' command failed or timed out for event '$EVENT_TYPE' (exit code: $CMD_EXIT). Skipping..."
-    echo "==== FULL TRIGGER OUTPUT ===="
-    echo "$TRIGGER_OUTPUT"
-    echo "==== END TRIGGER OUTPUT ===="
-    continue
-  fi
-
-  if [ -z "$TRIGGER_OUTPUT" ]; then
-    echo "[WARN] 'stripe trigger' returned empty output for event '$EVENT_TYPE'. Skipping..."
-    continue
-  fi
-
-  set +e
-  EVENT_ID=$(echo "$TRIGGER_OUTPUT" | grep -oE 'evt_[A-Za-z0-9]+' 2> /tmp/grep_err.log)
-  GREP_EXIT_CODE=$?
-  set -e
-
-  echo "[DEBUG] grep exit code: $GREP_EXIT_CODE"
-
-  if [ $GREP_EXIT_CODE -ne 0 ] || [ -z "$EVENT_ID" ]; then
-    echo "[WARN] Could not parse an 'evt_' ID in the CLI output for '$EVENT_TYPE'. Likely not supported."
-    echo "==== FULL TRIGGER OUTPUT ===="
-    echo "$TRIGGER_OUTPUT"
-    echo "==== END TRIGGER OUTPUT ===="
-    echo "[DEBUG] grep stderr was:"
-    cat /tmp/grep_err.log
-    continue
-  fi
-
-  echo "[INFO] Triggered Stripe event '$EVENT_TYPE' with ID: $EVENT_ID"
-  EVENT_IDS+=("$EVENT_ID")
-done
-
-# If no events were triggered successfully, fail early
-if [ "${#EVENT_IDS[@]}" -eq 0 ]; then
-  echo "[ERROR] None of the '$STRIPE_WEBHOOK_EVENTS' events could be triggered successfully."
+if [ $TRIGGER_EXIT -ne 0 ]; then
+  echo "[ERROR] 'stripe trigger payment_intent.created' command failed or timed out (exit code: $TRIGGER_EXIT)."
+  echo "==== FULL TRIGGER OUTPUT ===="
+  echo "$TRIGGER_OUTPUT"
+  echo "==== END TRIGGER OUTPUT ===="
   exit 1
 fi
 
-# 5) Poll the check endpoint for each event ID
+if [ -z "$TRIGGER_OUTPUT" ]; then
+  echo "[WARN] 'stripe trigger' returned empty output for payment_intent.created."
+fi
+
+# Allow a brief pause so Stripe can register the event
+sleep 2
+
+# 4.1) Look up the most recent 10 events and find the one we just triggered
+echo "[INFO] Fetching the last 10 events from Stripe..."
+set +e
+EVENTS_JSON=$(stripe events list --limit 10 --api-key "$STRIPE_SECRET_KEY" 2>&1)
+EVENTS_EXIT=$?
+set -e
+
+if [ $EVENTS_EXIT -ne 0 ]; then
+  echo "[ERROR] 'stripe events list' command failed (exit code: $EVENTS_EXIT)."
+  echo "==== FULL EVENTS OUTPUT ===="
+  echo "$EVENTS_JSON"
+  echo "==== END EVENTS OUTPUT ===="
+  exit 1
+fi
+
+if [ -z "$EVENTS_JSON" ]; then
+  echo "[ERROR] 'stripe events list' returned no data."
+  exit 1
+fi
+
+# Attempt to parse JSON and find matching event
+echo "[DEBUG] Parsing events for matching metadata: ${METADATA_VALUE}"
+EVENT_ID=$(echo "$EVENTS_JSON" | jq -r \
+  --arg SEARCH "$METADATA_VALUE" '
+    .data
+    | map(select(
+        .type == "payment_intent.created" and
+        .data.object.metadata.generated_by == $SEARCH
+      ))
+    | first
+    | .id // ""
+  ' 2>/tmp/stripe_jq_err.log)
+
+# Check if jq had any parsing errors
+if [ $? -ne 0 ]; then
+  echo "[ERROR] Failed to parse Stripe events JSON using jq."
+  echo "==== RAW EVENTS JSON ===="
+  echo "$EVENTS_JSON"
+  echo "==== jq stderr ===="
+  cat /tmp/stripe_jq_err.log
+  echo "==== END ERROR LOGS ===="
+  exit 1
+fi
+
+if [ -z "$EVENT_ID" ]; then
+  echo "[ERROR] Could not find a 'payment_intent.created' event in the last 10 events with metadata 'generated_by=${METADATA_VALUE}'."
+  echo "==== RAW EVENTS JSON (truncated) ===="
+  echo "$EVENTS_JSON"
+  exit 1
+fi
+
+echo "[INFO] Found triggered event ID: $EVENT_ID"
+
+# 5) Poll the check endpoint to ensure the event was received
 CHECK_URL="${APP_URL}${STRIPE_WEBHOOK_CHECK_ROUTE}"
-echo "[INFO] Checking events at: $CHECK_URL"
+CHECK_URL_WITH_ARG="${CHECK_URL}?id=${EVENT_ID}"
+echo "[INFO] Checking event at: $CHECK_URL_WITH_ARG"
 
-# We'll track how many events are recognized
-RECOGNIZED_COUNT=0
-
-for EVENT_ID in "${EVENT_IDS[@]}"; do
-  attempts=10
-  recognized=0
-
-  while [ $attempts -gt 0 ]; do
-    CHECK_URL_WITH_ARG="${CHECK_URL}?id=${EVENT_ID}"
-    STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$CHECK_URL_WITH_ARG" || true)
-    if [ "$STATUS" = "200" ]; then
-      echo "[INFO] Webhook event $EVENT_ID was received successfully!"
-      recognized=1
-      break
-    fi
-
-    echo "[INFO] Webhook event $EVENT_ID not found yet (HTTP $STATUS). Retrying..."
-    attempts=$((attempts - 1))
-    sleep 2
-  done
-
-  if [ $recognized -eq 1 ]; then
-    RECOGNIZED_COUNT=$((RECOGNIZED_COUNT + 1))
-  else
-    echo "[WARN] Timed out waiting for webhook event $EVENT_ID to be recognized by the service. Skipping..."
+attempts=10
+while [ $attempts -gt 0 ]; do
+  STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$CHECK_URL_WITH_ARG" || true)
+  if [ "$STATUS" = "200" ]; then
+    echo "[INFO] Webhook event $EVENT_ID was received successfully!"
+    echo "[INFO] Webhook check completed successfully."
+    exit 0
   fi
+
+  echo "[INFO] Webhook event $EVENT_ID not found yet (HTTP $STATUS). Retrying..."
+  attempts=$((attempts - 1))
+  sleep 2
 done
 
-# If none were recognized, fail; otherwise succeed
-if [ "$RECOGNIZED_COUNT" -eq 0 ]; then
-  echo "[ERROR] None of the triggered events were successfully recognized by the service!"
-  exit 1
-fi
-
-echo "[INFO] At least one event was verified successfully."
-exit 0
+echo "[ERROR] Timed out waiting for webhook event $EVENT_ID to be recognized by the service."
+exit 1
 

@@ -11,7 +11,7 @@ INCLUDED_HCP_CONSTANTS := 1
 
 # To force a static assignment operation with '?=' behavior, we wrap the ':=' assignment in an ifndef check
 ifndef HCP_ENCRYPTED_API_TOKEN
-	export HCP_ENCRYPTED_API_TOKEN := $(shell devops-toolkit/backend/scripts/fetch_hcp_api_token.sh encrypted)
+  export HCP_ENCRYPTED_API_TOKEN := $(shell devops-toolkit/backend/scripts/fetch_hcp_api_token.sh encrypted)
 endif
 
 # Poof

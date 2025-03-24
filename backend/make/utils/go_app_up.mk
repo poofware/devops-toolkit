@@ -45,29 +45,25 @@ _check-failed-services:
 
 _db-up:
 	@echo "[INFO] [Up] Starting any db services found matching the '$(COMPOSE_PROFILE_DB)' profile..."
-	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_DB) up -d || \
+	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_DB) up -d && echo "[INFO] [Up] Done. Any db services found are up and running." || \
 		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_DB) up -d' failed (most likely no services found or already running). Ignoring..."
-	@echo "[INFO] [Up] Done. Any db services found are up and running."
 
 _migrate-up:
 	@echo "[INFO] [Up] Starting any migration services found matching the '$(COMPOSE_PROFILE_MIGRATE)' profile..."
-	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_MIGRATE) up || \
+	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_MIGRATE) up && echo "[INFO] [Up] Done. Any migration services found are up and running." || \
 		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_MIGRATE) up' failed (no services found?). Ignoring..."
-	@echo "[INFO] [Up] Done. Any migration services found were run."
 
 	@$(MAKE) _check-failed-services PROFILE_TO_CHECK=$(COMPOSE_PROFILE_MIGRATE)
 
 _app-pre-up:
 	@echo "[INFO] [Up] Starting any pre-start services found matching the '$(COMPOSE_PROFILE_APP_PRE)' profile..."
-	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_PRE) up -d || \
+	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_PRE) up -d && echo "[INFO] [Up] Done. Any pre-start services found are up and running." || \
 		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_PRE) up -d' failed (no services found?). Ignoring..."
-	@echo "[INFO] [Up] Done. Any pre-start services found are up and running."
 
 _app-post-check-up:
 	@echo "[INFO] [Up] Starting any post-start-check services found matching the '$(COMPOSE_PROFILE_APP_POST_CHECK)' profile..."
-	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_POST_CHECK) up || \
+	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_POST_CHECK) up && echo "[INFO] [Up] Done. Any post-start-check services found are up and running." || \
 		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_POST_CHECK) up' failed (no services found?). Ignoring..."
-	@echo "[INFO] [Up] Done. Any post-start-check services found are up and running."
 
 	@$(MAKE) _check-failed-services PROFILE_TO_CHECK=$(COMPOSE_PROFILE_APP_POST_CHECK)
 

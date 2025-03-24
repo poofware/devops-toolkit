@@ -18,7 +18,6 @@ ARG APP_URL
 ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
 ARG HCP_ENCRYPTED_API_TOKEN
-ARG STRIPE_WEBHOOK_EVENTS
 
 # Validate build-args that we'll rely on at runtime
 RUN test -n "${ENV}" || ( \
@@ -41,17 +40,12 @@ RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
   echo "Error: HCP_ENCRYPTED_API_TOKEN is not set! Use --build-arg HCP_ENCRYPTED_API_TOKEN=xxx" && \
   exit 1 \
 );
-RUN test -n "${STRIPE_WEBHOOK_EVENTS}" || ( \
-  echo "Error: STRIPE_WEBHOOK_EVENTS is not set! Use --build-arg STRIPE_WEBHOOK_EVENTS=xxx" && \
-  exit 1 \
-);
 
 ENV ENV=${ENV}
 ENV APP_URL=${APP_URL}
 ENV HCP_ORG_ID=${HCP_ORG_ID}
 ENV HCP_PROJECT_ID=${HCP_PROJECT_ID}
 ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
-ENV STRIPE_WEBHOOK_EVENTS="${STRIPE_WEBHOOK_EVENTS}"
 ENV HCP_APP_NAME=shared-${ENV}
 
 USER root
@@ -68,15 +62,21 @@ RUN chmod +x encryption.sh fetch_hcp_secret.sh;
 FROM runner-config-validator AS stripe-webhook-check-runner
 
 ARG STRIPE_WEBHOOK_CHECK_ROUTE
+ARG APP_NAME
 ARG UNIQUE_RUN_NUMBER
 ARG UNIQUE_RUNNER_ID
 
 ENV STRIPE_WEBHOOK_CHECK_ROUTE=${STRIPE_WEBHOOK_CHECK_ROUTE}
+ENV APP_NAME=${APP_NAME}
 ENV UNIQUE_RUN_NUMBER=${UNIQUE_RUN_NUMBER}
 ENV UNIQUE_RUNNER_ID=${UNIQUE_RUNNER_ID}
 
 RUN test -n "${STRIPE_WEBHOOK_CHECK_ROUTE}" || ( \
   echo "Error: STRIPE_WEBHOOK_CHECK_ROUTE is not set! Use --build-arg STRIPE_WEBHOOK_CHECK_ROUTE=xxx" && \
+  exit 1 \
+);
+RUN test -n "${APP_NAME}" || ( \
+  echo "Error: APP_NAME is not set! Use --build-arg APP_NAME=xxx" && \
   exit 1 \
 );
 RUN test -n "${UNIQUE_RUN_NUMBER}" || ( \
@@ -100,13 +100,19 @@ ENTRYPOINT ./stripe_webhook_check_runner_entrypoint.sh;
 #######################################
 FROM runner-config-validator AS stripe-listener-runner
 
+ARG STRIPE_WEBHOOK_EVENTS
 ARG STRIPE_WEBHOOK_ROUTE
 
+RUN test -n "${STRIPE_WEBHOOK_EVENTS}" || ( \
+  echo "Error: STRIPE_WEBHOOK_EVENTS is not set! Use --build-arg STRIPE_WEBHOOK_EVENTS=xxx" && \
+  exit 1 \
+);
 RUN test -n "${STRIPE_WEBHOOK_ROUTE}" || ( \
   echo "Error: STRIPE_WEBHOOK_ROUTE is not set! Use --build-arg STRIPE_WEBHOOK_ROUTE=xxx" && \
   exit 1 \
 );
 
+ENV STRIPE_WEBHOOK_EVENTS="${STRIPE_WEBHOOK_EVENTS}"
 ENV STRIPE_WEBHOOK_ROUTE=${STRIPE_WEBHOOK_ROUTE}
 
 COPY devops-toolkit/backend/docker/scripts/stripe_listener_runner_entrypoint.sh stripe_listener_runner_entrypoint.sh
