@@ -158,12 +158,17 @@ FROM alpine:latest AS runner-config-validator
 RUN apk add --no-cache curl;
 
 ARG ENV
+ARG APP_URL
 ARG HCP_ENCRYPTED_API_TOKEN
 
 # Run these validations here instead of the builder-config-validator stage, as these change often, and we don't want to invalidate
 # the builder stage cache every time we change them
 RUN test -n "${ENV}" || ( \
   echo "Error: ENV is not set! Use --build-arg ENV=xxx" && \
+  exit 1 \
+);
+RUN test -n "${APP_URL}" || ( \
+  echo "Error: APP_URL is not set! Use --build-arg APP_URL=xxx" && \
   exit 1 \
 );
 RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
@@ -179,11 +184,6 @@ FROM runner-config-validator AS integration-test-runner
 ARG ENV
 ARG APP_URL
 ARG HCP_ENCRYPTED_API_TOKEN
-
-RUN test -n "${APP_URL}" || ( \
-  echo "Error: APP_URL is not set! Use --build-arg APP_URL=xxx" && \
-  exit 1 \
-);
 
 RUN apk add --no-cache curl jq openssl bash ca-certificates && update-ca-certificates;
 
@@ -240,6 +240,7 @@ FROM runner-config-validator AS app-runner
 
 ARG APP_NAME
 ARG APP_PORT
+ARG APP_URL
 ARG ENV
 ARG HCP_ENCRYPTED_API_TOKEN
 
@@ -251,12 +252,14 @@ EXPOSE ${APP_PORT}
 # Convert ARG to ENV for runtime use with CMD
 ENV APP_NAME=${APP_NAME}
 ENV APP_PORT=${APP_PORT}
+ENV APP_URL=${APP_URL}
 ENV ENV=${ENV}
 ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
 
 # Copy all envs into a .env file for potential children images to access
 RUN echo "APP_NAME=${APP_NAME}" > .env && \
     echo "APP_PORT=${APP_PORT}" >> .env && \
+    echo "APP_URL=${APP_URL}" >> .env && \
     echo "ENV=${ENV}" >> .env && \
     echo "HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}" >> .env;
 

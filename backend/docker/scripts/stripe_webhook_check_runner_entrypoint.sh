@@ -29,13 +29,42 @@ if [ -z "$STRIPE_SECRET_KEY" ] || [ "$STRIPE_SECRET_KEY" = "null" ]; then
 fi
 echo "[INFO] 'STRIPE_SECRET_KEY' fetched from HCP."
 
-# 4) Trigger a single 'payment_intent.created' event with identifying metadata
-echo "[INFO] Triggering Stripe event: payment_intent.created"
+# 4) Set up a trap to ensure the connected account is always deleted
+ACCOUNT_ID=""
+cleanup() {
+  if [ -n "$ACCOUNT_ID" ]; then
+    echo "[INFO] Deleting connected account ID: $ACCOUNT_ID"
+    stripe accounts delete "$ACCOUNT_ID" \
+      --api-key "$STRIPE_SECRET_KEY" || true
+  fi
+}
+trap cleanup EXIT
+
+# 5) Create a connected account
+echo "[INFO] Creating an Express connected account..."
+ACCOUNT_CREATE_OUTPUT="$(stripe accounts create --type=express --api-key "$STRIPE_SECRET_KEY")"
+if [ -z "$ACCOUNT_CREATE_OUTPUT" ]; then
+  echo "[ERROR] Failed to create a connected account."
+  exit 1
+fi
+
+ACCOUNT_ID="$(echo "$ACCOUNT_CREATE_OUTPUT" | jq -r '.id // empty')"
+if [ -z "$ACCOUNT_ID" ]; then
+  echo "[ERROR] Could not parse 'id' from connected account creation response."
+  echo "==== RAW CREATE OUTPUT ===="
+  echo "$ACCOUNT_CREATE_OUTPUT"
+  exit 1
+fi
+echo "[INFO] Created connected account: $ACCOUNT_ID"
+
+# 6) Trigger a 'payment_intent.created' event with metadata
 METADATA_VALUE="webhook_check-${APP_NAME}-${UNIQUE_RUNNER_ID}-${UNIQUE_RUN_NUMBER}"
+echo "[INFO] Triggering Stripe event: payment_intent.created (connected account: $ACCOUNT_ID)"
 echo "[INFO] Using metadata 'generated_by=${METADATA_VALUE}'"
 
 set +e
 TRIGGER_OUTPUT=$(timeout 15s stripe trigger payment_intent.created \
+  --stripe-account "$ACCOUNT_ID" \
   --add "payment_intent:metadata.generated_by=${METADATA_VALUE}" \
   --api-key "$STRIPE_SECRET_KEY" 2>&1)
 TRIGGER_EXIT=$?
@@ -56,10 +85,13 @@ fi
 # Allow a brief pause so Stripe can register the event
 sleep 2
 
-# 4.1) Look up the most recent 10 events and find the one we just triggered
-echo "[INFO] Fetching the last 10 events from Stripe..."
+# 7) Get the single most recent event for this connected account
+echo "[INFO] Fetching the last event from Stripe (connected account: $ACCOUNT_ID)..."
 set +e
-EVENTS_JSON=$(stripe events list --limit 10 --api-key "$STRIPE_SECRET_KEY" 2>&1)
+EVENTS_JSON=$(stripe events list \
+  --limit 1 \
+  --stripe-account "$ACCOUNT_ID" \
+  --api-key "$STRIPE_SECRET_KEY" 2>&1)
 EVENTS_EXIT=$?
 set -e
 
@@ -76,40 +108,17 @@ if [ -z "$EVENTS_JSON" ]; then
   exit 1
 fi
 
-# Attempt to parse JSON and find matching event
-echo "[DEBUG] Parsing events for matching metadata: ${METADATA_VALUE}"
-EVENT_ID=$(echo "$EVENTS_JSON" | jq -r \
-  --arg SEARCH "$METADATA_VALUE" '
-    .data
-    | map(select(
-        .type == "payment_intent.created" and
-        .data.object.metadata.generated_by == $SEARCH
-      ))
-    | first
-    | .id // ""
-  ' 2>/tmp/stripe_jq_err.log)
-
-# Check if jq had any parsing errors
-if [ $? -ne 0 ]; then
-  echo "[ERROR] Failed to parse Stripe events JSON using jq."
+# 8) Parse the event ID
+EVENT_ID="$(echo "$EVENTS_JSON" | jq -r '.data[0].id // empty')"
+if [ -z "$EVENT_ID" ]; then
+  echo "[ERROR] Could not parse an event id from the last event."
   echo "==== RAW EVENTS JSON ===="
   echo "$EVENTS_JSON"
-  echo "==== jq stderr ===="
-  cat /tmp/stripe_jq_err.log
-  echo "==== END ERROR LOGS ===="
   exit 1
 fi
-
-if [ -z "$EVENT_ID" ]; then
-  echo "[ERROR] Could not find a 'payment_intent.created' event in the last 10 events with metadata 'generated_by=${METADATA_VALUE}'."
-  echo "==== RAW EVENTS JSON (truncated) ===="
-  echo "$EVENTS_JSON"
-  exit 1
-fi
-
 echo "[INFO] Found triggered event ID: $EVENT_ID"
 
-# 5) Poll the check endpoint to ensure the event was received
+# 9) Poll the check endpoint to ensure the event was received by your app
 CHECK_URL="${APP_URL}${STRIPE_WEBHOOK_CHECK_ROUTE}"
 CHECK_URL_WITH_ARG="${CHECK_URL}?id=${EVENT_ID}"
 echo "[INFO] Checking event at: $CHECK_URL_WITH_ARG"
