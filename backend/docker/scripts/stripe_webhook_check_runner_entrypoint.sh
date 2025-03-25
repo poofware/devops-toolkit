@@ -89,7 +89,7 @@ sleep 2
 echo "[INFO] Fetching the last event from Stripe (connected account: $ACCOUNT_ID)..."
 set +e
 EVENTS_JSON=$(stripe events list \
-  --limit 1 \
+  --limit 3 \
   --stripe-account "$ACCOUNT_ID" \
   --api-key "$STRIPE_SECRET_KEY" 2>&1)
 EVENTS_EXIT=$?
@@ -109,7 +109,7 @@ if [ -z "$EVENTS_JSON" ]; then
 fi
 
 # 8) Parse the event ID
-EVENT_ID="$(echo "$EVENTS_JSON" | jq -r '.data[0].id // empty')"
+EVENT_ID=$(echo "$EVENTS_JSON" | jq -r '.data[] | select(.type == "payment_intent.created") | .id // empty')
 if [ -z "$EVENT_ID" ]; then
   echo "[ERROR] Could not parse an event id from the last event."
   echo "==== RAW EVENTS JSON ===="
