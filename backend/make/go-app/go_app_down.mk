@@ -15,14 +15,14 @@ INCLUDED_GO_APP_DOWN := 1
 
 
 ifndef INCLUDED_GO_APP_DEPS
-  include devops-toolkit/backend/make/utils/go_app_deps.mk
+  include devops-toolkit/backend/make/go-app/go_app_deps.mk
 endif
 
 
 ## Shuts down all containers (WITH_DEPS=1 to 'down' dependency services as well)
 down: _deps-down
 	@echo "[INFO] [Down] Removing containers & volumes, keeping images..."
-	$(COMPOSE_CMD) $(COMPOSE_PROFILE_FLAGS) down -v --remove-orphans
+	$(COMPOSE_CMD) $(COMPOSE_PROFILE_FLAGS_UP_DOWN_BUILD) down -v --remove-orphans
 
 	@echo "[INFO] [Down] Removing network '$(COMPOSE_NETWORK_NAME)'..."
 	@docker network rm $(COMPOSE_NETWORK_NAME) && echo "[INFO] [Down] Network '$(COMPOSE_NETWORK_NAME)' successfully removed." || \

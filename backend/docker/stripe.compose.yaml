@@ -2,16 +2,13 @@ x-environment: &environment
   environment:
     HCP_TOKEN_ENC_KEY: ${HCP_TOKEN_ENC_KEY?Docker Compose Config Error! HCP_TOKEN_ENC_KEY is not set!}
 
-x-constant-stripe-cli-version: &stripe-cli-version
-  STRIPE_CLI_VERSION: 1.25.1
-
 x-build-args: &build-args
   ENV: ${ENV?Docker Compose Config Error! ENV is not set!}
   APP_URL: ${APP_URL?Docker Compose Config Error! APP_URL is not set!}
   HCP_ORG_ID: ${HCP_ORG_ID?Docker Compose Config Error! HCP_ORG_ID is not set!}
   HCP_PROJECT_ID: ${HCP_PROJECT_ID?Docker Compose Config Error! HCP_PROJECT_ID is not set!}
   HCP_ENCRYPTED_API_TOKEN: ${HCP_ENCRYPTED_API_TOKEN?Docker Compose Config Error! HCP_ENCRYPTED_API_TOKEN is not set!}
-  <<: *stripe-cli-version
+  STRIPE_CLI_VERSION: 1.25.1
 
 services:
   # ----------------------
@@ -62,20 +59,9 @@ services:
   # 3) Integration Test Service - Override for Potential Stripe Dependencies
   # ----------------------------------------
   integration-test:
-    command: >
-      sh -c "
-        ARCH=$$(uname -m);
-        if [ \"$$ARCH\" = \"aarch64\" ]; then ARCH=\"arm64\"; fi;
-        if [ \"$$ARCH\" = \"x86_64\" ]; then ARCH=\"x86_64\"; fi;
-        curl -L https://github.com/stripe/stripe-cli/releases/download/v$${STRIPE_CLI_VERSION}/stripe_$${STRIPE_CLI_VERSION}_linux_$${ARCH}.tar.gz -o stripe.tar.gz &&
-        tar -xzf stripe.tar.gz &&
-        mv stripe /usr/local/bin/ &&
-        chmod +x /usr/local/bin/stripe &&
-        stripe version &&
-        ./integration_test_runner_cmd.sh
-      "
-    environment:
-      <<: *stripe-cli-version
+    build:
+      args:
+        INTEGRATION_TEST_RUNNER_BASE_IMAGE: stripe/stripe-cli:v1.25.1
 
 networks:
   app_network:

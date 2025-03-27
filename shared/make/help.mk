@@ -10,7 +10,9 @@ INCLUDED_HELP := 1
 
 
 _help:
-	@echo "Available targets:"; \
+	@echo "----------------------------------------"
+	@echo "[INFO] Available targets:"; \
+	echo "----------------------------------------"; \
 	awk 'BEGIN { FS=":.*" } \
 	     /^##/ { desc = substr($$0, 4); next } \
 	     /^[^_][a-zA-Z0-9_-]*:/ { \
@@ -20,4 +22,6 @@ _help:
 	       } \
 	       desc = "" \
 	     }' $(MAKEFILE_LIST) | sort
+	@echo "----------------------------------------"
+
 

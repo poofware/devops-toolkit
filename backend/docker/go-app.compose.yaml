@@ -61,7 +61,7 @@ services:
     image: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-integration-test
     container_name: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-integration-test_instance
     profiles:
-      - app_test
+      - app_integration_test
     <<:
       - *networks
       - *environment

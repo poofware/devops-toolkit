@@ -1,5 +1,7 @@
 # syntax=docker/dockerfile:1.4
 
+ARG INTEGRATION_TEST_RUNNER_BASE_IMAGE
+
 #######################################
 # Stage 1: Base for building & testing
 #######################################
@@ -149,20 +151,14 @@ COPY internal/ ./internal/
 RUN go test -c -o /unit_test ./internal/...;
 
 #######################################
-# Stage 6: Runner Config Validator
+# Stage 6: Integration Test Runner
 #######################################
-
-FROM alpine:latest AS runner-config-validator
-
-# Minimally install curl for healthcheck and validation
-RUN apk add --no-cache curl;
+FROM ${INTEGRATION_TEST_RUNNER_BASE_IMAGE:-alpine:latest} AS integration-test-runner
 
 ARG ENV
 ARG APP_URL
 ARG HCP_ENCRYPTED_API_TOKEN
-
-# Run these validations here instead of the builder-config-validator stage, as these change often, and we don't want to invalidate
-# the builder stage cache every time we change them
+  
 RUN test -n "${ENV}" || ( \
   echo "Error: ENV is not set! Use --build-arg ENV=xxx" && \
   exit 1 \
@@ -176,33 +172,24 @@ RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
   exit 1 \
 );
 
-#######################################
-# Stage 7: Integration Test Runner
-#######################################
-FROM runner-config-validator AS integration-test-runner
-
-ARG ENV
-ARG APP_URL
-ARG HCP_ENCRYPTED_API_TOKEN
-
 RUN apk add --no-cache curl jq openssl bash ca-certificates && update-ca-certificates;
 
 WORKDIR /root/
 COPY --from=integration-test-builder /integration_test ./integration_test
 COPY devops-toolkit/backend/scripts/health_check.sh health_check.sh
-COPY devops-toolkit/backend/docker/scripts/integration_test_runner_cmd.sh integration_test_runner_cmd.sh
+COPY devops-toolkit/backend/docker/scripts/integration_test_runner_entrypoint.sh integration_test_runner_entrypoint.sh
 
-RUN chmod +x health_check.sh integration_test_runner_cmd.sh;
+RUN chmod +x health_check.sh integration_test_runner_entrypoint.sh;
 
 # Convert ARG to ENV for runtime use
 ENV ENV=${ENV}
 ENV APP_URL=${APP_URL}
 ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
 
-CMD ./integration_test_runner_cmd.sh;
+ENTRYPOINT ./integration_test_runner_entrypoint.sh;
 
 #######################################
-# Stage 8: Unit Test Runner
+# Stage 7: Unit Test Runner
 #######################################
 FROM alpine:latest AS unit-test-runner
 
@@ -212,7 +199,7 @@ COPY --from=unit-test-builder /unit_test ./unit_test
 CMD ./unit_test -test.v;
 
 ######################################
-# Stage 9: Health Check Runner
+# Stage 8: Health Check Runner
 ######################################
 
 FROM alpine:latest AS health-check-runner
@@ -234,15 +221,30 @@ COPY devops-toolkit/backend/scripts/health_check.sh health_check.sh
 CMD ./health_check.sh;
 
 #######################################
-# Stage 10: Minimal Final App Image
+# Stage 9: Minimal Final App Image
 #######################################
-FROM runner-config-validator AS app-runner
+FROM alpine:latest AS app-runner
 
 ARG APP_NAME
 ARG APP_PORT
 ARG APP_URL
 ARG ENV
 ARG HCP_ENCRYPTED_API_TOKEN
+
+RUN test -n "${ENV}" || ( \
+  echo "Error: ENV is not set! Use --build-arg ENV=xxx" && \
+  exit 1 \
+);
+RUN test -n "${APP_URL}" || ( \
+  echo "Error: APP_URL is not set! Use --build-arg APP_URL=xxx" && \
+  exit 1 \
+);
+RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
+  echo "Error: HCP_ENCRYPTED_API_TOKEN is not set! Use --build-arg HCP_ENCRYPTED_API_TOKEN=xxx" && \
+  exit 1 \
+);
+
+RUN apk add --no-cache curl;
 
 WORKDIR /root/
 COPY --from=app-builder /${APP_NAME} ./${APP_NAME}
@@ -262,9 +264,6 @@ RUN echo "APP_NAME=${APP_NAME}" > .env && \
     echo "APP_URL=${APP_URL}" >> .env && \
     echo "ENV=${ENV}" >> .env && \
     echo "HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}" >> .env;
-
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:$APP_PORT/health || exit 1;
 
 CMD ./$APP_NAME
 

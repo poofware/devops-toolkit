@@ -17,9 +17,12 @@ endif
 INCLUDED_GO_APP := 1
 
 
-####################################
+################################
+# External Variable Validation #
+################################
+
 # Runtime/Ci environment variables #
-####################################
+
 # Will need the client id and client secret to fetch the HCP API token
 # if HCP_ENCRYPTED_API_TOKEN is not already set
 ifndef HCP_ENCRYPTED_API_TOKEN
@@ -44,9 +47,8 @@ ifneq ($(origin UNIQUE_RUNNER_ID), environment)
 	Example: export UNIQUE_RUNNER_ID="john_snow")
 endif
 
-###################################################################
 # Root Makefile variables, possibly overridden by the environment #
-###################################################################
+
 ifndef INCLUDED_ENV_VALIDATION
   include devops-toolkit/backend/make/utils/env_validation.mk
 endif
@@ -66,9 +68,8 @@ ifndef WITH_DEPS
 	Example: WITH_DEPS=1)
 endif
 
-###########################
 # Root Makefile variables #
-###########################
+
 ifneq ($(origin APP_NAME), file)
   $(error APP_NAME is either not set or set as a runtime/ci environment variable, should be hardcoded in the root Makefile. \
 	Example: APP_NAME="account-service")
@@ -93,9 +94,7 @@ ifneq ($(origin ADDITIONAL_COMPOSE_FILES), file)
 	Example: ADDITIONAL_COMPOSE_FILES="devops-toolkit/backend/docker/additional.compose.yaml:./override.compose.yaml" or ADDITIONAL_COMPOSE_FILES="")
 endif
 
-#################################################
 # Optional override configuration env variables #
-#################################################
 
 ifdef APP_URL
   ifneq ($(origin APP_URL), environment)
@@ -105,18 +104,27 @@ ifdef APP_URL
 endif
 
 
+# ------------------------------
+# Internal Variable Declaration
+# ------------------------------
+
 # Functions in make should always use '=', unless precomputing the value without dynamic args
 print-dep = $(info   $(word 1, $(subst :, ,$1)) = $(word 2, $(subst :, ,$1)))
 
-ifeq ($(WITH_DEPS),1)
-  $(info --------------------------------------------------)
-  $(info [INFO] WITH_DEPS is enabled. Effective dependency services being used:)
-  ifneq ($(DEPS),"")
-    $(foreach dep, $(DEPS), $(call print-dep, $(dep)))
+ifndef ALREADY_PRINTED_DEPS
+  ifeq ($(WITH_DEPS),1)
+    $(info --------------------------------------------------)
+    $(info [INFO] WITH_DEPS is enabled. Effective dependency services being used:)
+    $(info --------------------------------------------------)
+    ifneq ($(DEPS),"")
+  	$(foreach dep, $(DEPS), $(call print-dep, $(dep)))
+    endif
+    $(info )
+    $(info [INFO] To override, make with VAR=value)
+    $(info --------------------------------------------------)
   endif
-  $(info )
-  $(info [INFO] To override, make with VAR=value)
-  $(info --------------------------------------------------)
+
+  export ALREADY_PRINTED_DEPS := 1
 endif
 
 # For updating go packages
@@ -140,18 +148,19 @@ ifndef APP_URL
   endif
 endif
 
-export COMPOSE_PROFILE_APP := app
-export COMPOSE_PROFILE_DB := db
-export COMPOSE_PROFILE_MIGRATE := migrate
-export COMPOSE_PROFILE_APP_PRE := app_pre
-export COMPOSE_PROFILE_APP_POST_CHECK := app_post_check
+COMPOSE_PROFILE_APP := app
+COMPOSE_PROFILE_DB := db
+COMPOSE_PROFILE_MIGRATE := migrate
+COMPOSE_PROFILE_APP_PRE := app_pre
+COMPOSE_PROFILE_APP_POST_CHECK := app_post_check
+COMPOSE_PROFILE_APP_INTEGRATION_TEST := app_integration_test
+COMPOSE_PROFILE_APP_UNIT_TEST := app_unit_test
 
-# Needed by build target
-COMPOSE_PROFILE_FLAGS := --profile $(COMPOSE_PROFILE_APP)
-COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_DB)
-COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_MIGRATE)
-COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_APP_PRE)
-COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_APP_POST_CHECK)
+COMPOSE_PROFILE_FLAGS_UP_DOWN_BUILD := --profile $(COMPOSE_PROFILE_APP)
+COMPOSE_PROFILE_FLAGS_UP_DOWN_BUILD += --profile $(COMPOSE_PROFILE_DB)
+COMPOSE_PROFILE_FLAGS_UP_DOWN_BUILD += --profile $(COMPOSE_PROFILE_MIGRATE)
+COMPOSE_PROFILE_FLAGS_UP_DOWN_BUILD += --profile $(COMPOSE_PROFILE_APP_PRE)
+COMPOSE_PROFILE_FLAGS_UP_DOWN_BUILD += --profile $(COMPOSE_PROFILE_APP_POST_CHECK)
 
 # For docker compose
 # List in order of dependency, separate by ':'
@@ -169,59 +178,93 @@ COMPOSE_CMD := docker compose \
 		       --project-directory $(COMPOSE_PROJECT_DIR) \
 			   -p $(COMPOSE_PROJECT_NAME)
 
-
-# Include path relative to the root of the project
+ifndef INCLUDE_COMPOSE_SERVICE_UTILS
+  include devops-toolkit/backend/make/utils/compose_service_utils.mk
+endif
 ifndef INCLUDED_HCP_CONSTANTS
   include devops-toolkit/backend/make/utils/hcp_constants.mk
 endif
 ifndef INCLUDED_LAUNCHDARKLY_CONSTANTS
   include devops-toolkit/backend/make/utils/launchdarkly_constants.mk
 endif
+
+ifndef ALREADY_GOT_PROFILE_SERVICES
+  export COMPOSE_PROFILE_APP_SERVICES := $(call get_profile_services,$(COMPOSE_PROFILE_APP))
+  export COMPOSE_PROFILE_DB_SERVICES := $(call get_profile_services,$(COMPOSE_PROFILE_DB))
+  export COMPOSE_PROFILE_MIGRATE_SERVICES := $(call get_profile_services,$(COMPOSE_PROFILE_MIGRATE))
+  export COMPOSE_PROFILE_APP_PRE_SERVICES := $(call get_profile_services,$(COMPOSE_PROFILE_APP_PRE))
+  export COMPOSE_PROFILE_APP_POST_CHECK_SERVICES := $(call get_profile_services,$(COMPOSE_PROFILE_APP_POST_CHECK))
+  export COMPOSE_PROFILE_APP_INTEGRATION_TEST_SERVICES := $(call get_profile_services,$(COMPOSE_PROFILE_APP_INTEGRATION_TEST))
+  export COMPOSE_PROFILE_APP_UNIT_TEST_SERVICES := $(call get_profile_services,$(COMPOSE_PROFILE_APP_UNIT_TEST))
+  export ALREADY_GOT_PROFILE_SERVICES := 1
+endif
+
+
+# ------------------------------
+# Go App Targets
+# ------------------------------
+
 ifndef INCLUDED_GO_APP_DEPS
-  include devops-toolkit/backend/make/utils/go_app_deps.mk
+  include devops-toolkit/backend/make/go-app/go_app_deps.mk
 endif
 ifndef INCLUDED_GO_APP_DOWN
-  include devops-toolkit/backend/make/utils/go_app_down.mk
+  include devops-toolkit/backend/make/go-app/go_app_down.mk
 endif
 ifndef INCLUDED_GO_APP_BUILD
-  include devops-toolkit/backend/make/utils/go_app_build.mk
+  include devops-toolkit/backend/make/go-app/go_app_build.mk
 endif
 ifndef INCLUDED_GO_APP_UP
-  include devops-toolkit/backend/make/utils/go_app_up.mk
+  include devops-toolkit/backend/make/go-app/go_app_up.mk
 endif
 ifndef INCLUDED_GO_APP_TEST
-  include devops-toolkit/backend/make/utils/go_app_test.mk
+  include devops-toolkit/backend/make/go-app/go_app_test.mk
 endif
 ifndef INCLUDED_GO_APP_CLEAN
-  include devops-toolkit/backend/make/utils/go_app_clean.mk
+  include devops-toolkit/backend/make/go-app/go_app_clean.mk
+endif
+ifndef INCLUDED_GO_APP_CI
+  include devops-toolkit/backend/make/go-app/go_app_ci.mk
+endif
+ifndef INCLUDED_GO_APP_UPDATE
+  include devops-toolkit/backend/make/go-app/go_app_update.mk
 endif
 ifndef INCLUDED_HELP
   include devops-toolkit/shared/make/help.mk
 endif
 
 
-## CI pipeline: Starts services, runs both integration and unit tests, and then shuts down all containers
-ci:
-	@echo "[INFO] [CI] Starting pipeline..."
-	$(MAKE) up --no-print-directory
-	$(MAKE) integration-test --no-print-directory
-	@# $(MAKE) unit-test  # TODO: implement unit tests
-	$(MAKE) down --no-print-directory
-	@echo "[INFO] [CI] Pipeline complete."
-
-## Updates Go packages versions to the latest on specified branch (requires BRANCH to be set, e.g. BRANCH=main, applies to all packages)
-update:
-	@echo "[INFO] [Update] Updating Go packages..."
-	@if [ -z "$(BRANCH)" ]; then \
-		echo "[ERROR] [Update] BRANCH is not set. Please pass it as an argument to the make command. Example: BRANCH=main make update"; \
-		exit 1; \
-	fi
-	@if [ -z "$(PACKAGES)" ]; then \
-		echo "[ERROR] [Update] PACKAGES is empty. No packages to update."; \
-		exit 1; \
-	fi
-	@devops-toolkit/backend/scripts/update_go_packages.sh
-	@echo "[INFO] [Update] Done."
-
 ## Lists available targets
 help: _help
+	@echo
+	@echo "--------------------------------------------------"
+	@echo "[INFO] Configuration variables:"
+	@echo "--------------------------------------------------"
+	@echo "APP_NAME: $(APP_NAME)"
+	@echo "APP_PORT: $(APP_PORT)"
+	@echo "COMPOSE_NETWORK_NAME: $(COMPOSE_NETWORK_NAME)"
+	@echo "ENV: $(ENV)"
+	@echo "UNIQUE_RUN_NUMBER: $(UNIQUE_RUN_NUMBER)"
+	@echo "UNIQUE_RUNNER_ID: $(UNIQUE_RUNNER_ID)"
+	@echo "WITH_DEPS: $(WITH_DEPS)"
+	@echo "PACKAGES: $(PACKAGES)"
+	@echo "DEPS: $(DEPS)"
+	@echo "ADDITIONAL_COMPOSE_FILES: $(ADDITIONAL_COMPOSE_FILES)"
+	@echo "APP_URL: $(APP_URL)"
+	@echo "HCP_CLIENT_ID": xxxxxxxx
+	@echo "HCP_CLIENT_SECRET": xxxxxxxx
+	@echo "HCP_TOKEN_ENC_KEY": xxxxxxxx
+	@echo "--------------------------------------------------"
+	@echo
+	@echo "--------------------------------------------------"
+	@echo "[INFO] Effective compose services for each profile:"
+	@echo "--------------------------------------------------"
+	@echo "$(COMPOSE_PROFILE_APP)                  :$(COMPOSE_PROFILE_APP_SERVICES)"
+	@echo "$(COMPOSE_PROFILE_DB)                   :$(COMPOSE_PROFILE_DB_SERVICES)"
+	@echo "$(COMPOSE_PROFILE_MIGRATE)              :$(COMPOSE_PROFILE_MIGRATE_SERVICES)"
+	@echo "$(COMPOSE_PROFILE_APP_PRE)              :$(COMPOSE_PROFILE_APP_PRE_SERVICES)"
+	@echo "$(COMPOSE_PROFILE_APP_POST_CHECK)       :$(COMPOSE_PROFILE_APP_POST_CHECK_SERVICES)"
+	@echo "$(COMPOSE_PROFILE_APP_INTEGRATION_TEST) :$(COMPOSE_PROFILE_APP_INTEGRATION_TEST_SERVICES)"
+	@echo "$(COMPOSE_PROFILE_APP_UNIT_TEST)        :$(COMPOSE_PROFILE_APP_UNIT_TEST_SERVICES)"
+	@echo "--------------------------------------------------"
+	@echo "[INFO] For information on available profiles, reference devops-toolkit/README.md"
+

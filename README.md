@@ -85,6 +85,10 @@ You can expect the following behavior based on the profile you assign your servi
 - This is the post-start service profile. If you need to run a service after the main app service starts, you should assign it this profile.
 - This profile is run for all environments, so it is up to you to ensure that the post-start services handle appropriately for each environment, from dev, all the way to prod.
 
-#### app_test
+#### app_integration_test
+
+- This is the test service profile. This is already implemented in the go_app.mk file, and should not most likely be used in your custom compose file.
+
+#### app_unit_test
 
 - This is the test service profile. This is already implemented in the go_app.mk file, and should not most likely be used in your custom compose file.
