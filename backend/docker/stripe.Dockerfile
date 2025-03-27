@@ -1,9 +1,11 @@
 # syntax=docker/dockerfile:1.4
 
+ARG STRIPE_CLI_VERSION=1.25.1
+
 #######################################
 # Stage 1: Runner Config Validator
 #######################################
-FROM stripe/stripe-cli:latest AS runner-config-validator
+FROM stripe/stripe-cli:v${STRIPE_CLI_VERSION} AS runner-config-validator
 
 RUN apk update \
  && apk add --no-cache \

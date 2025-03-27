@@ -22,7 +22,7 @@ endif
 ## Cleans everything (containers, images, volumes) (WITH_DEPS=1 to 'clean' dependency services as well)
 clean: _deps-clean
 	@echo "[INFO] [Clean] Running down target..."
-	@$(MAKE) down WITH_DEPS=0
+	@$(MAKE) down --no-print-directory WITH_DEPS=0
 	@echo "[INFO] [Clean] Full nuke of containers, images, volumes, networks..."
 	$(COMPOSE_CMD) $(COMPOSE_PROFILE_FLAGS) down --rmi local -v --remove-orphans
 	@echo "[INFO] [Clean] Done."

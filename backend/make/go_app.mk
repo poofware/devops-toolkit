@@ -145,8 +145,6 @@ export COMPOSE_PROFILE_DB := db
 export COMPOSE_PROFILE_MIGRATE := migrate
 export COMPOSE_PROFILE_APP_PRE := app_pre
 export COMPOSE_PROFILE_APP_POST_CHECK := app_post_check
-# Only export this for name consistency compose, not used in the makefile
-export COMPOSE_PROFILE_APP_TEST := app_test
 
 # Needed by build target
 COMPOSE_PROFILE_FLAGS := --profile $(COMPOSE_PROFILE_APP)
@@ -159,7 +157,7 @@ COMPOSE_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_APP_POST_CHECK)
 # List in order of dependency, separate by ':'
 export COMPOSE_FILE := devops-toolkit/backend/docker/go-app.compose.yaml
 ifneq ($(ADDITIONAL_COMPOSE_FILES), "")
-  export COMPOSE_FILE := $(ADDITIONAL_COMPOSE_FILES):$(COMPOSE_FILE)
+  export COMPOSE_FILE := $(COMPOSE_FILE):$(ADDITIONAL_COMPOSE_FILES)
 endif
 
 # For docker compose command options
@@ -205,10 +203,10 @@ endif
 ## CI pipeline: Starts services, runs both integration and unit tests, and then shuts down all containers
 ci:
 	@echo "[INFO] [CI] Starting pipeline..."
-	$(MAKE) up
-	$(MAKE) integration-test
+	$(MAKE) up --no-print-directory
+	$(MAKE) integration-test --no-print-directory
 	@# $(MAKE) unit-test  # TODO: implement unit tests
-	$(MAKE) down
+	$(MAKE) down --no-print-directory
 	@echo "[INFO] [CI] Pipeline complete."
 
 ## Updates Go packages versions to the latest on specified branch (requires BRANCH to be set, e.g. BRANCH=main, applies to all packages)

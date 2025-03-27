@@ -44,7 +44,7 @@ services:
         aliases:
           - ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}
     profiles:
-      - "${COMPOSE_PROFILE_APP?Docker Compose Config Error! COMPOSE_PROFILE_APP is not set!}"
+      - app
     <<: *environment
 
   # ----------------------
@@ -61,7 +61,7 @@ services:
     image: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-integration-test
     container_name: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-integration-test_instance
     profiles:
-      - "${COMPOSE_PROFILE_APP_TEST?Docker Compose Config Error! COMPOSE_PROFILE_APP_TEST is not set!}"
+      - app_test
     <<:
       - *networks
       - *environment
@@ -91,7 +91,7 @@ services:
     image: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-health-check
     container_name: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-health-check_instance
     profiles:
-      - "${COMPOSE_PROFILE_APP_POST_CHECK?Docker Compose Config Error! COMPOSE_PROFILE_APP_POST_CHECK is not set!}"
+      - app_post_check
     <<: *networks
 
 networks:

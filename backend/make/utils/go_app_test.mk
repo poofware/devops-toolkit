@@ -32,7 +32,7 @@ endif
 ## Runs integration tests in a one-off container
 integration-test:
 	@echo "[INFO] [Integration Test] Running build target for integration-test service exclusively..."
-	@$(MAKE) build BUILD_SERVICES="integration-test" WITH_DEPS=0
+	@$(MAKE) build --no-print-directory BUILD_SERVICES="integration-test" WITH_DEPS=0
 	@echo "[INFO] [Integration Test] Starting...";
 	@if ! $(COMPOSE_CMD) run --rm integration-test; then \
 	  echo ""; \

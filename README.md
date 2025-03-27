@@ -24,7 +24,7 @@ DEPS := ""
 
 PACKAGES := go-middleware go-repositories go-utils go-models
 
-ADDITIONAL_COMPOSE_FILES := devops-toolkit/backend/docker/db.compose.yaml:devops-toolkit/backend/docker/stripe-listener.compose.yaml
+ADDITIONAL_COMPOSE_FILES := devops-toolkit/backend/docker/db.compose.yaml:devops-toolkit/backend/docker/stripe.compose.yaml
 ```
 
 #### 2. These are necessary per what the ADDITIONAL_COMPOSE_FILES require for their usage.
@@ -42,12 +42,11 @@ export STRIPE_WEBHOOK_EVENTS := account.updated,capability.updated,identity.veri
 - Just assign each of your compose services in your custom compose file an available profile. The following profiles are currently supported by the devops toolkit:
 
 ```sh
-COMPOSE_PROFILE_APP
-COMPOSE_PROFILE_DB
-COMPOSE_PROFILE_MIGRATE
-COMPOSE_PROFILE_APP_PRE
-COMPOSE_PROFILE_APP_POST_CHECK
-COMPOSE_PROFILE_APP_TEST
+app
+db
+migrate
+app_pre
+app_post
 ```
 
 You assign to your service like so:
@@ -57,35 +56,35 @@ services:
   my_service:
     image: my_image
     profiles:
-      - ${COMPOSE_PROFILE_APP_PRE}
+      - app_pre
 ```
 
 You can expect the following behavior based on the profile you assign your service to AND the environment (ENV) you run make for. All functionality is described for the 'up', 'down', 'clean' make targets. The 'build' target will build all profiles regardless of the ENV environment variable.
 
-#### COMPOSE_PROFILE_APP
+#### app
 
 - This is the main service and minimum require for 'make up' to work. This is already implemented in the go_app.mk file, and should not most likely be used in your custom compose file.
 
-#### COMPOSE_PROFILE_DB
+#### db
 
 - This is the database service profile. If you create your own database service outside of the one defined `db.compose.yaml`, you should assign it this profile.
 - This profile only runs when ENV is set to 'dev-test' or 'dev'. Otherwise, the db is a persistent non-docker service that is not managed by the devops-toolkit.
 
-#### COMPOSE_PROFILE_MIGRATE
+#### migrate
 
 - This is the migration service profile. If you create your own migration service outside of the one defined `db.compose.yaml`, you should assign it this profile. 
 - This profile is run for all environments, so it is up to you to ensure that the migrations handle appropriately for each environment, from dev, all the way to prod.
 
-#### COMPOSE_PROFILE_APP_PRE
+#### app_pre
 
 - This is the pre-start service profile. If you need to run a service before the main app service starts, you should assign it this profile.
 - This profile is run for all environments, so it is up to you to ensure that the pre-start services handle appropriately for each environment, from dev, all the way to prod.
 
-#### COMPOSE_PROFILE_APP_POST_CHECK
+#### app_post_check
 
 - This is the post-start service profile. If you need to run a service after the main app service starts, you should assign it this profile.
 - This profile is run for all environments, so it is up to you to ensure that the post-start services handle appropriately for each environment, from dev, all the way to prod.
 
-#### COMPOSE_PROFILE_APP_TEST
+#### app_test
 
 - This is the test service profile. This is already implemented in the go_app.mk file, and should not most likely be used in your custom compose file.

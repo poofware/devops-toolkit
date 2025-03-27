@@ -23,7 +23,7 @@ services:
         aliases:
           - ${COMPOSE_DB_NAME?Docker Compose Config Error! COMPOSE_DB_NAME is not set!}
     profiles:
-      - "${COMPOSE_PROFILE_DB?Docker Compose Config Error! COMPOSE_PROFILE_DB is not set!}"
+      - db
 
   # ----------------------
   # 2) Database Migration Service
@@ -42,7 +42,7 @@ services:
     image: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-migrate
     container_name: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-migrate_instance
     profiles:
-      - "${COMPOSE_PROFILE_MIGRATE?Docker Compose Config Error! COMPOSE_PROFILE_MIGRATE is not set!}"
+      - migrate
     networks:
       - db_network
     environment:

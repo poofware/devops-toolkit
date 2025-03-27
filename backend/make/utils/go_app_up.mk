@@ -4,7 +4,7 @@
 
 SHELL := /bin/bash
 
-.PHONY: up
+.PHONY: up _db-up _migrate-up _app-pre-up _app-post-check-up _check-failed-services 
 
 # Check that the current working directory is the root of a Go app by verifying that go.mod exists.
 ifeq ($(wildcard go.mod),)
@@ -24,13 +24,25 @@ ifndef INCLUDED_GO_APP_DOWN
   include devops-toolkit/backend/make/utils/go_app_down.mk
 endif
 
+_get_profile_services:
+	@if [ -z "$(PROFILE)" ]; then \
+	  echo "[ERROR] [Up] Please invoke '_get_profile_services' with PROFILE=<profile>."; \
+	  exit 1; \
+	fi
+	@$(COMPOSE_CMD) --profile "$(PROFILE)" config --services | tr '\n' ' '
 
 _check-failed-services:
-	@echo "[INFO] [Up] Checking exit status of '$(PROFILE_TO_CHECK)' containers..."
-	@PROFILE_SERVICES="$$( $(COMPOSE_CMD) --profile $(PROFILE_TO_CHECK) config --services )"; \
-	echo "[INFO] [Up] Found services: $$PROFILE_SERVICES"; \
-	FAILED_SERVICES=""; \
-	for svc in $$PROFILE_SERVICES; do \
+	@if [ -z "$(PROFILE_TO_CHECK)" ]; then \
+	  echo "[ERROR] [Up] Please invoke '_check-failed-services' with PROFILE_TO_CHECK=<profile>."; \
+	  exit 1; \
+	fi
+	@if [ -z "$(SERVICES_TO_CHECK)" ]; then \
+	  echo "[ERROR] [Up] Please invoke '_check-failed-services' with SERVICES_TO_CHECK=<services>."; \
+	  exit 1; \
+	fi
+	@echo "[INFO] [Up] Checking exit status of containers for '$(PROFILE_TO_CHECK)' services: $(SERVICES_TO_CHECK)"
+	@FAILED_SERVICES=""; \
+	for svc in $(SERVICES_TO_CHECK); do \
 	  EXIT_CODE=$$( $(COMPOSE_CMD) ps --format json --filter status=exited $$svc | jq -r '.ExitCode' ); \
 	  if [ "$$EXIT_CODE" != "0" ] && [ "$$EXIT_CODE" != "" ]; then \
 	    FAILED_SERVICES="$$FAILED_SERVICES $$svc(exit:$$EXIT_CODE)"; \
@@ -40,66 +52,81 @@ _check-failed-services:
 	  echo "[ERROR] [Up] The following '$(PROFILE_TO_CHECK)' service(s) exited with a non-zero exit code: $$FAILED_SERVICES"; \
 	  exit 1; \
 	else \
-	  echo "[INFO] [Up] All '$(PROFILE_TO_CHECK)' services appear healthy (or none were launched)."; \
+	  echo "[INFO] [Up] All '$(PROFILE_TO_CHECK)' services appear healthy."; \
 	fi
 
 _db-up:
-	@echo "[INFO] [Up] Starting any db services found matching the '$(COMPOSE_PROFILE_DB)' profile..."
-	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_DB) up -d && echo "[INFO] [Up] Done. Any db services found are up and running." || \
-		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_DB) up -d' failed (most likely no services found or already running). Ignoring..."
+	@echo "[INFO] [DB-Up] Starting any database services found matching the '$(COMPOSE_PROFILE_DB)' profile..."
+	@PROFILE_SERVICES="$$( $(MAKE) _get_profile_services --no-print-directory PROFILE=$(COMPOSE_PROFILE_DB) )"; \
+	echo "[INFO] [DB-Up] Found services: $$PROFILE_SERVICES"; \
+	$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_DB) up -d && echo "[INFO] [DB-Up] Done. Any '$(COMPOSE_PROFILE_DB)' services found are up and running." || \
+		echo "[WARN] [DB-Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_DB) up -d' failed (most likely no services found or already running). Ignoring..."
 
 _migrate-up:
-	@echo "[INFO] [Up] Starting any migration services found matching the '$(COMPOSE_PROFILE_MIGRATE)' profile..."
-	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_MIGRATE) up && echo "[INFO] [Up] Done. Any migration services found are up and running." || \
-		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_MIGRATE) up' failed (no services found?). Ignoring..."
-
-	@$(MAKE) _check-failed-services PROFILE_TO_CHECK=$(COMPOSE_PROFILE_MIGRATE)
+	@echo "[INFO] [Migrate-Up] Starting any migration services found matching the '$(COMPOSE_PROFILE_MIGRATE)' profile..."
+	@PROFILE_SERVICES="$$( $(MAKE) _get_profile_services --no-print-directory PROFILE=$(COMPOSE_PROFILE_MIGRATE) )"; \
+	echo "[INFO] [Migrate-Up] Found services: $$PROFILE_SERVICES"; \
+	if $(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_MIGRATE) up; then \
+		echo "[INFO] [Migrate-Up] Done. Any '$(COMPOSE_PROFILE_MIGRATE)' services found are up and running."; \
+		$(MAKE) _check-failed-services --no-print-directory PROFILE_TO_CHECK=$(COMPOSE_PROFILE_MIGRATE) SERVICES_TO_CHECK="$$PROFILE_SERVICES"; \
+	else \
+		echo "[WARN] [Migrate-Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_MIGRATE) up' failed (most likely no services found). Ignoring..."; \
+	fi
 
 _app-pre-up:
-	@echo "[INFO] [Up] Starting any pre-start services found matching the '$(COMPOSE_PROFILE_APP_PRE)' profile..."
-	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_PRE) up -d && echo "[INFO] [Up] Done. Any pre-start services found are up and running." || \
-		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_PRE) up -d' failed (no services found?). Ignoring..."
+	@echo "[INFO] [App-Pre-Up] Starting any app pre-start services found matching the '$(COMPOSE_PROFILE_APP_PRE)' profile..."
+	@PROFILE_SERVICES="$$( $(MAKE) _get_profile_services --no-print-directory PROFILE=$(COMPOSE_PROFILE_APP_PRE) )"; \
+	echo "[INFO] [App-Pre-Up] Found services: $$PROFILE_SERVICES"; \
+	$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_PRE) up -d && echo "[INFO] [App-Pre-Up] Done. Any '$(COMPOSE_PROFILE_APP_PRE)' services found are up and running." || \
+		echo "[WARN] [App-Pre-Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_PRE) up -d' failed (most likely no services found). Ignoring..."
 
 _app-post-check-up:
-	@echo "[INFO] [Up] Starting any post-start-check services found matching the '$(COMPOSE_PROFILE_APP_POST_CHECK)' profile..."
-	@$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_POST_CHECK) up && echo "[INFO] [Up] Done. Any post-start-check services found are up and running." || \
-		echo "[WARN] [Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_POST_CHECK) up' failed (no services found?). Ignoring..."
+	@echo "[INFO] [App-Post-Check-Up] Starting any app post-start check services found matching the '$(COMPOSE_PROFILE_APP_POST_CHECK)' profile..."
+	@PROFILE_SERVICES="$$( $(MAKE) _get_profile_services --no-print-directory PROFILE=$(COMPOSE_PROFILE_APP_POST_CHECK) )"; \
+	echo "[INFO] [App-Post-Check-Up] Found services: $$PROFILE_SERVICES"; \
+	if $(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_POST_CHECK) up; then \
+		echo "[INFO] [App-Post-Check-Up] Done. Any '$(COMPOSE_PROFILE_APP_POST_CHECK)' services found are up and running."; \
+		$(MAKE) _check-failed-services --no-print-directory PROFILE_TO_CHECK=$(COMPOSE_PROFILE_APP_POST_CHECK) SERVICES_TO_CHECK="$$PROFILE_SERVICES"; \
+	else \
+		echo "[WARN] [App-Post-Check-Up] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP_POST_CHECK) up' failed (most likely no services found). Ignoring..."; \
+	fi
 
-	@$(MAKE) _check-failed-services PROFILE_TO_CHECK=$(COMPOSE_PROFILE_APP_POST_CHECK)
+_app-up:
+	@echo "[INFO] [App-Up] Spinning up app..."; \
+	echo "[INFO] [App-Up] Finding free host port for app to bind to..."; \
+	export APP_HOST_PORT=$$(devops-toolkit/backend/scripts/find_available_port.sh 8080); \
+	echo "[INFO] [App-Up] Found free host port: $$APP_HOST_PORT"; \
+	$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP) up -d; \
+	echo "[INFO] [App-Up] Done. $$APP_NAME is running on http://localhost:$$APP_HOST_PORT"; \
 
-## Starts services for all compose profiles in order (EXCLUDE_COMPOSE_PROFILE_APP to exclude app from 'up' - WITH_DEPS=1 to 'up' dependency services as well)
+## Starts services for all compose profiles in order (EXCLUDE_COMPOSE_PROFILE_APP=1 to exclude profile 'app' from 'up' - EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK=1 to exclude profile 'app_post_check' from 'up' - WITH_DEPS=1 to 'up' dependency services as well)
 up: EXCLUDE_COMPOSE_PROFILE_APP ?= 0
 up: EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK ?= 0
 up: _deps-up
 	@echo "[INFO] [Up] Running down target to ensure clean state..."
-	@$(MAKE) down WITH_DEPS=0
+	@$(MAKE) down --no-print-directory WITH_DEPS=0
 
 	@echo "[INFO] [Up] Running build target..."
-	@$(MAKE) build WITH_DEPS=0
+	@$(MAKE) build --no-print-directory WITH_DEPS=0
 
 	@echo "[INFO] [Up] Creating network '$(COMPOSE_NETWORK_NAME)'..."
 	@docker network create $(COMPOSE_NETWORK_NAME) && \
 		echo "[INFO] [Up] Network '$(COMPOSE_NETWORK_NAME)' successfully created." || \
 		echo "[WARN] [Up] 'docker network create $(COMPOSE_NETWORK_NAME)' failed (network most likely already exists). Ignoring..."
 
-	@$(MAKE) _db-up
-	@$(MAKE) _migrate-up
-	@$(MAKE) _app-pre-up
+	@$(MAKE) _db-up --no-print-directory
+	@$(MAKE) _migrate-up --no-print-directory
+	@$(MAKE) _app-pre-up --no-print-directory
 
 	@if [ "$(EXCLUDE_COMPOSE_PROFILE_APP)" -eq 1 ]; then \
-	  echo "[INFO] [Up] Skipping app startup... EXCLUDE_COMPOSE_PROFILE_APP is set to 1"; \
+		echo "[INFO] [Up] Skipping app startup... EXCLUDE_COMPOSE_PROFILE_APP is set to 1"; \
 	else \
-	  echo "[INFO] [Up] Spinning up app..."; \
-	  echo "[INFO] [Up] Finding free host port for app to bind to..."; \
-	  export APP_HOST_PORT=$$(devops-toolkit/backend/scripts/find_available_port.sh 8080); \
-	  echo "[INFO] [Up] Found free host port: $$APP_HOST_PORT"; \
-	  $(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP) up -d; \
-	  echo "[INFO] [Up] Done. $$APP_NAME is running on http://localhost:$$APP_HOST_PORT"; \
+		$(MAKE) _app-up --no-print-directory; \
 	fi
 
 	@if [ "$(EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK)" -eq 1 ]; then \
 	  echo "[INFO] [Up] Skipping app post-check... EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK is set to 1"; \
 	else \
-	  $(MAKE) _app-post-check-up; \
+	  $(MAKE) _app-post-check-up --no-print-directory; \
 	fi
 
