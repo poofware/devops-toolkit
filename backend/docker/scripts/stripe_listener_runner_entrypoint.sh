@@ -2,11 +2,11 @@
 set -e
 
 : "${HCP_ENCRYPTED_API_TOKEN:?HCP_ENCRYPTED_API_TOKEN env var is required}"
-: "${APP_URL:?APP_URL env var is required}"
+: "${COMPOSE_NETWORK_APP_URL:?COMPOSE_NETWORK_APP_URL env var is required}"
 : "${STRIPE_WEBHOOK_EVENTS:?STRIPE_WEBHOOK_EVENTS env var is required (comma-separated list of events)}"
 : "${STRIPE_WEBHOOK_ROUTE:?STRIPE_WEBHOOK_ROUTE env var is required}"
 
-FORWARD_TO_URL="${APP_URL}${STRIPE_WEBHOOK_ROUTE}"
+FORWARD_TO_URL="${COMPOSE_NETWORK_APP_URL}${STRIPE_WEBHOOK_ROUTE}"
 
 echo "[INFO] Starting Stripe listener with forward-to: ${FORWARD_TO_URL}"
 

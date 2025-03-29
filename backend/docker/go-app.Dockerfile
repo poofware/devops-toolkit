@@ -156,15 +156,15 @@ RUN go test -c -o /unit_test ./internal/...;
 FROM ${INTEGRATION_TEST_RUNNER_BASE_IMAGE:-alpine:latest} AS integration-test-runner
 
 ARG ENV
-ARG APP_URL
+ARG COMPOSE_NETWORK_APP_URL
 ARG HCP_ENCRYPTED_API_TOKEN
   
 RUN test -n "${ENV}" || ( \
   echo "Error: ENV is not set! Use --build-arg ENV=xxx" && \
   exit 1 \
 );
-RUN test -n "${APP_URL}" || ( \
-  echo "Error: APP_URL is not set! Use --build-arg APP_URL=xxx" && \
+RUN test -n "${COMPOSE_NETWORK_APP_URL}" || ( \
+  echo "Error: COMPOSE_NETWORK_APP_URL is not set! Use --build-arg COMPOSE_NETWORK_APP_URL=xxx" && \
   exit 1 \
 );
 RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
@@ -183,7 +183,7 @@ RUN chmod +x health_check.sh integration_test_runner_entrypoint.sh;
 
 # Convert ARG to ENV for runtime use
 ENV ENV=${ENV}
-ENV APP_URL=${APP_URL}
+ENV COMPOSE_NETWORK_APP_URL=${COMPOSE_NETWORK_APP_URL}
 ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
 
 ENTRYPOINT ./integration_test_runner_entrypoint.sh;
@@ -206,14 +206,14 @@ FROM alpine:latest AS health-check-runner
 
 RUN apk add --no-cache curl bash;
 
-ARG APP_URL
+ARG COMPOSE_NETWORK_APP_URL
 
-RUN test -n "${APP_URL}" || ( \
-  echo "Error: APP_URL is not set! Use --build-arg APP_URL=xxx" && \
+RUN test -n "${COMPOSE_NETWORK_APP_URL}" || ( \
+  echo "Error: COMPOSE_NETWORK_APP_URL is not set! Use --build-arg COMPOSE_NETWORK_APP_URL=xxx" && \
   exit 1 \
 );
 
-ENV APP_URL=${APP_URL}
+ENV COMPOSE_NETWORK_APP_URL=${COMPOSE_NETWORK_APP_URL}
 
 WORKDIR /root/
 COPY devops-toolkit/backend/scripts/health_check.sh health_check.sh
@@ -227,7 +227,7 @@ FROM alpine:latest AS app-runner
 
 ARG APP_NAME
 ARG APP_PORT
-ARG APP_URL
+ARG PUBLIC_APP_URL
 ARG ENV
 ARG HCP_ENCRYPTED_API_TOKEN
 
@@ -235,8 +235,8 @@ RUN test -n "${ENV}" || ( \
   echo "Error: ENV is not set! Use --build-arg ENV=xxx" && \
   exit 1 \
 );
-RUN test -n "${APP_URL}" || ( \
-  echo "Error: APP_URL is not set! Use --build-arg APP_URL=xxx" && \
+RUN test -n "${PUBLIC_APP_URL}" || ( \
+  echo "Error: PUBLIC_APP_URL is not set! Use --build-arg PUBLIC_APP_URL=xxx" && \
   exit 1 \
 );
 RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
@@ -254,14 +254,14 @@ EXPOSE ${APP_PORT}
 # Convert ARG to ENV for runtime use with CMD
 ENV APP_NAME=${APP_NAME}
 ENV APP_PORT=${APP_PORT}
-ENV APP_URL=${APP_URL}
+ENV PUBLIC_APP_URL=${PUBLIC_APP_URL}
 ENV ENV=${ENV}
 ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
 
 # Copy all envs into a .env file for potential children images to access
 RUN echo "APP_NAME=${APP_NAME}" > .env && \
     echo "APP_PORT=${APP_PORT}" >> .env && \
-    echo "APP_URL=${APP_URL}" >> .env && \
+    echo "PUBLIC_APP_URL=${PUBLIC_APP_URL}" >> .env && \
     echo "ENV=${ENV}" >> .env && \
     echo "HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}" >> .env;
 

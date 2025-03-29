@@ -22,7 +22,7 @@ endif
 ## Shuts down all containers (WITH_DEPS=1 to 'down' dependency services as well)
 down: _deps-down
 	@echo "[INFO] [Down] Removing containers & volumes, keeping images..."
-	$(COMPOSE_CMD) $(COMPOSE_PROFILE_FLAGS_UP_DOWN_BUILD) down -v --remove-orphans
+	$(COMPOSE_CMD) $(COMPOSE_PROFILE_FLAGS_DOWN_BUILD) down -v --remove-orphans
 
 	@echo "[INFO] [Down] Removing network '$(COMPOSE_NETWORK_NAME)'..."
 	@docker network rm $(COMPOSE_NETWORK_NAME) && echo "[INFO] [Down] Network '$(COMPOSE_NETWORK_NAME)' successfully removed." || \

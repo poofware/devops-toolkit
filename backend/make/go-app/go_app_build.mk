@@ -26,16 +26,16 @@ ifndef COMPOSE_PROJECT_DIR
 	Example: COMPOSE_PROJECT_DIR="./")
 endif
 
-ifndef COMPOSE_PROFILE_FLAGS_UP_DOWN_BUILD
-  $(error COMPOSE_PROFILE_FLAGS_UP_DOWN_BUILD is not set. Please define it in your local Makefile or environment. \
-	Example: COMPOSE_PROFILE_FLAGS_UP_DOWN_BUILD="--profile app_default")
+ifndef COMPOSE_PROFILE_FLAGS_DOWN_BUILD
+  $(error COMPOSE_PROFILE_FLAGS_DOWN_BUILD is not set. Please define it in your local Makefile or environment. \
+	Example: COMPOSE_PROFILE_FLAGS_DOWN_BUILD="--profile app_default")
 endif
 
 
 SSH_DOCKER_BUILD_CMD := devops-toolkit/backend/scripts/ssh_docker_build.sh compose \
 						--project-directory $(COMPOSE_PROJECT_DIR) \
 						-p $(COMPOSE_PROJECT_NAME) \
-						$(COMPOSE_PROFILE_FLAGS_UP_DOWN_BUILD)
+						$(COMPOSE_PROFILE_FLAGS_DOWN_BUILD)
 
 
 # Include path relative to the root of the project
@@ -47,7 +47,7 @@ build: _deps-build
 	@if [ -n "$(BUILD_SERVICES)" ]; then \
 		echo "[INFO] [Build] Building Docker images for services: $(BUILD_SERVICES)..."; \
 	else \
-		echo "[INFO] [Build] Building all services with profiles: $(COMPOSE_PROFILE_FLAGS_UP_DOWN_BUILD)..."; \
+		echo "[INFO] [Build] Building all services with profiles: $(COMPOSE_PROFILE_FLAGS_DOWN_BUILD)..."; \
 	fi
 	$(SSH_DOCKER_BUILD_CMD) build $(BUILD_SERVICES)
 	@echo "[INFO] [Build] Done."

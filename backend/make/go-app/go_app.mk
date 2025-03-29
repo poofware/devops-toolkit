@@ -17,9 +17,9 @@ endif
 INCLUDED_GO_APP := 1
 
 
-################################
-# External Variable Validation #
-################################
+# --------------------------------
+# External Variable Validation
+# --------------------------------
 
 # Runtime/Ci environment variables #
 
@@ -111,20 +111,17 @@ endif
 # Functions in make should always use '=', unless precomputing the value without dynamic args
 print-dep = $(info   $(word 1, $(subst :, ,$1)) = $(word 2, $(subst :, ,$1)))
 
-ifndef ALREADY_PRINTED_DEPS
-  ifeq ($(WITH_DEPS),1)
-    $(info --------------------------------------------------)
-    $(info [INFO] WITH_DEPS is enabled. Effective dependency services being used:)
-    $(info --------------------------------------------------)
-    ifneq ($(DEPS),"")
-  	$(foreach dep, $(DEPS), $(call print-dep, $(dep)))
-    endif
-    $(info )
-    $(info [INFO] To override, make with VAR=value)
-    $(info --------------------------------------------------)
+ifeq ($(WITH_DEPS),1)
+  $(info --------------------------------------------------)
+  $(info [INFO] WITH_DEPS is enabled. Effective dependency services being used:)
+  $(info --------------------------------------------------)
+  ifneq ($(DEPS),"")
+    $(foreach dep, $(DEPS), $(call print-dep, $(dep)))
   endif
-
-  export ALREADY_PRINTED_DEPS := 1
+  $(info )
+  $(info --------------------------------------------------)
+  $(info [INFO] To override, make with VAR=value)
+  $(info )
 endif
 
 # For updating go packages
@@ -139,13 +136,15 @@ export ENV
 export UNIQUE_RUN_NUMBER ?= 0
 export UNIQUE_RUNNER_ID
 
-# Allow for APP_URL override
-ifndef APP_URL
-  ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
-  	export APP_URL := http://$(APP_NAME):$(APP_PORT)
-  else
-    # Staging and prod not supported at this time.
+# Allow for COMPOSE_NETWORK_APP_URL override
+ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
+  ifndef COMPOSE_NETWORK_APP_URL
+    export COMPOSE_NETWORK_APP_URL := http://$(APP_NAME):$(APP_PORT)
   endif
+  export APP_HOST_PORT = $(shell devops-toolkit/backend/scripts/find_available_port.sh 8080)
+  export PUBLIC_APP_URL = http://$(shell devops-toolkit/backend/scripts/get_lan_ip.sh):$(APP_HOST_PORT)
+else
+  # Staging and prod not supported at this time.
 endif
 
 COMPOSE_PROFILE_APP := app
@@ -156,11 +155,12 @@ COMPOSE_PROFILE_APP_POST_CHECK := app_post_check
 COMPOSE_PROFILE_APP_INTEGRATION_TEST := app_integration_test
 COMPOSE_PROFILE_APP_UNIT_TEST := app_unit_test
 
-COMPOSE_PROFILE_FLAGS_UP_DOWN_BUILD := --profile $(COMPOSE_PROFILE_APP)
-COMPOSE_PROFILE_FLAGS_UP_DOWN_BUILD += --profile $(COMPOSE_PROFILE_DB)
-COMPOSE_PROFILE_FLAGS_UP_DOWN_BUILD += --profile $(COMPOSE_PROFILE_MIGRATE)
-COMPOSE_PROFILE_FLAGS_UP_DOWN_BUILD += --profile $(COMPOSE_PROFILE_APP_PRE)
-COMPOSE_PROFILE_FLAGS_UP_DOWN_BUILD += --profile $(COMPOSE_PROFILE_APP_POST_CHECK)
+# Probably a better way to do this
+COMPOSE_PROFILE_FLAGS_DOWN_BUILD := --profile $(COMPOSE_PROFILE_APP)
+COMPOSE_PROFILE_FLAGS_DOWN_BUILD += --profile $(COMPOSE_PROFILE_DB)
+COMPOSE_PROFILE_FLAGS_DOWN_BUILD += --profile $(COMPOSE_PROFILE_MIGRATE)
+COMPOSE_PROFILE_FLAGS_DOWN_BUILD += --profile $(COMPOSE_PROFILE_APP_PRE)
+COMPOSE_PROFILE_FLAGS_DOWN_BUILD += --profile $(COMPOSE_PROFILE_APP_POST_CHECK)
 
 # For docker compose
 # List in order of dependency, separate by ':'
@@ -188,16 +188,13 @@ ifndef INCLUDED_LAUNCHDARKLY_CONSTANTS
   include devops-toolkit/backend/make/utils/launchdarkly_constants.mk
 endif
 
-ifndef ALREADY_GOT_PROFILE_SERVICES
-  export COMPOSE_PROFILE_APP_SERVICES := $(call get_profile_services,$(COMPOSE_PROFILE_APP))
-  export COMPOSE_PROFILE_DB_SERVICES := $(call get_profile_services,$(COMPOSE_PROFILE_DB))
-  export COMPOSE_PROFILE_MIGRATE_SERVICES := $(call get_profile_services,$(COMPOSE_PROFILE_MIGRATE))
-  export COMPOSE_PROFILE_APP_PRE_SERVICES := $(call get_profile_services,$(COMPOSE_PROFILE_APP_PRE))
-  export COMPOSE_PROFILE_APP_POST_CHECK_SERVICES := $(call get_profile_services,$(COMPOSE_PROFILE_APP_POST_CHECK))
-  export COMPOSE_PROFILE_APP_INTEGRATION_TEST_SERVICES := $(call get_profile_services,$(COMPOSE_PROFILE_APP_INTEGRATION_TEST))
-  export COMPOSE_PROFILE_APP_UNIT_TEST_SERVICES := $(call get_profile_services,$(COMPOSE_PROFILE_APP_UNIT_TEST))
-  export ALREADY_GOT_PROFILE_SERVICES := 1
-endif
+COMPOSE_PROFILE_APP_SERVICES = $(call get_profile_services,$(COMPOSE_PROFILE_APP))
+COMPOSE_PROFILE_DB_SERVICES = $(call get_profile_services,$(COMPOSE_PROFILE_DB))
+COMPOSE_PROFILE_MIGRATE_SERVICES = $(call get_profile_services,$(COMPOSE_PROFILE_MIGRATE))
+COMPOSE_PROFILE_APP_PRE_SERVICES = $(call get_profile_services,$(COMPOSE_PROFILE_APP_PRE))
+COMPOSE_PROFILE_APP_POST_CHECK_SERVICES = $(call get_profile_services,$(COMPOSE_PROFILE_APP_POST_CHECK))
+COMPOSE_PROFILE_APP_INTEGRATION_TEST_SERVICES = $(call get_profile_services,$(COMPOSE_PROFILE_APP_INTEGRATION_TEST))
+COMPOSE_PROFILE_APP_UNIT_TEST_SERVICES = $(call get_profile_services,$(COMPOSE_PROFILE_APP_UNIT_TEST))
 
 
 # ------------------------------
@@ -235,7 +232,6 @@ endif
 
 ## Lists available targets
 help: _help
-	@echo
 	@echo "--------------------------------------------------"
 	@echo "[INFO] Configuration variables:"
 	@echo "--------------------------------------------------"
@@ -249,7 +245,8 @@ help: _help
 	@echo "PACKAGES: $(PACKAGES)"
 	@echo "DEPS: $(DEPS)"
 	@echo "ADDITIONAL_COMPOSE_FILES: $(ADDITIONAL_COMPOSE_FILES)"
-	@echo "APP_URL: $(APP_URL)"
+	@echo "COMPOSE_NETWORK_APP_URL: $(COMPOSE_NETWORK_APP_URL)"
+	@echo "PUBLIC_APP_URL: $(PUBLIC_APP_URL)"
 	@echo "HCP_CLIENT_ID": xxxxxxxx
 	@echo "HCP_CLIENT_SECRET": xxxxxxxx
 	@echo "HCP_TOKEN_ENC_KEY": xxxxxxxx
@@ -267,4 +264,5 @@ help: _help
 	@echo "$(COMPOSE_PROFILE_APP_UNIT_TEST)        :$(COMPOSE_PROFILE_APP_UNIT_TEST_SERVICES)"
 	@echo "--------------------------------------------------"
 	@echo "[INFO] For information on available profiles, reference devops-toolkit/README.md"
+	@echo
 

@@ -16,7 +16,7 @@ RUN apk update \
       ca-certificates;
 
 ARG ENV
-ARG APP_URL
+ARG COMPOSE_NETWORK_APP_URL
 ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
 ARG HCP_ENCRYPTED_API_TOKEN
@@ -26,8 +26,8 @@ RUN test -n "${ENV}" || ( \
   echo "Error: ENV is not set! Use --build-arg ENV=xxx" && \
   exit 1 \
 );
-RUN test -n "${APP_URL}" || ( \
-  echo "Error: APP_URL is not set! Use --build-arg APP_URL=xxx" && \
+RUN test -n "${COMPOSE_NETWORK_APP_URL}" || ( \
+  echo "Error: COMPOSE_NETWORK_APP_URL is not set! Use --build-arg COMPOSE_NETWORK_APP_URL=xxx" && \
   exit 1 \
 );
 RUN test -n "${HCP_ORG_ID}" || ( \
@@ -44,7 +44,7 @@ RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
 );
 
 ENV ENV=${ENV}
-ENV APP_URL=${APP_URL}
+ENV COMPOSE_NETWORK_APP_URL=${COMPOSE_NETWORK_APP_URL}
 ENV HCP_ORG_ID=${HCP_ORG_ID}
 ENV HCP_PROJECT_ID=${HCP_PROJECT_ID}
 ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
