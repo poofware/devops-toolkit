@@ -53,7 +53,7 @@ services:
   integration-test:
     build:
       context: .
-      dockerfile: devops-toolkit/backend/docker/go-app.Dockerfile
+      dockerfile: devops-toolkit/backend/docker/go-app-test.Dockerfile
       target: integration-test-runner
       args:
         <<: *build-args

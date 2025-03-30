@@ -12,9 +12,9 @@ INCLUDED_COMPOSE_SERVICE_UTILS := 1
 # Function: get_profile_services
 # Usage: $(call get_profile_services,<profile>)
 get_profile_services = \
-  $(if $(strip $(1)), \
+  $(strip $(if $(strip $(1)), \
     $(shell $(COMPOSE_CMD) --profile "$(1)" config --services | xargs), \
-    $(error [ERROR] [Up] Please invoke 'get_profile_services' with PROFILE=<profile>.))
+    $(error [ERROR] [Up] Please invoke 'get_profile_services' with PROFILE=<profile>.)))
 
 _check-failed-services:
 	@if [ -z "$(PROFILE_TO_CHECK)" ]; then \
