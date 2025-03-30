@@ -1,11 +1,10 @@
-# syntax=docker/dockerfile:1.4
-
-ARG INTEGRATION_TEST_RUNNER_BASE_IMAGE
+ARG INTEGRATION_TEST_RUNNER_BASE_IMAGE=alpine:latest
+ARG GO_VERSION=1.24
 
 #######################################
 # Stage 1: Base for building & testing
 #######################################
-FROM golang:1.23-alpine AS base
+FROM golang:${GO_VERSION}-alpine AS base
 
 # Install any necessary packages (git, openssh, etc.)
 RUN apk update && apk add --no-cache git openssh curl openssl;
@@ -18,11 +17,12 @@ WORKDIR /app
 
 RUN mkdir -p /root/.ssh && ssh-keyscan github.com >> /root/.ssh/known_hosts;
 
-# Copy mod files first
+# Copy mod files and vendor
 COPY go.mod go.sum ./
+COPY vendor/ ./vendor/
 
 # Use BuildKit SSH mount to fetch private modules
-RUN --mount=type=ssh go mod download;
+RUN --mount=type=ssh if [ -z "$(ls vendor)" ]; then go mod download; fi;
 
 #######################################
 # Stage 2: Builder Config Validator
@@ -85,7 +85,7 @@ RUN test -n "${ENV}" || ( \
 COPY internal/ ./internal/
 
 # Compile the integration test binary (from test/integration/)
-# Transform ENV by replacing dashes (-) with underscores (_) to ensure valid Go 1.23 build tags,
+# Transform ENV by replacing dashes (-) with underscores (_) to ensure valid Go 1.24 build tags,
 # as dashes are not allowed in tag names per stricter parsing (alphanumeric and underscores only).
 RUN set -euxo pipefail; \
     ENV_TRANSFORMED=$(echo "${ENV}" | tr '-' '_') && \
@@ -112,7 +112,7 @@ RUN go test -c -o /unit_test ./internal/...;
 #######################################
 # Stage 5: Integration Test Runner
 #######################################
-FROM ${INTEGRATION_TEST_RUNNER_BASE_IMAGE:-alpine:latest} AS integration-test-runner
+FROM ${INTEGRATION_TEST_RUNNER_BASE_IMAGE} AS integration-test-runner
 
 RUN apk add --no-cache curl jq openssl bash ca-certificates && update-ca-certificates;
 

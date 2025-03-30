@@ -14,6 +14,8 @@ ifeq ($(wildcard go.mod),)
   $(error Error: go.mod not found. Please ensure you are in the root directory of your Go service.)
 endif
 
+export GO_VERSION := 1.24
+
 INCLUDED_GO_APP := 1
 
 
@@ -111,18 +113,23 @@ endif
 # Functions in make should always use '=', unless precomputing the value without dynamic args
 print-dep = $(info   $(word 1, $(subst :, ,$1)) = $(word 2, $(subst :, ,$1)))
 
-ifeq ($(WITH_DEPS),1)
-  $(info --------------------------------------------------)
-  $(info [INFO] WITH_DEPS is enabled. Effective dependency services being used:)
-  $(info --------------------------------------------------)
-  ifneq ($(DEPS),"")
-    $(foreach dep, $(DEPS), $(call print-dep, $(dep)))
+ifndef ALREADY_PRINTED_DEPS
+  export ALREADY_PRINTED_DEPS := 1
+
+  ifeq ($(WITH_DEPS),1)
+    $(info --------------------------------------------------)
+    $(info [INFO] WITH_DEPS is enabled. Effective dependency services being used:)
+    $(info --------------------------------------------------)
+    ifneq ($(DEPS),"")
+  	$(foreach dep, $(DEPS), $(call print-dep, $(dep)))
+    endif
+    $(info )
+    $(info --------------------------------------------------)
+    $(info [INFO] To override, make with VAR=value)
+    $(info )
   endif
-  $(info )
-  $(info --------------------------------------------------)
-  $(info [INFO] To override, make with VAR=value)
-  $(info )
 endif
+
 
 # For updating go packages
 export PACKAGES

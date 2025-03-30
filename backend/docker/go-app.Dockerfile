@@ -1,9 +1,9 @@
-# syntax=docker/dockerfile:1.4
+ARG GO_VERSION=1.24
 
 #######################################
 # Stage 1: Base for building & testing
 #######################################
-FROM golang:1.23-alpine AS base
+FROM golang:${GO_VERSION}-alpine AS base
 
 # Install any necessary packages (git, openssh, etc.)
 RUN apk update && apk add --no-cache git openssh curl openssl;
@@ -16,11 +16,12 @@ WORKDIR /app
 
 RUN mkdir -p /root/.ssh && ssh-keyscan github.com >> /root/.ssh/known_hosts;
 
-# Copy mod files first
+# Copy mod files and vendor
 COPY go.mod go.sum ./
+COPY vendor/ ./vendor/
 
 # Use BuildKit SSH mount to fetch private modules
-RUN --mount=type=ssh go mod download;
+RUN --mount=type=ssh if [ -z "$(ls vendor)" ]; then go mod download; fi;
 
 #######################################
 # Stage 2: Builder Config Validator
@@ -88,7 +89,7 @@ COPY internal/ ./internal/
 COPY cmd/ ./cmd/
 
 # Compile the app binary
-# Transform ENV by replacing dashes (-) with underscores (_) to ensure valid Go 1.23 build tags
+# Transform ENV by replacing dashes (-) with underscores (_) to ensure valid Go 1.24 build tags
 RUN go build \
       -ldflags "\
         -X 'github.com/poofware/${APP_NAME}/internal/config.AppPort=${APP_PORT}' \

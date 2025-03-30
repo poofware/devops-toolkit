@@ -17,6 +17,7 @@ x-build-args: &build-args
   LD_SERVER_CONTEXT_KIND: ${LD_SERVER_CONTEXT_KIND?Docker Compose Config Error! LD_SERVER_CONTEXT_KIND is not set!}
   UNIQUE_RUN_NUMBER: ${UNIQUE_RUN_NUMBER?Docker Compose Config Error! UNIQUE_RUN_NUMBER is not set!}
   UNIQUE_RUNNER_ID: ${UNIQUE_RUNNER_ID?Docker Compose Config Error! UNIQUE_RUNNER_ID is not set!}
+  GO_VERSION: ${GO_VERSION?Docker Compose Config Error! GO_VERSION is not set!}
 
 services:
   # ----------------------

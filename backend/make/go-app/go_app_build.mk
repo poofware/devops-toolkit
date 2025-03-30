@@ -39,8 +39,9 @@ SSH_DOCKER_BUILD_CMD := devops-toolkit/backend/scripts/ssh_docker_build.sh compo
 
 
 # Include path relative to the root of the project
-include devops-toolkit/backend/make/go-app/go_app_deps.mk
-
+ifndef INCLUDED_GO_APP_DEPS
+  include devops-toolkit/backend/make/go-app/go_app_deps.mk
+endif
 
 ## Builds services for all compose profiles (BUILD_SERVICES= to build specific services)
 build: _deps-build
@@ -49,5 +50,8 @@ build: _deps-build
 	else \
 		echo "[INFO] [Build] Building all services with profiles: $(COMPOSE_PROFILE_FLAGS_DOWN_BUILD)..."; \
 	fi
+
+	@mkdir -p vendor
+
 	$(SSH_DOCKER_BUILD_CMD) build $(BUILD_SERVICES)
 	@echo "[INFO] [Build] Done."

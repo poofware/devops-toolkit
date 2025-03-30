@@ -14,8 +14,13 @@ endif
 INCLUDED_GO_APP_UPDATE := 1
 
 
+ifndef INCLUDED_ENSURE_GO
+  include devops-toolkit/backend/make/utils/ensure_go.mk
+endif
+
+
 ## Updates Go packages versions to the latest on specified branch (requires BRANCH to be set, e.g. BRANCH=main, applies to all packages)
-update:
+update: _ensure-go
 	@echo "[INFO] [Update] Updating Go packages..."
 	@if [ -z "$(BRANCH)" ]; then \
 		echo "[ERROR] [Update] BRANCH is not set. Please pass it as an argument to the make command. Example: BRANCH=main make update"; \
