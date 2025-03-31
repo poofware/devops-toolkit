@@ -90,16 +90,18 @@ ifndef ALREADY_PRINTED_DEPS
 
   ifeq ($(WITH_DEPS),1)
     # Dynamically define DEP_* variables allowing overrides from environment
-    $(foreach dep, $(DEPS), \
-      $(eval dep_key := $(word 1, $(subst :, ,$(dep)))) \
-      $(eval dep_val := $(word 2, $(subst :, ,$(dep)))) \
-      $(eval $(dep_key) ?= $(dep_val)) \
-    )
+    ifneq ($(DEPS),"")
+      $(foreach dep, $(DEPS), \
+        $(eval dep_key := $(word 1, $(subst :, ,$(dep)))) \
+        $(eval dep_val := $(word 2, $(subst :, ,$(dep)))) \
+        $(eval $(dep_key) ?= $(dep_val)) \
+      )
 
-    # Now rebuild DEPS from the possibly overridden values
-    DEPS := $(foreach dep, $(DEPS), \
-      $(word 1, $(subst :, ,$(dep))):$($(word 1, $(subst :, ,$(dep)))) \
-    )
+      # Now rebuild DEPS from the possibly overridden values
+      DEPS := $(foreach dep, $(DEPS), \
+        $(word 1, $(subst :, ,$(dep))):$($(word 1, $(subst :, ,$(dep)))) \
+      )
+    endif
 
     $(info --------------------------------------------------)
     $(info [INFO] WITH_DEPS is enabled. Effective dependency projects being used:)
