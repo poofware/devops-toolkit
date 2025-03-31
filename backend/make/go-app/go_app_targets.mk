@@ -41,9 +41,6 @@ export PACKAGES
 ifndef INCLUDED_GO_APP_UPDATE
   include devops-toolkit/backend/make/go-app/go_app_update.mk
 endif
-ifndef INCLUDED_COMPOSE_BUILD
-  include devops-toolkit/backend/make/compose/compose_build.mk
-endif
 ifndef INCLUDED_VENDOR
   include devops-toolkit/backend/make/utils/vendor.mk
 endif
