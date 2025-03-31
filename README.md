@@ -106,9 +106,9 @@ Inside `devops-toolkit/backend` you’ll see numerous scripts (e.g., `fetch_hcp_
 If you don’t have a Go-based service but still want to leverage this profile-based approach, you can do something like:
 
 ```makefile
-# =========================
+# -------------------------
 # Root Makefile for "my-service"
-# =========================
+# -------------------------
 
 ENV ?= dev-test
 COMPOSE_PROJECT_NAME := my-service
@@ -175,9 +175,9 @@ Many `.mk` files and Dockerfiles in this toolkit focus on simplifying Go builds,
 ### 4.1 Example: Root Makefile for a Go Service
 
 ```makefile
-# =========================
+# -------------------------
 # Root Makefile for "account-service"
-# =========================
+# -------------------------
 
 # 1) Basic Service Settings
 ENV ?= dev-test
@@ -254,10 +254,6 @@ services:
       context: .
       dockerfile: override.Dockerfile
       target: integration-test-runner-override
-    depends_on:
-      go-integration-test:
-        condition: service_completed_successfully
-        required: false
 
   go-app:
     profiles:

@@ -83,18 +83,31 @@ endif
 # ------------------------------ 
 
 # Functions in make should always use '=', unless precomputing the value without dynamic args
-print-dep = $(info   $(word 1, $(subst :, ,$1)) = $(word 2, $(subst :, ,$1)))
+print-dep = $(info   $(1) = $($(1)))
 
 ifndef ALREADY_PRINTED_DEPS
   export ALREADY_PRINTED_DEPS := 1
 
   ifeq ($(WITH_DEPS),1)
+    # Dynamically define DEP_* variables allowing overrides from environment
+    $(foreach dep, $(DEPS), \
+      $(eval dep_key := $(word 1, $(subst :, ,$(dep)))) \
+      $(eval dep_val := $(word 2, $(subst :, ,$(dep)))) \
+      $(eval $(dep_key) ?= $(dep_val)) \
+    )
+
+    # Now rebuild DEPS from the possibly overridden values
+    DEPS := $(foreach dep, $(DEPS), \
+      $(word 1, $(subst :, ,$(dep))):$($(word 1, $(subst :, ,$(dep)))) \
+    )
+
     $(info --------------------------------------------------)
     $(info [INFO] WITH_DEPS is enabled. Effective dependency projects being used:)
     $(info --------------------------------------------------)
-    ifneq ($(DEPS),"")
-  	$(foreach dep, $(DEPS), $(call print-dep, $(dep)))
-    endif
+    # Print effective DEP_* values
+    $(foreach dep, $(DEPS), \
+      $(call print-dep,$(word 1, $(subst :, ,$(dep)))) \
+    )
     $(info )
     $(info --------------------------------------------------)
     $(info [INFO] To override, make with VAR=value)
@@ -109,7 +122,8 @@ ifndef INCLUDED_LAUNCHDARKLY_CONSTANTS
   include devops-toolkit/backend/make/utils/launchdarkly_constants.mk
 endif
 
-export COMPOSE_FILE
+UNFORMATTED_COMPOSE_FILE := $(COMPOSE_FILE)
+export COMPOSE_FILE = $(shell echo "$(UNFORMATTED_COMPOSE_FILE)" | tr -d '[:space:]')
 # For isolation of CI runs, and use of 3rd party services (e.g. Stripe)
 export UNIQUE_RUN_NUMBER ?= 0
 export UNIQUE_RUNNER_ID
