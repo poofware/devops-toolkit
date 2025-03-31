@@ -105,9 +105,11 @@ ifndef ALREADY_PRINTED_DEPS
     $(info [INFO] WITH_DEPS is enabled. Effective dependency projects being used:)
     $(info --------------------------------------------------)
     # Print effective DEP_* values
-    $(foreach dep, $(DEPS), \
-      $(call print-dep,$(word 1, $(subst :, ,$(dep)))) \
-    )
+    ifneq ($(DEPS),"")
+      $(foreach dep, $(DEPS), \
+        $(call print-dep,$(word 1, $(subst :, ,$(dep)))) \
+      )
+    endif
     $(info )
     $(info --------------------------------------------------)
     $(info [INFO] To override, make with VAR=value)
