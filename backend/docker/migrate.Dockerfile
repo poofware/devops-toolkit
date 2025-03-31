@@ -12,28 +12,15 @@ RUN apk add --no-cache ca-certificates bash postgresql-client curl jq openssl \
 ##
 # Build-Time Arguments
 ##
-ARG MIGRATIONS_PATH
-ARG APP_NAME
-ARG ENV
 ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
 ARG HCP_ENCRYPTED_API_TOKEN
+ARG HCP_APP_NAME_FOR_DB_SECRETS
+ARG MIGRATIONS_PATH
 
 ##
 # Validate Required Build Args
 ##
-RUN test -n "${MIGRATIONS_PATH}" || ( \
-  echo "Error: MIGRATIONS_PATH is not set! Use --build-arg MIGRATIONS_PATH=xxx" >&2 && \
-  exit 1 \
-);
-RUN test -n "${APP_NAME}" || ( \
-  echo "Error: APP_NAME is not set! Use --build-arg APP_NAME=xxx" >&2 && \
-  exit 1 \
-);
-RUN test -n "${ENV}" || ( \
-  echo "Error: ENV is not set! Use --build-arg ENV=xxx" >&2 && \
-  exit 1 \
-);
 RUN test -n "${HCP_ORG_ID}" || ( \
   echo "Error: HCP_ORG_ID is not set! Use --build-arg HCP_ORG_ID=xxx" >&2 && \
   exit 1 \
@@ -46,15 +33,23 @@ RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
   echo "Error: HCP_ENCRYPTED_API_TOKEN is not set! Use --build-arg HCP_ENCRYPTED_API_TOKEN=xxx" >&2 && \
   exit 1 \
 );
+RUN test -n "${HCP_APP_NAME_FOR_DB_SECRETS}" || ( \
+  echo "Error: HCP_APP_NAME_FOR_DB_SECRETS is not set! Use --build-arg HCP_APP_NAME_FOR_DB_SECRETS=xxx" >&2 && \
+  exit 1 \
+);
+RUN test -n "${MIGRATIONS_PATH}" || ( \
+  echo "Error: MIGRATIONS_PATH is not set! Use --build-arg MIGRATIONS_PATH=xxx" >&2 && \
+  exit 1 \
+);
 
 ##
 # Transfer Build Args to Environment Variables
 ##
-ENV MIGRATIONS_PATH=${MIGRATIONS_PATH}
 ENV HCP_ORG_ID=${HCP_ORG_ID}
 ENV HCP_PROJECT_ID=${HCP_PROJECT_ID}
-ENV HCP_APP_NAME=${APP_NAME}-${ENV}
+ENV HCP_APP_NAME=${HCP_APP_NAME_FOR_DB_SECRETS}
 ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
+ENV MIGRATIONS_PATH=${MIGRATIONS_PATH}
 
 ##
 # Copy Migrations into Image

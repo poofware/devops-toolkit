@@ -1,30 +1,30 @@
 # ----------------------
-# Go App Up Target
+# Compose Up Target
 # ----------------------
 
 SHELL := /bin/bash
 
 .PHONY: up _up-db _up-migrate _up-app-pre _up-app-post-check 
 
-# Check that the current working directory is the root of a Go app by verifying that go.mod exists.
-ifeq ($(wildcard go.mod),)
-  $(error Error: go.mod not found. Please ensure you are in the root directory of your Go app.)
+# Check that the current working directory is the root of a project by verifying that the root Makefile exists.
+ifeq ($(wildcard Makefile),)
+  $(error Error: Makefile not found. Please ensure you are in the root directory of your project.)
 endif
 
-INCLUDED_GO_APP_UP := 1
+INCLUDED_COMPOSE_UP := 1
 
 
-ifndef INCLUDED_GO_APP_DEPS
-  include devops-toolkit/backend/make/go-app/go_app_deps.mk
+ifndef INCLUDED_COMPOSE_DEPS
+  include devops-toolkit/backend/make/compose/compose_deps.mk
 endif
-ifndef INCLUDED_GO_APP_BUILD
-  include devops-toolkit/backend/make/go-app/go_app_build.mk
+ifndef INCLUDED_COMPOSE_BUILD
+  include devops-toolkit/backend/make/compose/compose_build.mk
 endif
-ifndef INCLUDED_GO_APP_DOWN
-  include devops-toolkit/backend/make/go-app/go_app_down.mk
+ifndef INCLUDED_COMPOSE_DOWN
+  include devops-toolkit/backend/make/compose/compose_down.mk
 endif
 ifndef INCLUDED_COMPOSE_SERVICE_UTILS
-  include devops-toolkit/backend/make/utils/compose_service_utils.mk
+  include devops-toolkit/backend/make/compose/compose_service_compose.mk
 endif
 
 
@@ -81,7 +81,7 @@ _app-up:
 		echo "[INFO] [Up-App] Done. $$APP_NAME is running on http://localhost:$$APP_HOST_PORT"; \
 	fi
 
-## Starts services for all compose profiles in order (EXCLUDE_COMPOSE_PROFILE_APP=1 to exclude profile 'app' from 'up' - EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK=1 to exclude profile 'app_post_check' from 'up' - WITH_DEPS=1 to 'up' dependency services as well)
+## Starts services for all compose profiles in order (EXCLUDE_COMPOSE_PROFILE_APP=1 to exclude profile 'app' from 'up' - EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK=1 to exclude profile 'app_post_check' from 'up' - WITH_DEPS=1 to 'up' dependency projects as well)
 up: EXCLUDE_COMPOSE_PROFILE_APP ?= 0
 up: EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK ?= 0
 up: _deps-up

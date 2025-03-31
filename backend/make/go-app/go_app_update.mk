@@ -17,9 +17,12 @@ INCLUDED_GO_APP_UPDATE := 1
 ifndef INCLUDED_ENSURE_GO
   include devops-toolkit/backend/make/utils/ensure_go.mk
 endif
+ifndef INCLUDED_VENDOR
+  include devops-toolkit/backend/make/utils/vendor.mk
+endif
 
 
-## Updates Go packages versions to the latest on specified branch (requires BRANCH to be set, e.g. BRANCH=main, applies to all packages)
+## Updates Go packages versions for this project to their latest on specified branch (requires BRANCH to be set, e.g. BRANCH=main, applies to all packages)
 update: _ensure-go
 	@echo "[INFO] [Update] Updating Go packages..."
 	@if [ -z "$(BRANCH)" ]; then \
@@ -30,6 +33,11 @@ update: _ensure-go
 		echo "[ERROR] [Update] PACKAGES is empty. No packages to update."; \
 		exit 1; \
 	fi
+
 	@devops-toolkit/backend/scripts/update_go_packages.sh
+
+	@echo "[INFO] [Update] Calling vendor target to update vendor directory if enabled..."
+	@$(MAKE) vendor
+
 	@echo "[INFO] [Update] Done."
 

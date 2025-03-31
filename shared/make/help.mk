@@ -4,12 +4,13 @@
 
 SHELL := /bin/bash
 
-.PHONY: _help
+.PHONY: help
 
 INCLUDED_HELP := 1
 
 
-_help:
+## Lists all available targets and any additional information about the project
+help::
 	@echo "----------------------------------------"
 	@echo "[INFO] Available targets:"; \
 	echo "----------------------------------------"; \

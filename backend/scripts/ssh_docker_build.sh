@@ -41,7 +41,6 @@ fi
 
 echo "[INFO] [Build] SSH_AUTH_SOCK=$SSH_AUTH_SOCK"
 echo "[INFO] [Build] progress=$progress"
-echo "[INFO] [Build] Full Docker command: docker $@ --ssh default=$SSH_AUTH_SOCK --progress=$progress"
 
 docker "$@" \
   --ssh "default=$SSH_AUTH_SOCK" \

@@ -1,5 +1,5 @@
-ARG INTEGRATION_TEST_RUNNER_BASE_IMAGE=alpine:latest
 ARG GO_VERSION=1.24
+ARG INTEGRATION_TEST_RUNNER_BASE_IMAGE=alpine:latest
 
 #######################################
 # Stage 1: Base for building & testing
@@ -22,7 +22,7 @@ COPY go.mod go.sum ./
 COPY vendor/ ./vendor/
 
 # Use BuildKit SSH mount to fetch private modules
-RUN --mount=type=ssh if [ -z "$(ls vendor)" ]; then go mod download; fi;
+RUN --mount=type=ssh if [ -z "$(ls vendor)" ]; then go mod download && rm -rf vendor; fi;
 
 #######################################
 # Stage 2: Builder Config Validator
@@ -114,18 +114,18 @@ RUN go test -c -o /unit_test ./internal/...;
 #######################################
 FROM ${INTEGRATION_TEST_RUNNER_BASE_IMAGE} AS integration-test-runner
 
-RUN apk add --no-cache curl jq openssl bash ca-certificates && update-ca-certificates;
+RUN apk update && apk add --no-cache curl jq openssl bash ca-certificates && update-ca-certificates;
 
 ARG ENV
-ARG COMPOSE_NETWORK_APP_URL
+ARG APP_URL_FROM_COMPOSE_NETWORK
 ARG HCP_ENCRYPTED_API_TOKEN
   
 RUN test -n "${ENV}" || ( \
   echo "Error: ENV is not set! Use --build-arg ENV=xxx" && \
   exit 1 \
 );
-RUN test -n "${COMPOSE_NETWORK_APP_URL}" || ( \
-  echo "Error: COMPOSE_NETWORK_APP_URL is not set! Use --build-arg COMPOSE_NETWORK_APP_URL=xxx" && \
+RUN test -n "${APP_URL_FROM_COMPOSE_NETWORK}" || ( \
+  echo "Error: APP_URL_FROM_COMPOSE_NETWORK is not set! Use --build-arg APP_URL_FROM_COMPOSE_NETWORK=xxx" && \
   exit 1 \
 );
 RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
@@ -136,16 +136,16 @@ RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
 WORKDIR /root/
 COPY --from=integration-test-builder /integration_test ./integration_test
 COPY devops-toolkit/backend/scripts/health_check.sh health_check.sh
-COPY devops-toolkit/backend/docker/scripts/integration_test_runner_entrypoint.sh integration_test_runner_entrypoint.sh
+COPY devops-toolkit/backend/docker/scripts/integration_test_runner_cmd.sh integration_test_runner_cmd.sh
 
-RUN chmod +x health_check.sh integration_test_runner_entrypoint.sh;
+RUN chmod +x health_check.sh integration_test_runner_cmd.sh;
 
 # Convert ARG to ENV for runtime use
 ENV ENV=${ENV}
-ENV COMPOSE_NETWORK_APP_URL=${COMPOSE_NETWORK_APP_URL}
+ENV APP_URL_FROM_COMPOSE_NETWORK=${APP_URL_FROM_COMPOSE_NETWORK}
 ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
 
-ENTRYPOINT ./integration_test_runner_entrypoint.sh;
+CMD ./integration_test_runner_cmd.sh;
 
 #######################################
 # Stage 6: Unit Test Runner

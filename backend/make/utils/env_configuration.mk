@@ -1,10 +1,10 @@
 # -----------------------
-# ENV Validation
+# ENV Configuration
 # -----------------------
 
 SHELL := /bin/bash
 
-INCLUDED_ENV_VALIDATION := 1
+INCLUDED_ENV_CONFIGURATION := 1
 
 
 DEV_TEST_ENV := dev-test
@@ -23,3 +23,5 @@ else
   $(error ENV is not set. Please define it in your local Makefile or runtime/ci environment. \
     Example: ENV=dev, Options: $(ALLOWED_ENVS))
 endif
+
+export ENV

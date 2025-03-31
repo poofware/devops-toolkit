@@ -43,8 +43,8 @@ for PKG in $PACKAGES; do
 done
 
 # 4) Download all modules after updating references
-echo "[INFO] [Update] Running go mod download to ensure all dependencies are pulled..."
-go mod download
+echo "[INFO] [Update] Running go mod tidy to ensure all dependencies are pulled..."
+go mod tidy
 
 echo "[INFO] [Update] Successfully fetched all Poof go package repos at branch '$BRANCH'."
 exit 0

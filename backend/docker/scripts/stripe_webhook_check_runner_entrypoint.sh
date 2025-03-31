@@ -4,7 +4,7 @@ set -e
 echo "[INFO] Starting stripe-webhook-check-entrypoint..."
 
 : "${HCP_ENCRYPTED_API_TOKEN:?HCP_ENCRYPTED_API_TOKEN env var is required}"
-: "${COMPOSE_NETWORK_APP_URL:?COMPOSE_NETWORK_APP_URL env var is required}"
+: "${APP_URL_FROM_COMPOSE_NETWORK:?APP_URL_FROM_COMPOSE_NETWORK env var is required}"
 : "${STRIPE_WEBHOOK_CHECK_ROUTE:?STRIPE_WEBHOOK_CHECK_ROUTE env var is required}"
 : "${APP_NAME:?APP_NAME env var is required}"
 : "${UNIQUE_RUN_NUMBER:?UNIQUE_RUN_NUMBER env var is required}"
@@ -119,7 +119,7 @@ fi
 echo "[INFO] Found triggered event ID: $EVENT_ID"
 
 # 9) Poll the check endpoint to ensure the event was received by your app
-CHECK_URL="${COMPOSE_NETWORK_APP_URL}${STRIPE_WEBHOOK_CHECK_ROUTE}"
+CHECK_URL="${APP_URL_FROM_COMPOSE_NETWORK}${STRIPE_WEBHOOK_CHECK_ROUTE}"
 CHECK_URL_WITH_ARG="${CHECK_URL}?id=${EVENT_ID}"
 echo "[INFO] Checking event at: $CHECK_URL_WITH_ARG"
 

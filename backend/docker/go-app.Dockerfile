@@ -21,7 +21,7 @@ COPY go.mod go.sum ./
 COPY vendor/ ./vendor/
 
 # Use BuildKit SSH mount to fetch private modules
-RUN --mount=type=ssh if [ -z "$(ls vendor)" ]; then go mod download; fi;
+RUN --mount=type=ssh if [ -z "$(ls vendor)" ]; then go mod download && rm -rf vendor; fi;
 
 #######################################
 # Stage 2: Builder Config Validator
@@ -110,14 +110,14 @@ FROM alpine:latest AS health-check-runner
 
 RUN apk add --no-cache curl bash;
 
-ARG COMPOSE_NETWORK_APP_URL
+ARG APP_URL_FROM_COMPOSE_NETWORK
 
-RUN test -n "${COMPOSE_NETWORK_APP_URL}" || ( \
-  echo "Error: COMPOSE_NETWORK_APP_URL is not set! Use --build-arg COMPOSE_NETWORK_APP_URL=xxx" && \
+RUN test -n "${APP_URL_FROM_COMPOSE_NETWORK}" || ( \
+  echo "Error: APP_URL_FROM_COMPOSE_NETWORK is not set! Use --build-arg APP_URL_FROM_COMPOSE_NETWORK=xxx" && \
   exit 1 \
 );
 
-ENV COMPOSE_NETWORK_APP_URL=${COMPOSE_NETWORK_APP_URL}
+ENV APP_URL_FROM_COMPOSE_NETWORK=${APP_URL_FROM_COMPOSE_NETWORK}
 
 WORKDIR /root/
 COPY devops-toolkit/backend/scripts/health_check.sh health_check.sh
@@ -133,7 +133,7 @@ RUN apk add --no-cache curl;
 
 ARG APP_NAME
 ARG APP_PORT
-ARG PUBLIC_APP_URL
+ARG APP_URL_FROM_ANYWHERE
 ARG ENV
 ARG HCP_ENCRYPTED_API_TOKEN
 
@@ -142,8 +142,8 @@ RUN test -n "${ENV}" || ( \
   echo "Error: ENV is not set! Use --build-arg ENV=xxx" && \
   exit 1 \
 );
-RUN test -n "${PUBLIC_APP_URL}" || ( \
-  echo "Error: PUBLIC_APP_URL is not set! Use --build-arg PUBLIC_APP_URL=xxx" && \
+RUN test -n "${APP_URL_FROM_ANYWHERE}" || ( \
+  echo "Error: APP_URL_FROM_ANYWHERE is not set! Use --build-arg APP_URL_FROM_ANYWHERE=xxx" && \
   exit 1 \
 );
 RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
@@ -159,14 +159,14 @@ EXPOSE ${APP_PORT}
 # Convert ARG to ENV for runtime use with CMD
 ENV APP_NAME=${APP_NAME}
 ENV APP_PORT=${APP_PORT}
-ENV PUBLIC_APP_URL=${PUBLIC_APP_URL}
+ENV APP_URL_FROM_ANYWHERE=${APP_URL_FROM_ANYWHERE}
 ENV ENV=${ENV}
 ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
 
 # Copy all envs into a .env file for potential children images to access
 RUN echo "APP_NAME=${APP_NAME}" > .env && \
     echo "APP_PORT=${APP_PORT}" >> .env && \
-    echo "PUBLIC_APP_URL=${PUBLIC_APP_URL}" >> .env && \
+    echo "APP_URL_FROM_ANYWHERE=${APP_URL_FROM_ANYWHERE}" >> .env && \
     echo "ENV=${ENV}" >> .env && \
     echo "HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}" >> .env;
 

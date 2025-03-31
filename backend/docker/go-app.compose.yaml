@@ -23,14 +23,14 @@ services:
   # ----------------------
   # 1) App Service
   # ----------------------
-  app:
+  go-app:
     build:
       context: .
       dockerfile: devops-toolkit/backend/docker/go-app.Dockerfile
       target: app-runner
       args:
         <<: *build-args
-        PUBLIC_APP_URL: ${PUBLIC_APP_URL?Docker Compose Config Error! PUBLIC_APP_URL is not set!}
+        APP_URL_FROM_ANYWHERE: ${APP_URL_FROM_ANYWHERE?Docker Compose Config Error! APP_URL_FROM_ANYWHERE is not set!}
     image: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}
     container_name: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}_instance
     ports:
@@ -45,24 +45,24 @@ services:
         aliases:
           - ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}
     profiles:
-      - app
+      - unassigned
     <<: *environment
 
   # ----------------------
   # 2) Integration Test Service - Ephemeral
   # ----------------------
-  integration-test:
+  go-integration-test:
     build:
       context: .
       dockerfile: devops-toolkit/backend/docker/go-app-test.Dockerfile
       target: integration-test-runner
       args:
         <<: *build-args
-        COMPOSE_NETWORK_APP_URL: ${COMPOSE_NETWORK_APP_URL?Docker Compose Config Error! COMPOSE_NETWORK_APP_URL is not set!}
+        APP_URL_FROM_COMPOSE_NETWORK: ${APP_URL_FROM_COMPOSE_NETWORK?Docker Compose Config Error! APP_URL_FROM_COMPOSE_NETWORK is not set!}
     image: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-integration-test
     container_name: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-integration-test_instance
     profiles:
-      - app_integration_test
+      - unassigned
     <<:
       - *networks
       - *environment
@@ -82,17 +82,17 @@ services:
   # ----------------------
   # 3) App Service Health Check
   # ----------------------
-  health-check:
+  go-app-health-check:
     build:
       context: .
       dockerfile: devops-toolkit/backend/docker/go-app.Dockerfile
       target: health-check-runner
       args:
-        COMPOSE_NETWORK_APP_URL: ${COMPOSE_NETWORK_APP_URL?Docker Compose Config Error! COMPOSE_NETWORK_APP_URL is not set!}
+        APP_URL_FROM_COMPOSE_NETWORK: ${APP_URL_FROM_COMPOSE_NETWORK?Docker Compose Config Error! APP_URL_FROM_COMPOSE_NETWORK is not set!}
     image: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-health-check
     container_name: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-health-check_instance
     profiles:
-      - app_post_check
+      - unassigned
     <<: *networks
 
 networks:

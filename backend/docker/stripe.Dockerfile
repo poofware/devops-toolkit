@@ -16,7 +16,7 @@ RUN apk update \
       ca-certificates;
 
 ARG ENV
-ARG COMPOSE_NETWORK_APP_URL
+ARG APP_URL_FROM_COMPOSE_NETWORK
 ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
 ARG HCP_ENCRYPTED_API_TOKEN
@@ -26,8 +26,8 @@ RUN test -n "${ENV}" || ( \
   echo "Error: ENV is not set! Use --build-arg ENV=xxx" && \
   exit 1 \
 );
-RUN test -n "${COMPOSE_NETWORK_APP_URL}" || ( \
-  echo "Error: COMPOSE_NETWORK_APP_URL is not set! Use --build-arg COMPOSE_NETWORK_APP_URL=xxx" && \
+RUN test -n "${APP_URL_FROM_COMPOSE_NETWORK}" || ( \
+  echo "Error: APP_URL_FROM_COMPOSE_NETWORK is not set! Use --build-arg APP_URL_FROM_COMPOSE_NETWORK=xxx" && \
   exit 1 \
 );
 RUN test -n "${HCP_ORG_ID}" || ( \
@@ -44,7 +44,7 @@ RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
 );
 
 ENV ENV=${ENV}
-ENV COMPOSE_NETWORK_APP_URL=${COMPOSE_NETWORK_APP_URL}
+ENV APP_URL_FROM_COMPOSE_NETWORK=${APP_URL_FROM_COMPOSE_NETWORK}
 ENV HCP_ORG_ID=${HCP_ORG_ID}
 ENV HCP_PROJECT_ID=${HCP_PROJECT_ID}
 ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
@@ -102,11 +102,16 @@ ENTRYPOINT ./stripe_webhook_check_runner_entrypoint.sh;
 #######################################
 FROM runner-config-validator AS stripe-listener-runner
 
-ARG STRIPE_WEBHOOK_EVENTS
+ARG STRIPE_WEBHOOK_CONNECTED_EVENTS
+ARG STRIPE_WEBHOOK_PLATFORM_EVENTS
 ARG STRIPE_WEBHOOK_ROUTE
 
-RUN test -n "${STRIPE_WEBHOOK_EVENTS}" || ( \
-  echo "Error: STRIPE_WEBHOOK_EVENTS is not set! Use --build-arg STRIPE_WEBHOOK_EVENTS=xxx" && \
+RUN test -n "${STRIPE_WEBHOOK_CONNECTED_EVENTS}" || ( \
+  echo "Error: STRIPE_WEBHOOK_CONNECTED_EVENTS is not set! Use --build-arg STRIPE_WEBHOOK_CONNECTED_EVENTS=xxx" && \
+  exit 1 \
+);
+RUN test -n "${STRIPE_WEBHOOK_PLATFORM_EVENTS}" || ( \
+  echo "Error: STRIPE_WEBHOOK_PLATFORM_EVENTS is not set! Use --build-arg STRIPE_WEBHOOK_PLATFORM_EVENTS=xxx" && \
   exit 1 \
 );
 RUN test -n "${STRIPE_WEBHOOK_ROUTE}" || ( \
@@ -114,7 +119,8 @@ RUN test -n "${STRIPE_WEBHOOK_ROUTE}" || ( \
   exit 1 \
 );
 
-ENV STRIPE_WEBHOOK_EVENTS="${STRIPE_WEBHOOK_EVENTS}"
+ENV STRIPE_WEBHOOK_CONNECTED_EVENTS="${STRIPE_WEBHOOK_CONNECTED_EVENTS}"
+ENV STRIPE_WEBHOOK_PLATFORM_EVENTS="${STRIPE_WEBHOOK_PLATFORM_EVENTS}"
 ENV STRIPE_WEBHOOK_ROUTE=${STRIPE_WEBHOOK_ROUTE}
 
 COPY devops-toolkit/backend/docker/scripts/stripe_listener_runner_entrypoint.sh stripe_listener_runner_entrypoint.sh

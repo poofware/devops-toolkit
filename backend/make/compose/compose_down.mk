@@ -1,28 +1,28 @@
 # ----------------------
-# Go App Down Target
+# Compose Down Target
 # ----------------------
 
 SHELL := /bin/bash
 
 .PHONY: down
 
-# Check that the current working directory is the root of a Go app by verifying that go.mod exists.
-ifeq ($(wildcard go.mod),)
-  $(error Error: go.mod not found. Please ensure you are in the root directory of your Go app.)
+# Check that the current working directory is the root of a project by verifying that the root Makefile exists.
+ifeq ($(wildcard Makefile),)
+  $(error Error: Makefile not found. Please ensure you are in the root directory of your project.)
 endif
 
-INCLUDED_GO_APP_DOWN := 1
+INCLUDED_COMPOSE_DOWN := 1
 
 
-ifndef INCLUDED_GO_APP_DEPS
-  include devops-toolkit/backend/make/go-app/go_app_deps.mk
+ifndef INCLUDED_COMPOSE_DEPS
+  include devops-toolkit/backend/make/compose/compose_deps.mk
 endif
 
 
-## Shuts down all containers (WITH_DEPS=1 to 'down' dependency services as well)
+## Shuts down all containers (WITH_DEPS=1 to 'down' dependency projects as well)
 down: _deps-down
 	@echo "[INFO] [Down] Removing containers & volumes, keeping images..."
-	$(COMPOSE_CMD) $(COMPOSE_PROFILE_FLAGS_DOWN_BUILD) down -v --remove-orphans
+	@$(COMPOSE_CMD) $(COMPOSE_DOWN_PROFILE_FLAGS) down -v --remove-orphans
 
 	@echo "[INFO] [Down] Removing network '$(COMPOSE_NETWORK_NAME)'..."
 	@docker network rm $(COMPOSE_NETWORK_NAME) && echo "[INFO] [Down] Network '$(COMPOSE_NETWORK_NAME)' successfully removed." || \

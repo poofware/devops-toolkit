@@ -2,11 +2,12 @@
 set -e
 
 : "${HCP_ENCRYPTED_API_TOKEN:?HCP_ENCRYPTED_API_TOKEN env var is required}"
-: "${COMPOSE_NETWORK_APP_URL:?COMPOSE_NETWORK_APP_URL env var is required}"
-: "${STRIPE_WEBHOOK_EVENTS:?STRIPE_WEBHOOK_EVENTS env var is required (comma-separated list of events)}"
+: "${APP_URL_FROM_COMPOSE_NETWORK:?APP_URL_FROM_COMPOSE_NETWORK env var is required}"
+: "${STRIPE_WEBHOOK_CONNECTED_EVENTS:?STRIPE_WEBHOOK_CONNECTED_EVENTS env var is required (comma-separated list of events)}"
+: "${STRIPE_WEBHOOK_PLATFORM_EVENTS:?STRIPE_WEBHOOK_PLATFORM_EVENTS env var is required (comma-separated list of events)}"
 : "${STRIPE_WEBHOOK_ROUTE:?STRIPE_WEBHOOK_ROUTE env var is required}"
 
-FORWARD_TO_URL="${COMPOSE_NETWORK_APP_URL}${STRIPE_WEBHOOK_ROUTE}"
+FORWARD_TO_URL="${APP_URL_FROM_COMPOSE_NETWORK}${STRIPE_WEBHOOK_ROUTE}"
 
 echo "[INFO] Starting Stripe listener with forward-to: ${FORWARD_TO_URL}"
 
@@ -32,5 +33,14 @@ fi
 echo "[INFO] Successfully fetched 'STRIPE_SECRET_KEY' from HCP."
 echo "[INFO] Starting 'stripe listen --forward-to ${FORWARD_TO_URL}' with the provided secret key."
 
-exec stripe listen -e "${STRIPE_WEBHOOK_EVENTS}" --forward-connect-to "${FORWARD_TO_URL}" --api-key "${STRIPE_SECRET_KEY}"
+# Make sure there are some events to listen for
+if [ -z "$STRIPE_WEBHOOK_PLATFORM_EVENTS" ] && [ -z "$STRIPE_WEBHOOK_CONNECTED_EVENTS" ]; then
+  echo "[ERROR] No events specified in STRIPE_WEBHOOK_PLATFORM_EVENTS or STRIPE_WEBHOOK_CONNECTED_EVENTS."
+  exit 1
+fi
+
+# Combine platform and connected events into a single string
+export ALL_EVENTS="${STRIPE_WEBHOOK_PLATFORM_EVENTS},${STRIPE_WEBHOOK_CONNECTED_EVENTS}"
+
+exec stripe listen -e "${ALL_EVENTS}" --forward-connect-to "${FORWARD_TO_URL}" --forward-to "${FORWARD_TO_URL}" --api-key "${STRIPE_SECRET_KEY}"
 
