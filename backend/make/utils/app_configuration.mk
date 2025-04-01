@@ -27,7 +27,7 @@ endif
 # Optional override configuration env variables #
 
 ifdef APP_URL_FROM_COMPOSE_NETWORK
-  ifneq ($(origin APP_URL_FROM_COMPOSE_NETWORK), environment)
+  ifeq ($(origin APP_URL_FROM_COMPOSE_NETWORK), file)
     $(error APP_URL_FROM_COMPOSE_NETWORK override should be set as a runtime/ci environment variable, do not hardcode it in the root Makefile. \
 	  Example: APP_URL_FROM_COMPOSE_NETWORK="http://meta-service:8080" make integration-test)
   endif
