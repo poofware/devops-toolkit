@@ -4,7 +4,7 @@
 
 SHELL := /bin/bash
 
-.PHONY: ensure-go
+.PHONY: _ensure-go
 
 INCLUDED_ENSURE_GO := 1
 

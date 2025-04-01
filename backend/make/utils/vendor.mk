@@ -13,7 +13,8 @@ endif
 
 
 ## Updates vendor directory based on changes in go.mod or go.sum (disabled if vendor directory is empty, enable by running 'go mod vendor' once)
-vendor.stamp: go.mod go.sum _ensure-go
+vendor.stamp: go.mod go.sum
+	@$(MAKE) --no-print-directory _ensure-go
 	@if [ ! -d "vendor" ]; then \
 		echo "[INFO] [Vendor] Initializing empty vendor directory..."; \
 		mkdir -p vendor; \
