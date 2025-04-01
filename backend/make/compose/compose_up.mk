@@ -70,7 +70,7 @@ _up-app-post-check:
 		$(MAKE) _check-failed-services --no-print-directory PROFILE_TO_CHECK=$(COMPOSE_PROFILE_APP_POST_CHECK) SERVICES_TO_CHECK="$(COMPOSE_PROFILE_APP_POST_CHECK_SERVICES)"; \
 	fi
 
-_app-up:
+_up-app:
 	@if [ -z "$(COMPOSE_PROFILE_APP_SERVICES)" ]; then \
 		echo "[ERROR] [Up-App] No services found matching the '$(COMPOSE_PROFILE_APP)' profile!"; \
 	else \
@@ -80,6 +80,13 @@ _app-up:
 		$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP) up -d; \
 		echo "[INFO] [Up-App] Done. $$APP_NAME is running on http://localhost:$$APP_HOST_PORT"; \
 	fi
+
+_up-network:
+	@echo "[INFO] [Up] Creating network '$(COMPOSE_NETWORK_NAME)'..."
+	@docker network create $(COMPOSE_NETWORK_NAME) && \
+		echo "[INFO] [Up] Network '$(COMPOSE_NETWORK_NAME)' successfully created." || \
+		echo "[WARN] [Up] 'docker network create $(COMPOSE_NETWORK_NAME)' failed (network most likely already exists). Ignoring..."
+	
 
 ## Starts services for all compose profiles in order (EXCLUDE_COMPOSE_PROFILE_APP=1 to exclude profile 'app' from 'up' - EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK=1 to exclude profile 'app_post_check' from 'up' - WITH_DEPS=1 to 'up' dependency projects as well)
 up: EXCLUDE_COMPOSE_PROFILE_APP ?= 0
@@ -91,10 +98,7 @@ up:: _deps-up
 	@echo "[INFO] [Up] Running build target..."
 	@$(MAKE) build --no-print-directory WITH_DEPS=0
 
-	@echo "[INFO] [Up] Creating network '$(COMPOSE_NETWORK_NAME)'..."
-	@docker network create $(COMPOSE_NETWORK_NAME) && \
-		echo "[INFO] [Up] Network '$(COMPOSE_NETWORK_NAME)' successfully created." || \
-		echo "[WARN] [Up] 'docker network create $(COMPOSE_NETWORK_NAME)' failed (network most likely already exists). Ignoring..."
+	@$(MAKE) _up-network --no-print-directory
 
 	@$(MAKE) _up-db --no-print-directory
 	@$(MAKE) _up-migrate --no-print-directory
@@ -103,7 +107,7 @@ up:: _deps-up
 	@if [ "$(EXCLUDE_COMPOSE_PROFILE_APP)" -eq 1 ]; then \
 		echo "[INFO] [Up] Skipping app startup... EXCLUDE_COMPOSE_PROFILE_APP is set to 1"; \
 	else \
-		$(MAKE) _app-up --no-print-directory; \
+		$(MAKE) _up-app --no-print-directory; \
 	fi
 
 	@if [ "$(EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK)" -eq 1 ]; then \

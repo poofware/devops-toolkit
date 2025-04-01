@@ -156,9 +156,9 @@ COMPOSE_DOWN_PROFILE_FLAGS += --profile $(COMPOSE_PROFILE_APP_POST_CHECK)
 COMPOSE_PROJECT_DIR := ./
 
 # Variable for app run/up/down docker compose commands
-COMPOSE_CMD := docker compose \
-		       --project-directory $(COMPOSE_PROJECT_DIR) \
-			   -p $(COMPOSE_PROJECT_NAME)
+export COMPOSE_CMD := docker compose \
+  --project-directory $(COMPOSE_PROJECT_DIR) \
+  -p $(COMPOSE_PROJECT_NAME)
 
 ifndef INCLUDE_COMPOSE_SERVICE_UTILS
   include devops-toolkit/backend/make/compose/compose_service_utils.mk

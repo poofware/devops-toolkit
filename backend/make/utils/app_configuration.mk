@@ -46,8 +46,8 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
   ifndef APP_URL_FROM_COMPOSE_NETWORK
     export APP_URL_FROM_COMPOSE_NETWORK := http://$(APP_NAME):$(APP_PORT)
   endif
-  export APP_HOST_PORT = $(shell devops-toolkit/backend/scripts/find_available_port.sh 8080)
-  export APP_URL_FROM_ANYWHERE = http://$(shell devops-toolkit/backend/scripts/get_lan_ip.sh):$(APP_HOST_PORT)
+  export APP_HOST_PORT ?= $(shell devops-toolkit/backend/scripts/find_available_port.sh 8080)
+  export APP_URL_FROM_ANYWHERE ?= http://$(shell devops-toolkit/backend/scripts/get_lan_ip.sh):$(APP_HOST_PORT)
 else
   # Staging and prod not supported at this time.
 endif
