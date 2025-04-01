@@ -94,7 +94,7 @@ ifndef ALREADY_PRINTED_DEPS
       $(foreach dep, $(DEPS), \
         $(eval dep_key := $(word 1, $(subst :, ,$(dep)))) \
         $(eval dep_val := $(word 2, $(subst :, ,$(dep)))) \
-        $(eval $(dep_key) ?= $(dep_val)) \
+        $(eval export $(dep_key) ?= $(dep_val)) \
       )
 
       # Now rebuild DEPS from the possibly overridden values

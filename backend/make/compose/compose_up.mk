@@ -84,7 +84,7 @@ _app-up:
 ## Starts services for all compose profiles in order (EXCLUDE_COMPOSE_PROFILE_APP=1 to exclude profile 'app' from 'up' - EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK=1 to exclude profile 'app_post_check' from 'up' - WITH_DEPS=1 to 'up' dependency projects as well)
 up: EXCLUDE_COMPOSE_PROFILE_APP ?= 0
 up: EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK ?= 0
-up: _deps-up
+up:: _deps-up
 	@echo "[INFO] [Up] Running down target to ensure clean state..."
 	@$(MAKE) down --no-print-directory WITH_DEPS=0
 

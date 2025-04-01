@@ -20,7 +20,7 @@ endif
 
 
 ## Cleans everything (containers, images, volumes) (WITH_DEPS=1 to 'clean' dependency projects as well)
-clean: _deps-clean
+clean:: _deps-clean
 	@echo "[INFO] [Clean] Running down target..."
 	@$(MAKE) down --no-print-directory WITH_DEPS=0
 	@echo "[INFO] [Clean] Full nuke of containers, images, volumes, networks..."

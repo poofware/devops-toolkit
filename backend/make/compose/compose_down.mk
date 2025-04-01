@@ -20,7 +20,7 @@ endif
 
 
 ## Shuts down all containers (WITH_DEPS=1 to 'down' dependency projects as well)
-down: _deps-down
+down:: _deps-down
 	@echo "[INFO] [Down] Removing containers & volumes, keeping images..."
 	@$(COMPOSE_CMD) $(COMPOSE_DOWN_PROFILE_FLAGS) down -v --remove-orphans
 

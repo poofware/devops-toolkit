@@ -33,7 +33,7 @@ endif
 # TODO: implement unit tests!!!
 
 ## Runs integration tests in a one-off container
-integration-test:
+integration-test::
 	@if [ -z "$(COMPOSE_PROFILE_APP_INTEGRATION_TEST_SERVICES)" ]; then \
 		echo "[WARN] [Integration Test] No services found matching the '$(COMPOSE_PROFILE_APP_INTEGRATION_TEST)' profile. Skipping..."; \
 	else \
