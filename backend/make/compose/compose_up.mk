@@ -92,10 +92,7 @@ _up-network:
 up: EXCLUDE_COMPOSE_PROFILE_APP ?= 0
 up: EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK ?= 0
 up:: _deps-up
-	@echo "[INFO] [Up] Running down target to ensure clean state..."
-	@$(MAKE) down --no-print-directory WITH_DEPS=0
-
-	@echo "[INFO] [Up] Running build target..."
+	@echo "[INFO] [Up] Calling 'build' target..."
 	@$(MAKE) build --no-print-directory WITH_DEPS=0
 
 	@$(MAKE) _up-network --no-print-directory
