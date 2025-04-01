@@ -42,6 +42,8 @@ _deps-%:
 				ENV="$(ENV)" \
 				UNIQUE_RUNNER_ID="$(UNIQUE_RUNNER_ID)" \
 				UNIQUE_RUN_NUMBER="$(UNIQUE_RUN_NUMBER)" \
+				HOME="$(HOME)" \
+				TERM="$(TERM)" \
 				$(MAKE) -C $$dep_path $* || exit $$?; \
 		done; \
 	fi
