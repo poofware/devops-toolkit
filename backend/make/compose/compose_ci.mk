@@ -28,6 +28,8 @@ endif
 ## CI pipeline: Starts services, runs both integration and unit tests, and then shuts down all containers
 ci::
 	@echo "[INFO] [CI] Starting pipeline..."
+	@echo "[INFO] [CI] Calling 'down' target to ensure a clean state..."
+	@$(MAKE) down --no-print-directory
 	@echo "[INFO] [CI] Calling 'up' target..."
 	@$(MAKE) up --no-print-directory
 	@echo "[INFO] [CI] Calling 'integration-test' target..."

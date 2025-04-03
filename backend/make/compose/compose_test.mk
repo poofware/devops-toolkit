@@ -37,23 +37,21 @@ integration-test::
 	@if [ -z "$(COMPOSE_PROFILE_APP_INTEGRATION_TEST_SERVICES)" ]; then \
 		echo "[WARN] [Integration Test] No services found matching the '$(COMPOSE_PROFILE_APP_INTEGRATION_TEST)' profile. Skipping..."; \
 	else \
+		if [ $$(echo $(COMPOSE_PROFILE_APP_INTEGRATION_TEST_SERVICES) | wc -w) -ne 1 ]; then \
+			echo "[ERROR] [Integration Test] Expected exactly 1 integration test service, but found $$(echo $(COMPOSE_PROFILE_APP_INTEGRATION_TEST_SERVICES) | wc -w)."; \
+			echo "[ERROR] [Integration Test] Services found: $(COMPOSE_PROFILE_APP_INTEGRATION_TEST_SERVICES)"; \
+			echo "[ERROR] [Integration Test] Please ensure that only one service is defined with the '$(COMPOSE_PROFILE_APP_INTEGRATION_TEST)' profile."; \
+			exit 1; \
+		fi; \
+		echo "[INFO] [Integration Test] Starting integration test service: $(COMPOSE_PROFILE_APP_INTEGRATION_TEST_SERVICES)"; \
 		echo "[INFO] [Integration Test] Calling 'build' target for integration-test service exclusively..."; \
 		$(MAKE) build --no-print-directory COMPOSE_BUILD_BASE_SERVICES="$(COMPOSE_PROFILE_BASE_APP_INTEGRATION_TEST_SERVICES)" COMPOSE_BUILD_SERVICES="$(COMPOSE_PROFILE_APP_INTEGRATION_TEST_SERVICES)" WITH_DEPS=0; \
-		echo "[INFO] [Integration Test] Starting any integration test services found matching the '$(COMPOSE_PROFILE_APP_INTEGRATION_TEST)' profile..."; \
-		echo "[INFO] [Integration Test] Found services: $(COMPOSE_PROFILE_APP_INTEGRATION_TEST_SERVICES)"; \
 		echo "[INFO] [Integration Test] Starting..."; \
-		$(COMPOSE_CMD) up $(COMPOSE_PROFILE_APP_INTEGRATION_TEST_SERVICES) || exit 1; \
-		echo "[INFO] [Integration Test] Done. Any '$(COMPOSE_PROFILE_APP_INTEGRATION_TEST)' services found were run."; \
-		$(MAKE) _check-failed-services --no-print-directory \
-			PROFILE_TO_CHECK=$(COMPOSE_PROFILE_APP_INTEGRATION_TEST) \
-			SERVICES_TO_CHECK="$(COMPOSE_PROFILE_APP_INTEGRATION_TEST_SERVICES)" \
-		&& \
-			echo "[INFO] [Integration Test] Completed successfully!" \
-		|| \
-			{ \
-				echo ""; \
-				echo "[ERROR] [Integration Test] FAILED. Collecting logs..."; \
-				$(COMPOSE_CMD) logs $(COMPOSE_PROFILE_DB_SERVICES) $(COMPOSE_PROFILE_APP_SERVICES); \
-				exit 1; \
-			}; \
+		$(COMPOSE_CMD) run $(COMPOSE_PROFILE_APP_INTEGRATION_TEST_SERVICES) || { \
+			echo ""; \
+			echo "[ERROR] [Integration Test] FAILED. Collecting logs..."; \
+			$(COMPOSE_CMD) logs $(COMPOSE_PROFILE_DB_SERVICES) $(COMPOSE_PROFILE_APP_SERVICES); \
+			exit 1; \
+		}; \
+		echo "[INFO] [Integration Test] Completed successfully!"; \
 	fi
