@@ -119,6 +119,13 @@ ifndef ALREADY_PRINTED_DEPS
   endif
 endif
 
+DEPS_VAR_PASSTHROUGH := \
+  HCP_TOKEN_ENC_KEY \
+  HCP_ENCRYPTED_API_TOKEN \
+  ENV \
+  UNIQUE_RUNNER_ID \
+  UNIQUE_RUN_NUMBER
+
 ifndef INCLUDED_HCP_CONSTANTS
   include devops-toolkit/backend/make/utils/hcp_constants.mk
 endif

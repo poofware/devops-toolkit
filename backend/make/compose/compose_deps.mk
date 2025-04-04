@@ -25,6 +25,11 @@ ifndef WITH_DEPS
 	Example: WITH_DEPS=1)
 endif
 
+ifndef DEPS_VAR_PASSTHROUGH
+  $(error DEPS_VAR_PASSTHROUGH is not set. Please define it in your local Makefile or environment. \
+	Example: DEPS_VAR_PASSTHROUGH="VAR1 VAR2 VAR3")
+endif
+
 
 _deps-%:
 	@if [ "$(WITH_DEPS)" -eq 1 ] && [ -n "$(DEPS)" ]; then \
@@ -35,15 +40,11 @@ _deps-%:
 				exit 1; \
 			fi; \
 			echo "[INFO] [Deps-$*] Running 'make $* WITH_DEPS=1' in $$dep_path..."; \
-			env -i \
-				WITH_DEPS=1 \
-				HCP_TOKEN_ENC_KEY="$(HCP_TOKEN_ENC_KEY)" \
-				HCP_ENCRYPTED_API_TOKEN="$(HCP_ENCRYPTED_API_TOKEN)" \
-				ENV="$(ENV)" \
-				UNIQUE_RUNNER_ID="$(UNIQUE_RUNNER_ID)" \
-				UNIQUE_RUN_NUMBER="$(UNIQUE_RUN_NUMBER)" \
-				HOME="$(HOME)" \
-				TERM="$(TERM)" \
+			pass_through_vars="WITH_DEPS=1"; \
+			for var in $(DEPS_VAR_PASSTHROUGH); do \
+				pass_through_vars="$$pass_through_vars $$var=$${!var}"; \
+			done; \
+			env -i HOME="$(HOME)" TERM="$(TERM)" $$pass_through_vars \
 				$(MAKE) -C $$dep_path $* || exit $$?; \
 		done; \
 	fi

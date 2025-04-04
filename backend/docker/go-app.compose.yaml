@@ -31,6 +31,7 @@ services:
       args:
         <<: *build-args
         APP_URL_FROM_ANYWHERE: ${APP_URL_FROM_ANYWHERE?Docker Compose Config Error! APP_URL_FROM_ANYWHERE is not set!}
+        LOG_LEVEL: ${LOG_LEVEL:-info}
     image: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}
     container_name: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}_instance
     ports:

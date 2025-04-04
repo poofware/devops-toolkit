@@ -6,6 +6,11 @@ SHELL := /bin/bash
 
 INCLUDED_APP_CONFIGURATION := 1
 
+ifndef INCLUDED_COMPOSE_PROJECT_CONFIGURATION
+  $(error [ERROR] [App Compose Configuration] The Compose Project Configuration must be included before any compose file configuration. \
+	Include devops-toolkit/backend/make/compose/compose_project_configuration.mk in your root Makefile.)
+endif
+
 # --------------------------------
 # External Variable Validation
 # --------------------------------

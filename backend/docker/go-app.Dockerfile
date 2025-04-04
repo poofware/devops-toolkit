@@ -134,6 +134,7 @@ RUN apk add --no-cache curl;
 ARG APP_NAME
 ARG APP_PORT
 ARG APP_URL_FROM_ANYWHERE
+ARG LOG_LEVEL
 ARG ENV
 ARG HCP_ENCRYPTED_API_TOKEN
 
@@ -144,6 +145,10 @@ RUN test -n "${ENV}" || ( \
 );
 RUN test -n "${APP_URL_FROM_ANYWHERE}" || ( \
   echo "Error: APP_URL_FROM_ANYWHERE is not set! Use --build-arg APP_URL_FROM_ANYWHERE=xxx" && \
+  exit 1 \
+);
+RUN test -n "${LOG_LEVEL}" || ( \
+  echo "Error: LOG_LEVEL is not set! Use --build-arg LOG_LEVEL=xxx" && \
   exit 1 \
 );
 RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
@@ -160,6 +165,7 @@ EXPOSE ${APP_PORT}
 ENV APP_NAME=${APP_NAME}
 ENV APP_PORT=${APP_PORT}
 ENV APP_URL_FROM_ANYWHERE=${APP_URL_FROM_ANYWHERE}
+ENV LOG_LEVEL=${LOG_LEVEL}
 ENV ENV=${ENV}
 ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
 
@@ -167,6 +173,7 @@ ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
 RUN echo "APP_NAME=${APP_NAME}" > .env && \
     echo "APP_PORT=${APP_PORT}" >> .env && \
     echo "APP_URL_FROM_ANYWHERE=${APP_URL_FROM_ANYWHERE}" >> .env && \
+    echo "LOG_LEVEL=${LOG_LEVEL}" >> .env && \
     echo "ENV=${ENV}" >> .env && \
     echo "HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}" >> .env;
 

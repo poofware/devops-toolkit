@@ -56,6 +56,7 @@ help::
 	@echo "--------------------------------------------------"
 	@echo "APP_NAME: $(APP_NAME)"
 	@echo "APP_PORT: $(APP_PORT)"
+	@echo "LOG_LEVEL: $(LOG_LEVEL)"
 	@echo "PACKAGES: $(PACKAGES)"
 	@echo "APP_URL_FROM_COMPOSE_NETWORK: $(APP_URL_FROM_COMPOSE_NETWORK)"
 	@echo "APP_URL_FROM_ANYWHERE: $(APP_URL_FROM_ANYWHERE)"
