@@ -45,7 +45,7 @@ integration-test::
 		fi; \
 		echo "[INFO] [Integration Test] Starting integration test service: $(COMPOSE_PROFILE_APP_INTEGRATION_TEST_SERVICES)"; \
 		echo "[INFO] [Integration Test] Calling 'build' target for integration-test service exclusively..."; \
-		$(MAKE) build --no-print-directory COMPOSE_BUILD_BASE_SERVICES="$(COMPOSE_PROFILE_BASE_APP_INTEGRATION_TEST_SERVICES)" COMPOSE_BUILD_SERVICES="$(COMPOSE_PROFILE_APP_INTEGRATION_TEST_SERVICES)" WITH_DEPS=0; \
+		$(MAKE) build --no-print-directory COMPOSE_BUILD_BASE_SERVICES="$(COMPOSE_PROFILE_BASE_APP_INTEGRATION_TEST_SERVICES)" COMPOSE_BUILD_SERVICES="$(COMPOSE_PROFILE_APP_INTEGRATION_TEST_SERVICES)" WITH_DEPS=0 || exit 1; \
 		echo "[INFO] [Integration Test] Starting..."; \
 		$(COMPOSE_CMD) run $(COMPOSE_PROFILE_APP_INTEGRATION_TEST_SERVICES) || { \
 			echo ""; \
