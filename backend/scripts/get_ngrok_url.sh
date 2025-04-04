@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-echo "Waiting for ngrok tunnel to be available..." >&2
+echo "[INFO] Fetching ngrok tunnel URL..." >&2
 
 # Poll for the ngrok public URL with a timeout of 30 seconds
 timeout=30
@@ -11,11 +11,11 @@ while (( timeout > 0 )); do
     echo "$NGROK_URL"
     exit 0
   fi
-  echo "Waiting for ngrok tunnel to be available..." >&2
+  echo "[INFO] Waiting for ngrok tunnel to be available..." >&2
   sleep 1
   ((timeout--))
 done
 
-echo "Error: ngrok tunnel did not become available in time." >&2
+echo "[ERROR] ngrok tunnel did not become available in time." >&2
 exit 1
 
