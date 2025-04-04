@@ -37,7 +37,7 @@ update: _ensure-go
 	@devops-toolkit/backend/scripts/update_go_packages.sh
 
 	@echo "[INFO] [Update] Calling vendor target to update vendor directory if enabled..."
-	@$(MAKE) vendor
+	@$(MAKE) vendor --no-print-directory
 
 	@echo "[INFO] [Update] Done."
 
