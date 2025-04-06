@@ -18,35 +18,12 @@ INCLUDED_COMPOSE_PROJECT_CONFIGURATION := 1
 
 # Runtime/Ci environment variables #
 
-# Will need the client id and client secret to fetch the HCP API token
-# if HCP_ENCRYPTED_API_TOKEN is not already set
-ifndef HCP_ENCRYPTED_API_TOKEN
-  ifneq ($(origin HCP_CLIENT_ID), environment)
-    $(error HCP_CLIENT_ID is either not set or set in the root Makefile. Please define it in your runtime/ci environment only. \
-	  Example: export HCP_CLIENT_ID="my_client_id")
-  endif
-
-  ifneq ($(origin HCP_CLIENT_SECRET), environment)
-    $(error HCP_CLIENT_SECRET is either not set or set in the root Makefile. Please define it in your runtime/ci environment only. \
-      Example: export HCP_CLIENT_SECRET="my_client_secret")
-  endif
-endif
-
-ifneq ($(origin HCP_TOKEN_ENC_KEY), environment)
-  $(error HCP_TOKEN_ENC_KEY is either not set or set in the root Makefile. Please define it in your runtime/ci environment only. \
-    Example: export HCP_TOKEN_ENC_KEY="my_encryption_key")
-endif
-
 ifneq ($(origin UNIQUE_RUNNER_ID), environment)
   $(error UNIQUE_RUNNER_ID is either not set or set in the root Makefile. Please define it in your runtime/ci environment only. \
 	Example: export UNIQUE_RUNNER_ID="john_snow")
 endif
 
 # Root Makefile variables, possibly overridden by the environment #
-
-ifndef INCLUDED_ENV_CONFIGURATION
-  include devops-toolkit/backend/make/utils/env_configuration.mk
-endif
 
 ifndef COMPOSE_NETWORK_NAME
   $(error COMPOSE_NETWORK_NAME is not set. Please define it in your local Makefile or runtime/ci environment. \
@@ -82,26 +59,30 @@ endif
 # Internal Variable Declaration
 # ------------------------------ 
 
-# Functions in make should always use '=', unless precomputing the value without dynamic args
-print-dep = $(info   $(1) = $($(1)))
+ifeq ($(WITH_DEPS),1)
+  # Dynamically define DEP_* variables allowing overrides from environment
+  ifneq ($(DEPS),"")
+    $(foreach dep, $(DEPS), \
+  	$(eval dep_key := $(word 1, $(subst :, ,$(dep)))) \
+  	$(eval dep_val := $(word 2, $(subst :, ,$(dep)))) \
+  	$(eval export $(dep_key) ?= $(dep_val)) \
+    )
+  
+    # Now rebuild DEPS from the possibly overridden values
+    DEPS := $(foreach dep, $(DEPS), \
+  	$(word 1, $(subst :, ,$(dep))):$($(word 1, $(subst :, ,$(dep)))) \
+    )
+  endif
+endif
 
-ifndef ALREADY_PRINTED_DEPS
-  export ALREADY_PRINTED_DEPS := 1
+export PRINT_INFO ?= 1
+
+ifeq ($(PRINT_INFO),1)
+  export PRINT_INFO := 1
 
   ifeq ($(WITH_DEPS),1)
-    # Dynamically define DEP_* variables allowing overrides from environment
-    ifneq ($(DEPS),"")
-      $(foreach dep, $(DEPS), \
-        $(eval dep_key := $(word 1, $(subst :, ,$(dep)))) \
-        $(eval dep_val := $(word 2, $(subst :, ,$(dep)))) \
-        $(eval export $(dep_key) ?= $(dep_val)) \
-      )
-
-      # Now rebuild DEPS from the possibly overridden values
-      DEPS := $(foreach dep, $(DEPS), \
-        $(word 1, $(subst :, ,$(dep))):$($(word 1, $(subst :, ,$(dep)))) \
-      )
-    endif
+    # Functions in make should always use '=', unless precomputing the value without dynamic args
+    print-dep = $(info   $(1) = $($(1)))
 
     $(info --------------------------------------------------)
     $(info [INFO] WITH_DEPS is enabled. Effective dependency projects being used:)
@@ -126,9 +107,14 @@ DEPS_VAR_PASSTHROUGH := \
   UNIQUE_RUNNER_ID \
   UNIQUE_RUN_NUMBER
 
+ifndef INCLUDED_ENV_CONFIGURATION
+  include devops-toolkit/backend/make/utils/env_configuration.mk
+endif
+
 ifndef INCLUDED_HCP_CONSTANTS
   include devops-toolkit/backend/make/utils/hcp_constants.mk
 endif
+
 ifndef INCLUDED_LAUNCHDARKLY_CONSTANTS
   include devops-toolkit/backend/make/utils/launchdarkly_constants.mk
 endif
