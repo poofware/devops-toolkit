@@ -78,7 +78,7 @@ endif
 export PRINT_INFO ?= 1
 
 ifeq ($(PRINT_INFO),1)
-  export PRINT_INFO := 1
+  export PRINT_INFO := 0
 
   ifeq ($(WITH_DEPS),1)
     # Functions in make should always use '=', unless precomputing the value without dynamic args
