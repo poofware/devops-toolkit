@@ -54,7 +54,7 @@ USER root
 WORKDIR /root/
 
 COPY devops-toolkit/backend/scripts/encryption.sh encryption.sh
-COPY devops-toolkit/backend/scripts/fetch_hcp_secret.sh fetch_hcp_secret.sh
+COPY devops-toolkit/shared/scripts/fetch_hcp_secret.sh fetch_hcp_secret.sh
 
 RUN chmod +x encryption.sh fetch_hcp_secret.sh;
 

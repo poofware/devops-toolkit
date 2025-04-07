@@ -57,7 +57,7 @@ ENV MIGRATIONS_PATH=${MIGRATIONS_PATH}
 WORKDIR /app
 COPY ${MIGRATIONS_PATH} migrations
 COPY devops-toolkit/backend/scripts/encryption.sh encryption.sh
-COPY devops-toolkit/backend/scripts/fetch_hcp_secret.sh fetch_hcp_secret.sh
+COPY devops-toolkit/shared/scripts/fetch_hcp_secret.sh fetch_hcp_secret.sh
 COPY devops-toolkit/backend/docker/scripts/migrate_cmd.sh migrate_cmd.sh
 
 RUN chmod +x encryption.sh fetch_hcp_secret.sh migrate_cmd.sh;

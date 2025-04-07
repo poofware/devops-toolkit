@@ -105,14 +105,15 @@ DEPS_VAR_PASSTHROUGH := \
   HCP_ENCRYPTED_API_TOKEN \
   ENV \
   UNIQUE_RUNNER_ID \
-  UNIQUE_RUN_NUMBER
+  UNIQUE_RUN_NUMBER \
+  PRINT_INFO
 
 ifndef INCLUDED_ENV_CONFIGURATION
-  include devops-toolkit/backend/make/utils/env_configuration.mk
+  include devops-toolkit/shared/make/utils/env_configuration.mk
 endif
 
-ifndef INCLUDED_HCP_CONSTANTS
-  include devops-toolkit/backend/make/utils/hcp_constants.mk
+ifndef INCLUDED_HCP_CONFIGURATION
+  include devops-toolkit/shared/make/utils/hcp_configuration.mk
 endif
 
 ifndef INCLUDED_LAUNCHDARKLY_CONSTANTS
