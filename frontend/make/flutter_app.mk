@@ -91,17 +91,17 @@ check:
 ## Up the backend
 up-backend:
 	@echo "[INFO] [Up Backend] Starting backend for ENV=$(ENV)..."
-	@$(MAKE) -C $(BACKEND_PATH) up
+	@$(MAKE) -C $(BACKEND_PATH) up PRINT_INFO=0
 
 ## Down the backend
 down-backend:
 	@echo "[INFO] [Down Backend] Stopping backend for ENV=$(ENV)..."
-	@$(MAKE) -C $(BACKEND_PATH) down
+	@$(MAKE) -C $(BACKEND_PATH) down PRINT_INFO=0
 
 ## Clean the backend
 clean-backend:
 	@echo "[INFO] [Clean Backend] Cleaning backend for ENV=$(ENV)..."
-	@$(MAKE) -C $(BACKEND_PATH) clean
+	@$(MAKE) -C $(BACKEND_PATH) clean PRINT_INFO=0
 
 # Export the current backend domain based on the environment
 _export_current_backend_domain:
