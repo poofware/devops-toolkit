@@ -32,7 +32,8 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
   _export_ngrok_url_as_app_url:
   ifndef APP_URL_FROM_ANYWHERE
 	  @echo "[INFO] [Export Ngrok URL] Exporting ngrok URL as App Url From Anywhere..."
-	  $(eval export APP_URL_FROM_ANYWHERE := $(shell devops-toolkit/backend/scripts/get_ngrok_url.sh))
+	  $(eval NGROK_HOST_PORT := $(shell $(COMPOSE_CMD) port ngrok $(NGROK_PORT) | cut -d ':' -f 2))
+	  $(eval export APP_URL_FROM_ANYWHERE := $(shell devops-toolkit/backend/scripts/get_ngrok_url.sh $(NGROK_HOST_PORT)))
 	  @echo "[INFO] [Export Ngrok URL] Done. App Url From Anywhere is set to: $(APP_URL_FROM_ANYWHERE)"
   endif
 
@@ -43,7 +44,7 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
 	  $(eval export NGROK_UP := 1)
 	  @$(MAKE) _up-network --no-print-directory
 	  @echo "[INFO] [Up Ngrok] Starting 'ngrok' service..."
-	  @$(COMPOSE_CMD) --profile ngrok up -d || exit 1
+	  @$(COMPOSE_CMD) up -d ngrok || exit 1
   endif
   
   build:: _up-ngrok _export_ngrok_url_as_app_url

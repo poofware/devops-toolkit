@@ -68,6 +68,8 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
     include devops-toolkit/backend/make/utils/ngrok_authtoken.mk
   endif
 
+  export NGROK_PORT := 4040
+
   ifndef APP_URL_FROM_COMPOSE_NETWORK
     export APP_URL_FROM_COMPOSE_NETWORK := http://$(APP_NAME):$(APP_PORT)
   endif

@@ -1,12 +1,12 @@
 services:
   ngrok:
     image: ngrok/ngrok:latest
-    container_name: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-ngrok_tunnel
+    container_name: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-ngrok_instance
     restart: unless-stopped
     command: >
       http ${APP_URL_FROM_COMPOSE_NETWORK?Docker Compose Config Error! APP_URL_FROM_COMPOSE_NETWORK is not set!} --log stdout
     ports:
-      - "4040:4040"
+      - "0:${NGROK_PORT:-4040}"
     profiles:
       - ngrok
     networks:
