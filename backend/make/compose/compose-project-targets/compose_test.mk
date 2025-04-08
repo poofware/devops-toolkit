@@ -11,8 +11,6 @@ ifeq ($(wildcard Makefile),)
   $(error Error: Makefile not found. Please ensure you are in the root directory of your project.)
 endif
 
-INCLUDED_COMPOSE_TEST := 1
-
 
 ifndef INCLUDED_COMPOSE_BUILD
   include devops-toolkit/backend/make/compose/compose_build.mk
@@ -55,3 +53,6 @@ integration-test::
 		}; \
 		echo "[INFO] [Integration Test] Completed successfully!"; \
 	fi
+
+
+INCLUDED_COMPOSE_TEST := 1

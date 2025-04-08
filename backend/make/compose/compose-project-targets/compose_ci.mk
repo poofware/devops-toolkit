@@ -11,8 +11,6 @@ ifeq ($(wildcard Makefile),)
   $(error Error: Makefile not found. Please ensure you are in the root directory of your project.)
 endif
 
-INCLUDED_COMPOSE_CI := 1
-
 
 ifndef INCLUDED_COMPOSE_UP
   include devops-toolkit/backend/make/go-app/go_app_up.mk
@@ -40,3 +38,4 @@ ci::
 	@echo "[INFO] [CI] Pipeline complete."
 
 
+INCLUDED_COMPOSE_CI := 1

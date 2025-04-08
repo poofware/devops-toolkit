@@ -6,8 +6,6 @@ SHELL := /bin/bash
 
 .PHONY: _check-failed-services _get_profile_services
 
-INCLUDED_COMPOSE_SERVICE_UTILS := 1
-
 
 # Function: get_profile_services
 # Usage: $(call get_profile_services,<profile>)
@@ -39,3 +37,6 @@ _check-failed-services:
 	else \
 	  echo "[INFO] [Up] All '$(PROFILE_TO_CHECK)' services appear healthy."; \
 	fi
+
+
+INCLUDED_COMPOSE_SERVICE_UTILS := 1

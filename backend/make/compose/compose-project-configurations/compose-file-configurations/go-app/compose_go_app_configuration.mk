@@ -4,8 +4,6 @@
 
 SHELL := /bin/bash
 
-INCLUDED_COMPOSE_GO_APP_CONFIGURATION := 1
-
 # Check that the current working directory is the root of a Go service by verifying that go.mod exists.
 ifeq ($(wildcard go.mod),)
   $(error Error: go.mod not found. Please ensure you are in the root directory of your Go service.)
@@ -55,6 +53,9 @@ export DEPS_VAR_PASSTHROUGH += LOG_LEVEL
 export PACKAGES
 
 ifndef INCLUDED_COMPOSE_APP_CONFIGURATION
-  include devops-toolkit/backend/make/compose/app/compose_app_configuration.mk
+  include devops-toolkit/backend/make/compose/compose-project-configurations/compose-file-configurations/app/compose_app_configuration.mk
 endif
 
+
+
+INCLUDED_COMPOSE_GO_APP_CONFIGURATION := 1

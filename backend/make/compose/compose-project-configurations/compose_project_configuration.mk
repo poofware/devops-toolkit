@@ -9,8 +9,6 @@ ifeq ($(wildcard Makefile),)
   $(error Error: Makefile not found. Please ensure you are in the root directory of your project.)
 endif
 
-INCLUDED_COMPOSE_PROJECT_CONFIGURATION := 1
-
 
 # --------------------------------
 # External Variable Validation
@@ -147,7 +145,7 @@ export COMPOSE_CMD := docker compose \
   -p $(COMPOSE_PROJECT_NAME)
 
 ifndef INCLUDE_COMPOSE_SERVICE_UTILS
-  include devops-toolkit/backend/make/compose/compose_service_utils.mk
+  include devops-toolkit/backend/make/compose/utils/compose_service_utils.mk
 endif
 
 COMPOSE_PROFILE_BASE_APP_SERVICES = $(call get_profile_services,$(COMPOSE_PROFILE_BASE_APP))
@@ -172,3 +170,6 @@ COMPOSE_BUILD_SERVICES = $(COMPOSE_PROFILE_APP_SERVICES) \
 						 $(COMPOSE_PROFILE_MIGRATE_SERVICES) \
 						 $(COMPOSE_PROFILE_APP_PRE_SERVICES) \
 						 $(COMPOSE_PROFILE_APP_POST_CHECK_SERVICES)
+
+
+INCLUDED_COMPOSE_PROJECT_CONFIGURATION := 1

@@ -4,8 +4,6 @@
 
 SHELL := /bin/bash
 
-INCLUDED_COMPOSE_APP_CONFIGURATION := 1
-
 # Check that the current working directory is the root of a project by verifying that the root Makefile exists.
 ifeq ($(wildcard Makefile),)
   $(error Error: Makefile not found. Please ensure you are in the root directory of your project.)
@@ -91,3 +89,6 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
 else
   # Staging and prod not supported at this time.
 endif
+
+
+INCLUDED_COMPOSE_APP_CONFIGURATION := 1

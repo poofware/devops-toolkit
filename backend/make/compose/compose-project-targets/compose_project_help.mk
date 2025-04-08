@@ -9,8 +9,6 @@ ifeq ($(wildcard Makefile),)
   $(error Error: Makefile not found. Please ensure you are in the root directory of your project.)
 endif
 
-INCLUDED_COMPOSE_PROJECT_HELP := 1
-
 ifndef INCLUDED_HELP
   include devops-toolkit/shared/make/help.mk
 endif
@@ -45,3 +43,6 @@ help::
 	@echo "[INFO] For information on available profiles, reference devops-toolkit/README.md"
 	@echo
 
+
+
+INCLUDED_COMPOSE_PROJECT_HELP := 1

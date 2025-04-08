@@ -11,13 +11,18 @@ ifeq ($(wildcard Makefile),)
   $(error Error: Makefile not found. Please ensure you are in the root directory of your project.)
 endif
 
-INCLUDED_COMPOSE_DOWN := 1
-
-
-ifndef INCLUDED_COMPOSE_DEPS
-  include devops-toolkit/backend/make/compose/compose_deps.mk
+ifndef INCLUDED_COMPOSE_APP_CONFIGURATION
+  $(error [ERROR] [Compose App Configuration] The Compose App Configuration must be included before any Compose Project Targets.)
 endif
 
+
+# --------------------------
+# Targets
+# --------------------------
+
+ifndef INCLUDED_COMPOSE_DEPS_DOWN
+  include devops-toolkit/backend/make/compose/compose_project_targets/compose_deps_targets/compose_deps_down.mk
+endif
 
 _down-network:
 	@echo "[INFO] [Down] Removing network '$(COMPOSE_NETWORK_NAME)'..."
@@ -26,7 +31,7 @@ _down-network:
 
 
 ## Shuts down all containers (WITH_DEPS=1 to 'down' dependency projects as well)
-down:: _deps-down
+down::
 	@echo "[INFO] [Down] Removing containers & volumes, keeping images..."
 	@$(COMPOSE_CMD) down -v --remove-orphans
 
@@ -34,3 +39,5 @@ down:: _deps-down
 
 	@echo "[INFO] [Down] Done."
 
+
+INCLUDED_COMPOSE_DOWN := 1

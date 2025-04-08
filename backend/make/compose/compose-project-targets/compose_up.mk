@@ -11,22 +11,22 @@ ifeq ($(wildcard Makefile),)
   $(error Error: Makefile not found. Please ensure you are in the root directory of your project.)
 endif
 
-INCLUDED_COMPOSE_UP := 1
-
-
-ifndef INCLUDED_COMPOSE_DEPS
-  include devops-toolkit/backend/make/compose/compose_deps.mk
+ifndef INCLUDED_COMPOSE_APP_CONFIGURATION
+  $(error [ERROR] [Compose App Configuration] The Compose App Configuration must be included before any Compose Project Targets.)
 endif
+
+
+# --------------------------
+# Targets
+# --------------------------
+
 ifndef INCLUDED_COMPOSE_BUILD
-  include devops-toolkit/backend/make/compose/compose_build.mk
-endif
-ifndef INCLUDED_COMPOSE_DOWN
-  include devops-toolkit/backend/make/compose/compose_down.mk
-endif
-ifndef INCLUDED_COMPOSE_SERVICE_UTILS
-  include devops-toolkit/backend/make/compose/compose_service_compose.mk
+  include devops-toolkit/backend/make/compose/compose_project_targets/compose_build.mk
 endif
 
+ifndef INCLUDED_COMPOSE_DEPS_UP
+  include devops-toolkit/backend/make/compose/compose_project_targets/compose_deps_targets/compose_deps_up.mk
+endif
 
 _up-db:
 	@if [ -z "$(COMPOSE_PROFILE_DB_SERVICES)" ]; then \
@@ -78,7 +78,7 @@ _up-app:
 		echo "[INFO] [Up-App] Found services: $(COMPOSE_PROFILE_APP_SERVICES)"; \
 		echo "[INFO] [Up-App] Spinning up app..."; \
 		$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_APP) up -d; \
-		echo "[INFO] [Up-App] Done. $$APP_NAME is running on http://localhost:$$APP_HOST_PORT"; \
+		echo "[INFO] [Up-App] Done. $$APP_NAME is running on $$APP_URL_FROM_ANYWHERE"; \
 	fi
 
 _up-network:
@@ -91,7 +91,7 @@ _up-network:
 ## Starts services for all compose profiles in order (EXCLUDE_COMPOSE_PROFILE_APP=1 to exclude profile 'app' from 'up' - EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK=1 to exclude profile 'app_post_check' from 'up' - WITH_DEPS=1 to 'up' dependency projects as well)
 up: EXCLUDE_COMPOSE_PROFILE_APP ?= 0
 up: EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK ?= 0
-up:: _deps-up
+up::
 	@echo "[INFO] [Up] Calling 'build' target..."
 	@$(MAKE) build --no-print-directory WITH_DEPS=0
 
@@ -113,3 +113,5 @@ up:: _deps-up
 	  $(MAKE) _up-app-post-check --no-print-directory; \
 	fi
 
+
+INCLUDED_COMPOSE_UP := 1

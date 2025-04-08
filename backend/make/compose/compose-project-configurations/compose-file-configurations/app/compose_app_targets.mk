@@ -6,8 +6,6 @@ SHELL := /bin/bash
 
 .PHONY: help build
 
-INCLUDED_COMPOSE_APP_TARGETS := 1
-
 # Check that the current working directory is the root of a project by verifying that the root Makefile exists.
 ifeq ($(wildcard Makefile),)
   $(error Error: Makefile not found. Please ensure you are in the root directory of your project.)
@@ -28,6 +26,25 @@ endif
 
 
 ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
+
+  _export_app_host_port:
+  ifndef APP_HOST_PORT
+	@echo "[INFO] [Export App Host Port] Exporting App Host Port..."
+	$(eval export APP_HOST_PORT = $(shell \
+	  $(COMPOSE_CMD) port $(COMPOSE_PROFILE_APP_SERVICES) $(APP_PORT) 2>/dev/null \
+	  | cut -d ':' -f2 | grep -E '^[0-9]+$$' || \
+	  devops-toolkit/backend/scripts/find_available_port.sh 8080 \
+	))
+	@echo "[INFO] [Export App Host Port] Done. App Host Port is set to: $(APP_HOST_PORT)"
+  endif
+
+  ifndef INCLUDED_COMPOSE_DEPS_TARGETS
+    include devops-toolkit/backend/make/compose/compose-project-targets/compose-deps-targets/compose_deps_targets.mk
+  endif
+
+  build:: _export_app_host_port
+
+  up:: _export_app_host_port
 
   ifeq ($(ENABLE_NGROK_FOR_DEV),1)
 
@@ -60,13 +77,8 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
     _export_lan_url_as_app_url:
     ifndef APP_URL_FROM_ANYWHERE
 		@echo "[INFO] [Export LAN URL] Exporting LAN URL as App Url From Anywhere..."
-		$(eval APP_HOST_PORT := $(shell \
-		  $(COMPOSE_CMD) port $(COMPOSE_PROFILE_APP_SERVICES) $(APP_PORT) 2>/dev/null \
-		  | cut -d ':' -f2 | grep -E '^[0-9]+$$' || \
-		  devops-toolkit/backend/scripts/find_available_port.sh 8080 \
-		))
 		$(eval export APP_URL_FROM_ANYWHERE = http://$(shell devops-toolkit/backend/scripts/get_lan_ip.sh):$(APP_HOST_PORT))
-		@echo "[INFO] [Export LAN URL] Done. App Url From Anywhere is set to: $$APP_URL_FROM_ANYWHERE"
+		@echo "[INFO] [Export LAN URL] Done. App Url From Anywhere is set to: $(APP_URL_FROM_ANYWHERE)"
     endif
 
     build:: _export_lan_url_as_app_url
@@ -85,5 +97,8 @@ print-public-app-domain::
 	@echo $$APP_URL_FROM_ANYWHERE | sed -e 's~^https://~~'
 
 ifndef INCLUDED_COMPOSE_PROJECT_TARGETS
-  include devops-toolkit/backend/make/compose/compose_project_targets.mk
+  include devops-toolkit/backend/make/compose/compose-project-targets/compose_project_targets.mk
 endif
+
+
+INCLUDED_COMPOSE_APP_TARGETS := 1
