@@ -35,7 +35,7 @@ services:
     image: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}
     container_name: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}_instance
     ports:
-      - "0:${APP_PORT:-8080}"
+      - "${APP_HOST_PORT:-8080}:${APP_PORT:-8080}"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:${APP_PORT:-8080}/health"]
       interval: 5s

@@ -35,6 +35,15 @@ ifneq ($(origin APP_NAME), file)
 	Example: APP_NAME="account-service")
 endif
 
+# Optional override configuration file variables #
+
+ifdef ENABLE_NGROK_FOR_DEV
+  ifneq ($(origin ENABLE_NGROK_FOR_DEV), file)
+	$(error ENABLE_NGROK_FOR_DEV override should not be set as a runtime/ci environment variable, should be hardcoded in the root Makefile. \
+	  Example: ENABLE_NGROK_FOR_DEV:=1)
+  endif
+endif
+
 # Optional override configuration env variables #
 
 ifdef APP_URL_FROM_COMPOSE_NETWORK
@@ -60,19 +69,25 @@ endif
 export APP_NAME
 export APP_PORT
 
+ENABLE_NGROK_FOR_DEV ?= 0
+
 ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
-  # Include ngrok as part of the project
-  COMPOSE_FILE := $(COMPOSE_FILE):devops-toolkit/backend/docker/ngrok.compose.yaml
-
-  ifndef INCLUDED_NGROK_AUTHTOKEN
-    include devops-toolkit/backend/make/utils/ngrok_authtoken.mk
-  endif
-
-  export NGROK_PORT := 4040
 
   ifndef APP_URL_FROM_COMPOSE_NETWORK
     export APP_URL_FROM_COMPOSE_NETWORK := http://$(APP_NAME):$(APP_PORT)
   endif
+
+  ifeq ($(ENABLE_NGROK_FOR_DEV),1)
+    # Include ngrok as part of the project
+    COMPOSE_FILE := $(COMPOSE_FILE):devops-toolkit/backend/docker/ngrok.compose.yaml
+	
+    ifndef INCLUDED_NGROK_AUTHTOKEN
+      include devops-toolkit/backend/make/utils/ngrok_authtoken.mk
+    endif
+
+    export NGROK_PORT := 4040
+  endif
+
 else
   # Staging and prod not supported at this time.
 endif

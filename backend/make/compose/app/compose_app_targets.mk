@@ -29,34 +29,53 @@ endif
 
 ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
 
-  _export_ngrok_url_as_app_url:
-  ifndef APP_URL_FROM_ANYWHERE
-	  @echo "[INFO] [Export Ngrok URL] Exporting ngrok URL as App Url From Anywhere..."
-	  $(eval NGROK_HOST_PORT := $(shell $(COMPOSE_CMD) port ngrok $(NGROK_PORT) | cut -d ':' -f 2))
-	  $(eval export APP_URL_FROM_ANYWHERE := $(shell devops-toolkit/backend/scripts/get_ngrok_url.sh $(NGROK_HOST_PORT)))
-	  @echo "[INFO] [Export Ngrok URL] Done. App Url From Anywhere is set to: $(APP_URL_FROM_ANYWHERE)"
-  endif
+  ifeq ($(ENABLE_NGROK_FOR_DEV),1)
 
-  # Override the COMPOSE_FILE variable to only include the ngrok compose file.
-  _up-ngrok: 
-  # Only need to start ngrok once, but the target may be invoked multiple times.
-  ifndef NGROK_UP
-	  $(eval export NGROK_UP := 1)
-	  @$(MAKE) _up-network --no-print-directory
-	  @echo "[INFO] [Up Ngrok] Starting 'ngrok' service..."
-	  @$(COMPOSE_CMD) up -d ngrok || exit 1
-  endif
-  
-  build:: _up-ngrok _export_ngrok_url_as_app_url
+    _export_ngrok_url_as_app_url:
+    ifndef APP_URL_FROM_ANYWHERE
+		@echo "[INFO] [Export Ngrok URL] Exporting ngrok URL as App Url From Anywhere..."
+		$(eval NGROK_HOST_PORT := $(shell $(COMPOSE_CMD) port ngrok $(NGROK_PORT) | cut -d ':' -f 2))
+		$(eval export APP_URL_FROM_ANYWHERE := $(shell devops-toolkit/backend/scripts/get_ngrok_url.sh $(NGROK_HOST_PORT)))
+		@echo "[INFO] [Export Ngrok URL] Done. App Url From Anywhere is set to: $(APP_URL_FROM_ANYWHERE)"
+    endif
 
-  up:: _up-ngrok _export_ngrok_url_as_app_url
+    # Override the COMPOSE_FILE variable to only include the ngrok compose file.
+    _up-ngrok: 
+    # Only need to start ngrok once, but the target may be invoked multiple times.
+    ifndef NGROK_UP
+		$(eval export NGROK_UP := 1)
+		@$(MAKE) _up-network --no-print-directory
+		@echo "[INFO] [Up Ngrok] Starting 'ngrok' service..."
+		@$(COMPOSE_CMD) up -d ngrok || exit 1
+    endif
   
-  ifndef INCLUDED_COMPOSE_PROJECT_TARGETS
-    include devops-toolkit/backend/make/compose/compose_project_targets.mk
-  endif
-  
-  print-public-app-domain:: _export_ngrok_url_as_app_url
+    build:: _up-ngrok _export_ngrok_url_as_app_url
 
+    up:: _up-ngrok _export_ngrok_url_as_app_url
+  
+    print-public-app-domain:: _export_ngrok_url_as_app_url
+
+  else
+
+    _export_lan_url_as_app_url:
+    ifndef APP_URL_FROM_ANYWHERE
+		@echo "[INFO] [Export LAN URL] Exporting LAN URL as App Url From Anywhere..."
+		$(eval APP_HOST_PORT := $(shell \
+		  $(COMPOSE_CMD) port $(COMPOSE_PROFILE_APP_SERVICES) $(APP_PORT) 2>/dev/null \
+		  | cut -d ':' -f2 | grep -E '^[0-9]+$$' || \
+		  devops-toolkit/backend/scripts/find_available_port.sh 8080 \
+		))
+		$(eval export APP_URL_FROM_ANYWHERE = http://$(shell devops-toolkit/backend/scripts/get_lan_ip.sh):$(APP_HOST_PORT))
+		@echo "[INFO] [Export LAN URL] Done. App Url From Anywhere is set to: $$APP_URL_FROM_ANYWHERE"
+    endif
+
+    build:: _export_lan_url_as_app_url
+
+    up:: _export_lan_url_as_app_url
+
+    print-public-app-domain:: _export_lan_url_as_app_url
+
+  endif
 else
 	# Staging and prod not supported at this time.
 endif
@@ -64,3 +83,7 @@ endif
 ## Prints the domain that you can use to access the app from anywhere with https
 print-public-app-domain::
 	@echo $$APP_URL_FROM_ANYWHERE | sed -e 's~^https://~~'
+
+ifndef INCLUDED_COMPOSE_PROJECT_TARGETS
+  include devops-toolkit/backend/make/compose/compose_project_targets.mk
+endif
