@@ -33,15 +33,6 @@ ifneq ($(origin APP_NAME), file)
 	Example: APP_NAME="account-service")
 endif
 
-# Optional override configuration file variables #
-
-ifdef ENABLE_NGROK_FOR_DEV
-  ifneq ($(origin ENABLE_NGROK_FOR_DEV), file)
-	$(error ENABLE_NGROK_FOR_DEV override should not be set as a runtime/ci environment variable, should be hardcoded in the root Makefile. \
-	  Example: ENABLE_NGROK_FOR_DEV:=1)
-  endif
-endif
-
 # Optional override configuration env variables #
 
 ifdef APP_URL_FROM_COMPOSE_NETWORK
