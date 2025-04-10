@@ -12,8 +12,6 @@ START_PORT="${1:-8080}"
 
 PORT="$START_PORT"
 
-echo "[INFO] Starting port search from $PORT..." >&2
-
 while true; do
   # Check if we can open a TCP connection to localhost:$PORT using Bash's /dev/tcp feature
   if (echo >/dev/tcp/127.0.0.1/"${PORT}") &>/dev/null; then
@@ -21,7 +19,6 @@ while true; do
     PORT=$((PORT + 1))
   else
     # Otherwise, it's free. Print it and exit.
-    echo "[INFO] Found available port: $PORT" >&2
     echo "$PORT"
     exit 0
   fi

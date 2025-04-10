@@ -27,6 +27,30 @@ endif
 
 ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
 
+  ifeq ($(ENABLE_NGROK_FOR_DEV),1)
+    _export_ngrok_url_as_app_url:
+    ifndef APP_URL_FROM_ANYWHERE
+		@echo "[INFO] [Export Ngrok URL] Exporting ngrok URL as App Url From Anywhere..." >&2
+		$(eval NGROK_HOST_PORT := $(shell $(COMPOSE_CMD) port ngrok $(NGROK_PORT) | cut -d ':' -f 2))
+		$(eval export APP_URL_FROM_ANYWHERE := $(shell devops-toolkit/backend/scripts/get_ngrok_url.sh $(NGROK_HOST_PORT)))
+		@echo "[INFO] [Export Ngrok URL] Done. App Url From Anywhere is set to: $(APP_URL_FROM_ANYWHERE)" >&2
+    endif
+
+    # Override the COMPOSE_FILE variable to only include the ngrok compose file.
+    _up-ngrok: 
+    # Only need to start ngrok once, but the target may be invoked multiple times.
+    ifndef NGROK_UP
+		$(eval export NGROK_UP := 1)
+		@$(MAKE) _up-network --no-print-directory
+		@echo "[INFO] [Up Ngrok] Starting 'ngrok' service..."
+		@$(COMPOSE_CMD) up -d ngrok || exit 1
+    endif
+
+    build:: _up-ngrok _export_ngrok_url_as_app_url
+    up:: _up-ngrok _export_ngrok_url_as_app_url
+    print-public-app-domain:: _export_ngrok_url_as_app_url
+  endif
+
   _export_app_host_port:
   ifndef APP_HOST_PORT
 	@echo "[INFO] [Export App Host Port] Exporting App Host Port..."
@@ -43,50 +67,19 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
   endif
 
   build:: _export_app_host_port
-
   up:: _export_app_host_port
 
-  ifeq ($(ENABLE_NGROK_FOR_DEV),1)
-
-    _export_ngrok_url_as_app_url:
-    ifndef APP_URL_FROM_ANYWHERE
-		@echo "[INFO] [Export Ngrok URL] Exporting ngrok URL as App Url From Anywhere..."
-		$(eval NGROK_HOST_PORT := $(shell $(COMPOSE_CMD) port ngrok $(NGROK_PORT) | cut -d ':' -f 2))
-		$(eval export APP_URL_FROM_ANYWHERE := $(shell devops-toolkit/backend/scripts/get_ngrok_url.sh $(NGROK_HOST_PORT)))
-		@echo "[INFO] [Export Ngrok URL] Done. App Url From Anywhere is set to: $(APP_URL_FROM_ANYWHERE)"
-    endif
-
-    # Override the COMPOSE_FILE variable to only include the ngrok compose file.
-    _up-ngrok: 
-    # Only need to start ngrok once, but the target may be invoked multiple times.
-    ifndef NGROK_UP
-		$(eval export NGROK_UP := 1)
-		@$(MAKE) _up-network --no-print-directory
-		@echo "[INFO] [Up Ngrok] Starting 'ngrok' service..."
-		@$(COMPOSE_CMD) up -d ngrok || exit 1
-    endif
-  
-    build:: _up-ngrok _export_ngrok_url_as_app_url
-
-    up:: _up-ngrok _export_ngrok_url_as_app_url
-  
-    print-public-app-domain:: _export_ngrok_url_as_app_url
-
-  else
-
+  ifeq ($(ENABLE_NGROK_FOR_DEV),0)
     _export_lan_url_as_app_url:
     ifndef APP_URL_FROM_ANYWHERE
-		@echo "[INFO] [Export LAN URL] Exporting LAN URL as App Url From Anywhere..."
+		@echo "[INFO] [Export LAN URL] Exporting LAN URL as App Url From Anywhere..." >&2
 		$(eval export APP_URL_FROM_ANYWHERE = http://$(shell devops-toolkit/backend/scripts/get_lan_ip.sh):$(APP_HOST_PORT))
-		@echo "[INFO] [Export LAN URL] Done. App Url From Anywhere is set to: $(APP_URL_FROM_ANYWHERE)"
+		@echo "[INFO] [Export LAN URL] Done. App Url From Anywhere is set to: $(APP_URL_FROM_ANYWHERE)" >&2
     endif
 
     build:: _export_lan_url_as_app_url
-
     up:: _export_lan_url_as_app_url
-
     print-public-app-domain:: _export_lan_url_as_app_url
-
   endif
 else
 	# Staging and prod not supported at this time.
