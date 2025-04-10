@@ -22,9 +22,9 @@ ifneq ($(origin APP_NAME), file)
 	Example: APP_NAME="account-service")
 endif
 
-ifneq ($(origin BACKEND_PATH), file)
-  $(error BACKEND_PATH is either not set or set as a runtime/ci environment variable, should be hardcoded in the root Makefile. \
-	Example: BACKEND_PATH="../meta-service")
+ifneq ($(origin BACKEND_GATEWAY_PATH), file)
+  $(error BACKEND_GATEWAY_PATH is either not set or set as a runtime/ci environment variable, should be hardcoded in the root Makefile. \
+	Example: BACKEND_GATEWAY_PATH="../meta-service")
 endif
 
 
@@ -93,17 +93,17 @@ check:
 ## Up the backend
 up-backend:
 	@echo "[INFO] [Up Backend] Starting backend for ENV=$(ENV)..."
-	@$(MAKE) -C $(BACKEND_PATH) up PRINT_INFO=0
+	@$(MAKE) -C $(BACKEND_GATEWAY_PATH) up PRINT_INFO=0
 
 ## Down the backend
 down-backend:
 	@echo "[INFO] [Down Backend] Stopping backend for ENV=$(ENV)..."
-	@$(MAKE) -C $(BACKEND_PATH) down PRINT_INFO=0
+	@$(MAKE) -C $(BACKEND_GATEWAY_PATH) down PRINT_INFO=0
 
 ## Clean the backend
 clean-backend:
 	@echo "[INFO] [Clean Backend] Cleaning backend for ENV=$(ENV)..."
-	@$(MAKE) -C $(BACKEND_PATH) clean PRINT_INFO=0
+	@$(MAKE) -C $(BACKEND_GATEWAY_PATH) clean PRINT_INFO=0
 
 # Export the current backend domain based on the environment
 _export_current_backend_domain:
@@ -112,7 +112,7 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV)))
 	# Will cause the well_known retrieval to fail silently
 	@echo 'export CURRENT_BACKEND_DOMAIN="example.com"'
 else ifneq (,$(filter $(ENV),$(DEV_ENV)))
-	@echo 'export CURRENT_BACKEND_DOMAIN="$$($(MAKE) -C $(BACKEND_PATH) print-https-backend-domain --no-print-directory PRINT_INFO=0)"'
+	@echo 'export CURRENT_BACKEND_DOMAIN="$$($(MAKE) -C $(BACKEND_GATEWAY_PATH) print-public-app-domain --no-print-directory PRINT_INFO=0)"'
 else ifneq (,$(filter $(ENV),$(STAGING_ENV)))
 	# Staging not supported yet
 else ifneq (,$(filter $(ENV),$(PROD_ENV)))
@@ -249,6 +249,6 @@ help::
 	@echo "--------------------------------------------------"
 	@echo "ENV: $(ENV)"
 	@echo "VERBOSE: $(VERBOSE)"
-	@echo "BACKEND_PATH: $(BACKEND_PATH)"
+	@echo "BACKEND_GATEWAY_PATH: $(BACKEND_GATEWAY_PATH)"
 	@echo
 
