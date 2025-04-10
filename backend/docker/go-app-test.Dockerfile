@@ -35,6 +35,8 @@ ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
 ARG LD_SERVER_CONTEXT_KEY
 ARG LD_SERVER_CONTEXT_KIND
+ARG UNIQUE_RUN_NUMBER
+ARG UNIQUE_RUNNER_ID
 
 # Validate the configuration
 RUN test -n "${APP_NAME}" || ( \
@@ -61,6 +63,14 @@ RUN test -n "${LD_SERVER_CONTEXT_KIND}" || ( \
   echo "Error: LD_SERVER_CONTEXT_KIND is not set! Use --build-arg LD_SERVER_CONTEXT_KIND=xxx" && \
   exit 1 \
 );
+RUN test -n "${UNIQUE_RUN_NUMBER}" || ( \
+  echo "Error: UNIQUE_RUN_NUMBER is not set! Use --build-arg UNIQUE_RUN_NUMBER=xxx" && \
+  exit 1 \
+);
+RUN test -n "${UNIQUE_RUNNER_ID}" || ( \
+  echo "Error: UNIQUE_RUNNER_ID is not set! Use --build-arg UNIQUE_RUNNER_ID=xxx" && \
+  exit 1 \
+);
 
 #######################################
 # Stage 3: Integration Test Builder 
@@ -73,6 +83,8 @@ ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
 ARG LD_SERVER_CONTEXT_KEY
 ARG LD_SERVER_CONTEXT_KIND
+ARG UNIQUE_RUN_NUMBER
+ARG UNIQUE_RUNNER_ID
 
 # Not in builder-config-validator stage, as this changes somewhat often, 
 # and we don't want to invalidate the builder stage cache for other builders every time we change it
@@ -92,6 +104,8 @@ RUN set -euxo pipefail; \
     go test -c -tags "${ENV_TRANSFORMED},integration" \
       -ldflags "\
         -X 'github.com/poofware/${APP_NAME}/internal/config.AppName=${APP_NAME}' \
+        -X 'github.com/poofware/${APP_NAME}/internal/config.UniqueRunNumber=${UNIQUE_RUN_NUMBER}' \
+        -X 'github.com/poofware/${APP_NAME}/internal/config.UniqueRunnerID=${UNIQUE_RUNNER_ID}' \
         -X 'github.com/poofware/${APP_NAME}/internal/config.LDServerContextKey=${LD_SERVER_CONTEXT_KEY}' \
         -X 'github.com/poofware/${APP_NAME}/internal/config.LDServerContextKind=${LD_SERVER_CONTEXT_KIND}' \
         -X 'github.com/poofware/go-utils.HCPOrgID=${HCP_ORG_ID}' \
