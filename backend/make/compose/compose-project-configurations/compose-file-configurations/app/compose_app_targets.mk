@@ -53,13 +53,11 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
 
   _export_app_host_port:
   ifndef APP_HOST_PORT
-	@echo "[INFO] [Export App Host Port] Exporting App Host Port..."
 	$(eval export APP_HOST_PORT = $(shell \
 	  $(COMPOSE_CMD) port $(COMPOSE_PROFILE_APP_SERVICES) $(APP_PORT) 2>/dev/null \
 	  | cut -d ':' -f2 | grep -E '^[0-9]+$$' || \
 	  devops-toolkit/backend/scripts/find_available_port.sh 8080 \
 	))
-	@echo "[INFO] [Export App Host Port] Done. App Host Port is set to: $(APP_HOST_PORT)"
   endif
 
   ifndef INCLUDED_COMPOSE_DEPS_TARGETS
