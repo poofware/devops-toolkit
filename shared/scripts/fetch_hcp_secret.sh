@@ -54,8 +54,12 @@ if [ -n "$SECRET_NAME" ]; then
     echo "$RESPONSE" >&2
     exit 1
   fi
-  # Print as simple JSON with key=SECRET_NAME, value=secret_value
-  echo "{\"${SECRET_NAME}\": \"${SECRET_VALUE}\"}"
+
+  if echo "$SECRET_VALUE" | jq -e . >/dev/null 2>&1; then
+    echo "{\"${SECRET_NAME}\": $SECRET_VALUE}"
+  else
+    echo "{\"${SECRET_NAME}\": \"${SECRET_VALUE}\"}"
+  fi
 else
   # Parse out all secrets into one JSON object
   ALL_SECRETS="$(echo "$RESPONSE" | jq -r '

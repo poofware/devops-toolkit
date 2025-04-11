@@ -30,11 +30,6 @@ SECRET_FIELD_NAME="$1"
 
 echo "[INFO] Fetching SECRETS_JSON from HCP app '$HCP_APP_NAME'..." >&2
 
-# 1. Fetch the SECRETS_JSON secret from HCP by calling the existing script.
-#    That script returns JSON in the format: 
-#      {"SECRETS_JSON":"{\"API_KEY\":\"...\",\"DB_PASSWORD\":\"...\"}"}
-#
-#    So we will parse out the raw JSON string from "SECRETS_JSON".
 RAW_RESPONSE="$("$(dirname "${BASH_SOURCE[0]}")/fetch_hcp_secret.sh" SECRETS_JSON)"
 
 # 2. Extract the raw JSON string from the RAW_RESPONSE JSON.
@@ -60,7 +55,6 @@ if [ -n "$SECRET_FIELD_NAME" ]; then
 
   echo "[INFO] Fetched secret '$SECRET_FIELD_NAME' successfully." >&2
 
-  # Print out { "SECRET_FIELD_NAME": "SECRET_FIELD_VALUE" }
   echo "{\"${SECRET_FIELD_NAME}\": \"${SECRET_FIELD_VALUE}\"}"
 else
   
