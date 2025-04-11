@@ -24,21 +24,18 @@ endif
 # Targets
 # ----------------------
 
-_deps-%:
+_deps-%::
 	@if [ "$(WITH_DEPS)" -eq 1 ] && [ -n "$(DEPS)" ]; then \
 		for dep in $(DEPS); do \
-			dep_path=$${dep##*:}; \
+			dep_path=$$(echo $$dep | cut -d: -f2); \
+			dep_port=$$(echo $$dep | cut -d: -f3); \
 			if [ ! -d "$$dep_path" ]; then \
 				echo "[ERROR] [Deps-$*] Dependency '$$dep_path' found in DEPS does not exist."; \
 				exit 1; \
 			fi; \
-			echo "[INFO] [Deps-$*] Running 'make $* WITH_DEPS=1' in $$dep_path..."; \
-			pass_through_vars="WITH_DEPS=1"; \
-			for var in $(DEPS_VAR_PASSTHROUGH); do \
-				pass_through_vars="$$pass_through_vars $$var=$${!var}"; \
-			done; \
-			env -i HOME="$(HOME)" TERM="$(TERM)" $$pass_through_vars \
-				$(MAKE) -C $$dep_path $* || exit $$?; \
+			echo "[INFO] [Deps-$*] Running 'make $* -C $$dep_path' with passthrough vars and APP_PORT=$$dep_port..."; \
+			env -i HOME="$(HOME)" TERM="$(TERM)" $(foreach var,$(DEPS_PASSTHROUGH_VARS),$(var)="$($(var))") \
+				$(MAKE) -C $$dep_path $* APP_PORT=$$dep_port || exit $$?; \
 		done; \
 	fi
 

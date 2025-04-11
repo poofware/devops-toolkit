@@ -61,14 +61,15 @@ ifeq ($(WITH_DEPS),1)
   # Dynamically define DEP_* variables allowing overrides from environment
   ifneq ($(DEPS),"")
     $(foreach dep, $(DEPS), \
-  	$(eval dep_key := $(word 1, $(subst :, ,$(dep)))) \
-  	$(eval dep_val := $(word 2, $(subst :, ,$(dep)))) \
-  	$(eval export $(dep_key) ?= $(dep_val)) \
+      $(eval dep_key := $(word 1, $(subst :, ,$(dep)))) \
+      $(eval dep_val := $(word 2, $(subst :, ,$(dep)))) \
+      $(eval dep_port := $(word 3, $(subst :, ,$(dep)))) \
+      $(eval export $(dep_key) ?= $(dep_val)) \
     )
-  
-    # Now rebuild DEPS from the possibly overridden values
+
+    # Rebuild DEPS preserving overridden values and non-overridable ports
     DEPS := $(foreach dep, $(DEPS), \
-  	$(word 1, $(subst :, ,$(dep))):$($(word 1, $(subst :, ,$(dep)))) \
+      $(word 1, $(subst :, ,$(dep))):$($(word 1, $(subst :, ,$(dep)))):$(word 3, $(subst :, ,$(dep))) \
     )
   endif
 endif
@@ -80,30 +81,30 @@ ifeq ($(PRINT_INFO),1)
 
   ifeq ($(WITH_DEPS),1)
     # Functions in make should always use '=', unless precomputing the value without dynamic args
-    print-dep = $(info   $(1) = $($(1)))
+    print-dep = $(info   $(1) = $($(1)), port = $(2))
 
     $(info --------------------------------------------------)
     $(info [INFO] WITH_DEPS is enabled. Effective dependency projects being used:)
     $(info --------------------------------------------------)
-    # Print effective DEP_* values
+    # Print effective DEP_* values and ports
     ifneq ($(DEPS),"")
       $(foreach dep, $(DEPS), \
-        $(call print-dep,$(word 1, $(subst :, ,$(dep)))) \
+        $(call print-dep,$(word 1, $(subst :, ,$(dep))),$(word 3, $(subst :, ,$(dep)))) \
       )
     endif
     $(info )
     $(info --------------------------------------------------)
-    $(info [INFO] To override, make with VAR=value)
+    $(info [INFO] To override paths, make with VAR=value (ports are not overridable))
     $(info )
   endif
 endif
 
-DEPS_VAR_PASSTHROUGH := HCP_TOKEN_ENC_KEY
-DEPS_VAR_PASSTHROUGH += HCP_ENCRYPTED_API_TOKEN
-DEPS_VAR_PASSTHROUGH += ENV
-DEPS_VAR_PASSTHROUGH += UNIQUE_RUNNER_ID
-DEPS_VAR_PASSTHROUGH += UNIQUE_RUN_NUMBER
-DEPS_VAR_PASSTHROUGH += PRINT_INFO
+DEPS_PASSTHROUGH_VARS += HCP_TOKEN_ENC_KEY
+DEPS_PASSTHROUGH_VARS += HCP_ENCRYPTED_API_TOKEN
+DEPS_PASSTHROUGH_VARS += ENV
+DEPS_PASSTHROUGH_VARS += UNIQUE_RUNNER_ID
+DEPS_PASSTHROUGH_VARS += UNIQUE_RUN_NUMBER
+DEPS_PASSTHROUGH_VARS += PRINT_INFO
 
 ifndef INCLUDED_ENV_CONFIGURATION
   include devops-toolkit/shared/make/utils/env_configuration.mk

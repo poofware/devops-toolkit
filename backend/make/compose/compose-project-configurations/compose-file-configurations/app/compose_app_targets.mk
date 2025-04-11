@@ -15,6 +15,11 @@ ifndef INCLUDED_COMPOSE_APP_CONFIGURATION
   $(error [ERROR] [Compose App Configuration] The Compose App Configuration must be included before any Compose App Targets.)
 endif
 
+ifdef INCLUDED_COMPOSE_DEPS_TARGETS
+  $(error [ERROR] [Compose App Configuration] The Compose Deps Targets must not be included before this file. \
+	This file controls the inclusion of the deps targets strategically.)
+endif
+
 ifdef INCLUDED_COMPOSE_PROJECT_TARGETS
   $(error [ERROR] [Compose App Configuration] The Compose Project Targets must not be included before this file.)
 endif
@@ -24,8 +29,17 @@ endif
 # Targets
 # --------------------------------
 
-
 ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
+  ifeq ($(APP_IS_GATEWAY),1)
+    # If the app is a gateway to its dependencies, we need to passthrough some key network configurations to the deps targets.
+	# This ensures that the deps of the gateway app use the gateways addresses. This is important for obvious reasons.
+    DEPS_PASSTHROUGH_VARS += APP_URL_FROM_COMPOSE_NETWORK
+    DEPS_PASSTHROUGH_VARS += APP_URL_FROM_ANYWHERE
+  else
+    # If the app is not a gateway to its dependencies, we need to include the deps targets prior to the app targets.
+    # This ensures that the app targets are run after the deps are built/up, ensuring no interference with the deps and vice versa.
+    include devops-toolkit/backend/make/compose/compose-project-targets/compose-deps-targets/compose_deps_targets.mk
+  endif
 
   ifeq ($(ENABLE_NGROK_FOR_DEV),1)
     _export_ngrok_url_as_app_url:
@@ -53,21 +67,17 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
 
   _export_app_host_port:
   ifndef APP_HOST_PORT
-	$(eval export APP_HOST_PORT = $(shell \
-	  $(COMPOSE_CMD) port $(COMPOSE_PROFILE_APP_SERVICES) $(APP_PORT) 2>/dev/null \
-	  | cut -d ':' -f2 | grep -E '^[0-9]+$$' || \
-	  devops-toolkit/backend/scripts/find_available_port.sh 8080 \
-	))
-  endif
-
-  ifndef INCLUDED_COMPOSE_DEPS_TARGETS
-    include devops-toolkit/backend/make/compose/compose-project-targets/compose-deps-targets/compose_deps_targets.mk
+	  $(eval export APP_HOST_PORT := $(shell \
+	    $(COMPOSE_CMD) port $(COMPOSE_PROFILE_APP_SERVICES) $(APP_PORT) 2>/dev/null \
+	    | cut -d ':' -f2 | grep -E '^[0-9]+$$' || \
+	    devops-toolkit/backend/scripts/find_available_port.sh 8080 \
+	  ))
   endif
 
   build:: _export_app_host_port
   up:: _export_app_host_port
 
-  ifeq ($(ENABLE_NGROK_FOR_DEV),0)
+  ifneq ($(ENABLE_NGROK_FOR_DEV),1)
     _export_lan_url_as_app_url:
     ifndef APP_URL_FROM_ANYWHERE
 		@echo "[INFO] [Export LAN URL] Exporting LAN URL as App Url From Anywhere..." >&2
@@ -77,8 +87,12 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
 
     build:: _export_lan_url_as_app_url
     up:: _export_lan_url_as_app_url
-    print-public-app-domain:: _export_lan_url_as_app_url
+    print-public-app-domain:: _export_app_host_port _export_lan_url_as_app_url
   endif
+
+  # If the app is a gateway to apps that are in deps, we need to include the deps targets after the app targets.
+  # This ensures that gateway app targets run first, causing the dependency apps to reuse the same exported network configurations.
+
 else
 	# Staging and prod not supported at this time.
 endif
