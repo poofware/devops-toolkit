@@ -125,11 +125,7 @@ decrypt_cached_token() {
 # If there's a cache file, check its modification time first
 if [[ -f "${CACHE_FILE}" ]]; then
   # Cross-platform approach for file modification time
-  if [[ "$(uname)" == "Darwin" ]]; then
-    last_modified=$(stat -f %m "${CACHE_FILE}")
-  else
-    last_modified=$(stat -c %Y "${CACHE_FILE}")
-  fi
+  last_modified=$(stat -c %Y "${CACHE_FILE}")
 
   current_time=$(date +%s)
   file_age=$(( current_time - last_modified ))
