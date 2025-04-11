@@ -21,7 +21,7 @@ vendor.stamp: go.mod go.sum
 	@if [ -z "$$(ls -A vendor)" ]; then \
 		echo "[WARN] [Vendor] Vendoring is disabled due to an empty vendor directory. Enable by running 'go mod vendor' once."; \
 	else \
-		@$(MAKE) --no-print-directory _ensure-go
+		$(MAKE) --no-print-directory _ensure-go
 		echo "[INFO] [Vendor] Vendoring is enabled due to the presence of a non-empty vendor directory."; \
 		echo "[INFO] [Vendor] Updating vendor due to changes in go.mod or go.sum..."; \
 		go mod vendor; \
