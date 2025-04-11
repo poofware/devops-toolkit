@@ -35,7 +35,7 @@ echo "[INFO] Fetching SECRETS_JSON from HCP app '$HCP_APP_NAME'..." >&2
 #      {"SECRETS_JSON":"{\"API_KEY\":\"...\",\"DB_PASSWORD\":\"...\"}"}
 #
 #    So we will parse out the raw JSON string from "SECRETS_JSON".
-RAW_RESPONSE="$(./devops-toolkit/shared/scripts/fetch_hcp_secret.sh SECRETS_JSON)"
+RAW_RESPONSE="$("$(dirname "${BASH_SOURCE[0]}")/fetch_hcp_secret.sh" SECRETS_JSON)"
 
 # 2. Extract the raw JSON string from the RAW_RESPONSE JSON.
 SECRETS_JSON="$(echo "$RAW_RESPONSE" | jq -r '.SECRETS_JSON // empty')"

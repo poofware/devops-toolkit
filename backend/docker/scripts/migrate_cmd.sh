@@ -19,7 +19,7 @@ export HCP_API_TOKEN="$(decrypt_token "${HCP_ENCRYPTED_API_TOKEN}")"
 echo "[INFO] [Migrate Container] Using decrypted HCP_API_TOKEN to fetch 'DB_URL' from HCP..."
 
 # Now fetch the single secret for the DB URL
-PAYLOAD="$(./fetch_hcp_secret.sh DB_URL)"
+PAYLOAD="$(./fetch_hcp_secret_from_secrets_json.sh DB_URL)"
 DB_URL="$(echo "$PAYLOAD" | jq -r '.DB_URL // empty')"
 
 if [ -z "$DB_URL" ] || [ "$DB_URL" = "null" ]; then
