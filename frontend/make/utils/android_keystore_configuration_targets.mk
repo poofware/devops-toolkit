@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# Android Keystore Setup
+# Android Keystore Setup Targets
 # -----------------------------------------------------------------------------
 # Makefile snippet to fetch Android Keystore from secrets (APP_SECRETS_JSON),
 # decode it into a file, and export environment variables for Gradle.
@@ -10,8 +10,6 @@
 SHELL := /bin/bash
 
 .PHONY: _export_android_keystore_vars
-
-INCLUDED_ANDROID_KEYSTORE_CONFIGURATION := 1
 
 
 # ------------------------------
@@ -37,3 +35,6 @@ _export_android_keystore_vars:
 	@echo "[INFO] [Export Android Keystore Vars] Android keystore environment variables exported."
 
 _android_keystore_configuration: _app_secrets_json /tmp/upload-keystore.p12 _export_android_keystore_vars
+
+
+INCLUDED_ANDROID_KEYSTORE_CONFIGURATION_TARGETS := 1

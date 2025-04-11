@@ -1,11 +1,9 @@
 # -----------------------------------------------------------------------------
-# Google Maps Configuration
+# Google Maps Configuration Targets
 # -----------------------------------------------------------------------------
 SHELL := /bin/bash
 
 .PHONY: _export_gmaps_vars
-
-INCLUDED_GMAPS_CONFIGURATION := 1
 
 
 # ------------------------------
@@ -22,3 +20,6 @@ _export_gmaps_vars:
 	@echo "[INFO] [Export Google Maps Vars] Google Maps environment variables exported."
 
 _gmaps_configuration: _app_secrets_json _export_gmaps_vars
+
+
+INCLUDED_GMAPS_CONFIGURATION_TARGETS := 1
