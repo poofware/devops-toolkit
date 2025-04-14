@@ -39,7 +39,9 @@ fi
 for PKG in $PACKAGES; do
   FULLNAME="github.com/poofware/$PKG"
   echo "[INFO] [Update] go get $FULLNAME@$BRANCH"
-  go get "$FULLNAME@$BRANCH"
+  if ! go get "$FULLNAME@$BRANCH"; then
+    echo "[WARN] [Update] Failed to fetch $FULLNAME@$BRANCH. Continuing..."
+  fi
 done
 
 # 4) Download all modules after updating references
