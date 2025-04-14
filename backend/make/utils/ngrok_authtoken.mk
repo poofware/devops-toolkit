@@ -6,6 +6,14 @@
 
 SHELL := /bin/bash
 
-INCLUDED_NGROK_AUTHTOKEN := 1
 
-export NGROK_AUTHTOKEN := 2v90FpXFnLir5EBXVIf6XI6Xi2c_47g5fXsoRjHHyRVGH5X1n
+# ---------------------------------
+# Internal Variable Declaration
+# ---------------------------------
+
+ifndef NGROK_AUTHTOKEN
+  export NGROK_AUTHTOKEN := 2v90FpXFnLir5EBXVIf6XI6Xi2c_47g5fXsoRjHHyRVGH5X1n
+endif
+
+
+INCLUDED_NGROK_AUTHTOKEN := 1

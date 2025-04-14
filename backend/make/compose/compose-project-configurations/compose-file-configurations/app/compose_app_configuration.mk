@@ -74,6 +74,8 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
       include devops-toolkit/backend/make/utils/ngrok_authtoken.mk
     endif
 
+    DEPS_PASSTHROUGH_VARS += NGROK_AUTHTOKEN
+
     export NGROK_PORT := 4040
   endif
 
