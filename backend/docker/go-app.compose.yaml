@@ -89,7 +89,7 @@ services:
       dockerfile: devops-toolkit/backend/docker/go-app.Dockerfile
       target: health-check-runner
       args:
-        APP_URL_FROM_COMPOSE_NETWORK: ${APP_URL_FROM_COMPOSE_NETWORK?Docker Compose Config Error! APP_URL_FROM_COMPOSE_NETWORK is not set!}
+        APP_URL_FROM_ANYWHERE: ${APP_URL_FROM_ANYWHERE?Docker Compose Config Error! APP_URL_FROM_ANYWHERE is not set!}
     image: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-health-check
     container_name: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-health-check_instance
     profiles:

@@ -25,9 +25,9 @@ ifndef INCLUDED_COMPOSE_DEPS_DOWN
 endif
 
 _down-network:
-	@echo "[INFO] [Down] Removing network '$(COMPOSE_NETWORK_NAME)'..."
-	@docker network rm $(COMPOSE_NETWORK_NAME) && echo "[INFO] [Down] Network '$(COMPOSE_NETWORK_NAME)' successfully removed." || \
-		echo "[WARN] [Down] 'network rm $(COMPOSE_NETWORK_NAME)' failed (network most likely already removed or still being used) Ignoring..."
+	@echo "[INFO] [Down-Network] Removing network '$(COMPOSE_NETWORK_NAME)'..."
+	@docker network rm $(COMPOSE_NETWORK_NAME) && echo "[INFO] [Down-Network] Network '$(COMPOSE_NETWORK_NAME)' successfully removed." || \
+		echo "[WARN] [Down-Network] 'network rm $(COMPOSE_NETWORK_NAME)' failed (network most likely already removed or still being used) Ignoring..."
 
 
 ## Shuts down all containers (WITH_DEPS=1 to 'down' dependency projects as well)

@@ -110,14 +110,14 @@ FROM alpine:latest AS health-check-runner
 
 RUN apk add --no-cache curl bash;
 
-ARG APP_URL_FROM_COMPOSE_NETWORK
+ARG APP_URL_FROM_ANYWHERE
 
-RUN test -n "${APP_URL_FROM_COMPOSE_NETWORK}" || ( \
-  echo "Error: APP_URL_FROM_COMPOSE_NETWORK is not set! Use --build-arg APP_URL_FROM_COMPOSE_NETWORK=xxx" && \
+RUN test -n "${APP_URL_FROM_ANYWHERE}" || ( \
+  echo "Error: APP_URL_FROM_ANYWHERE is not set! Use --build-arg APP_URL_FROM_ANYWHERE=xxx" && \
   exit 1 \
 );
 
-ENV APP_URL_FROM_COMPOSE_NETWORK=${APP_URL_FROM_COMPOSE_NETWORK}
+ENV APP_URL_FROM_ANYWHERE=${APP_URL_FROM_ANYWHERE}
 
 WORKDIR /root/
 COPY devops-toolkit/backend/scripts/health_check.sh health_check.sh

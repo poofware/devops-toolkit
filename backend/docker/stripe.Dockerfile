@@ -16,7 +16,6 @@ RUN apk update \
       ca-certificates;
 
 ARG ENV
-ARG APP_URL_FROM_COMPOSE_NETWORK
 ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
 ARG HCP_ENCRYPTED_API_TOKEN
@@ -24,10 +23,6 @@ ARG HCP_ENCRYPTED_API_TOKEN
 # Validate build-args that we'll rely on at runtime
 RUN test -n "${ENV}" || ( \
   echo "Error: ENV is not set! Use --build-arg ENV=xxx" && \
-  exit 1 \
-);
-RUN test -n "${APP_URL_FROM_COMPOSE_NETWORK}" || ( \
-  echo "Error: APP_URL_FROM_COMPOSE_NETWORK is not set! Use --build-arg APP_URL_FROM_COMPOSE_NETWORK=xxx" && \
   exit 1 \
 );
 RUN test -n "${HCP_ORG_ID}" || ( \
@@ -44,7 +39,6 @@ RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
 );
 
 ENV ENV=${ENV}
-ENV APP_URL_FROM_COMPOSE_NETWORK=${APP_URL_FROM_COMPOSE_NETWORK}
 ENV HCP_ORG_ID=${HCP_ORG_ID}
 ENV HCP_PROJECT_ID=${HCP_PROJECT_ID}
 ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
@@ -63,16 +57,22 @@ RUN chmod +x encryption.sh fetch_hcp_secret.sh;
 #######################################
 FROM runner-config-validator AS stripe-webhook-check-runner
 
+ARG APP_URL_FROM_COMPOSE_NETWORK
 ARG STRIPE_WEBHOOK_CHECK_ROUTE
 ARG APP_NAME
 ARG UNIQUE_RUN_NUMBER
 ARG UNIQUE_RUNNER_ID
 
+ENV APP_URL_FROM_COMPOSE_NETWORK=${APP_URL_FROM_COMPOSE_NETWORK}
 ENV STRIPE_WEBHOOK_CHECK_ROUTE=${STRIPE_WEBHOOK_CHECK_ROUTE}
 ENV APP_NAME=${APP_NAME}
 ENV UNIQUE_RUN_NUMBER=${UNIQUE_RUN_NUMBER}
 ENV UNIQUE_RUNNER_ID=${UNIQUE_RUNNER_ID}
 
+RUN test -n "${APP_URL_FROM_COMPOSE_NETWORK}" || ( \
+  echo "Error: APP_URL_FROM_COMPOSE_NETWORK is not set! Use --build-arg APP_URL_FROM_COMPOSE_NETWORK=xxx" && \
+  exit 1 \
+);
 RUN test -n "${STRIPE_WEBHOOK_CHECK_ROUTE}" || ( \
   echo "Error: STRIPE_WEBHOOK_CHECK_ROUTE is not set! Use --build-arg STRIPE_WEBHOOK_CHECK_ROUTE=xxx" && \
   exit 1 \
@@ -105,6 +105,7 @@ FROM runner-config-validator AS stripe-listener-runner
 ARG STRIPE_WEBHOOK_CONNECTED_EVENTS
 ARG STRIPE_WEBHOOK_PLATFORM_EVENTS
 ARG STRIPE_WEBHOOK_ROUTE
+ARG APP_URL_FROM_ANYWHERE
 
 RUN test -n "${STRIPE_WEBHOOK_CONNECTED_EVENTS}" || ( \
   echo "Error: STRIPE_WEBHOOK_CONNECTED_EVENTS is not set! Use --build-arg STRIPE_WEBHOOK_CONNECTED_EVENTS=xxx" && \
@@ -118,10 +119,15 @@ RUN test -n "${STRIPE_WEBHOOK_ROUTE}" || ( \
   echo "Error: STRIPE_WEBHOOK_ROUTE is not set! Use --build-arg STRIPE_WEBHOOK_ROUTE=xxx" && \
   exit 1 \
 );
+RUN test -n "${APP_URL_FROM_ANYWHERE}" || ( \
+  echo "Error: APP_URL_FROM_ANYWHERE is not set! Use --build-arg APP_URL_FROM_ANYWHERE=xxx" && \
+  exit 1 \
+);
 
 ENV STRIPE_WEBHOOK_CONNECTED_EVENTS="${STRIPE_WEBHOOK_CONNECTED_EVENTS}"
 ENV STRIPE_WEBHOOK_PLATFORM_EVENTS="${STRIPE_WEBHOOK_PLATFORM_EVENTS}"
 ENV STRIPE_WEBHOOK_ROUTE=${STRIPE_WEBHOOK_ROUTE}
+ENV APP_URL_FROM_ANYWHERE=${APP_URL_FROM_ANYWHERE}
 
 COPY devops-toolkit/backend/docker/scripts/stripe_listener_runner_entrypoint.sh stripe_listener_runner_entrypoint.sh
 

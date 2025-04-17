@@ -1,12 +1,12 @@
 #!/bin/bash
 set -e
 
-: "${APP_URL_FROM_COMPOSE_NETWORK:?APP_URL_FROM_COMPOSE_NETWORK env var is required}"
+: "${APP_URL_FROM_ANYWHERE:?APP_URL_FROM_ANYWHERE env var is required}"
 
 # Health check loop: tries up to 10 times to confirm the service is up
 n=10
-while ! curl -sf "$APP_URL_FROM_COMPOSE_NETWORK/health" && [ $((n--)) -gt 0 ]; do
-  echo "Waiting for service health from $APP_URL_FROM_COMPOSE_NETWORK..."
+while ! curl -sf "$APP_URL_FROM_ANYWHERE/health" && [ $((n--)) -gt 0 ]; do
+  echo "Waiting for service health from $APP_URL_FROM_ANYWHERE..."
   sleep 2
 done
 

@@ -82,10 +82,10 @@ _up-app:
 	fi
 
 _up-network:
-	@echo "[INFO] [Up] Creating network '$(COMPOSE_NETWORK_NAME)'..."
+	@echo "[INFO] [Up-Network] Creating network '$(COMPOSE_NETWORK_NAME)'..."
 	@docker network create $(COMPOSE_NETWORK_NAME) && \
-		echo "[INFO] [Up] Network '$(COMPOSE_NETWORK_NAME)' successfully created." || \
-		echo "[WARN] [Up] 'docker network create $(COMPOSE_NETWORK_NAME)' failed (network most likely already exists). Ignoring..."
+		echo "[INFO] [Up-Network] Network '$(COMPOSE_NETWORK_NAME)' successfully created." || \
+		echo "[WARN] [Up-Network] 'docker network create $(COMPOSE_NETWORK_NAME)' failed (network most likely already exists). Ignoring..."
 	
 
 ## Starts services for all compose profiles in order (EXCLUDE_COMPOSE_PROFILE_APP=1 to exclude profile 'app' from 'up' - EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK=1 to exclude profile 'app_post_check' from 'up' - WITH_DEPS=1 to 'up' dependency projects as well)
