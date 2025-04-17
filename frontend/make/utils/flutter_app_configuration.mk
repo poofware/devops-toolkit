@@ -55,8 +55,6 @@ VERBOSE_FLAG := $(if $(filter 1,$(VERBOSE)),--verbose,)
 define run_command_with_backend
 	if [ $(AUTO_LAUNCH_BACKEND) -eq 1 ]; then \
 		echo "[INFO] [Auto Launch Backend] Auto launching backend..."; \
-		echo "[INFO] [Auto Launch Backend] Calling 'down-backend' target to ensure clean state..."; \
-		$(MAKE) down-backend --no-print-directory; \
 		echo "[INFO] [Auto Launch Backend] Calling 'up-backend' target..."; \
 		$(MAKE) up-backend --no-print-directory; \
 		$(1) || exit 1; \

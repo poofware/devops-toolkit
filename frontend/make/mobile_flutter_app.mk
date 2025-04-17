@@ -83,6 +83,8 @@ build-ios: logs _ios_app_configuration
 ## CI iOS pipeline: Starts backend, runs both integration and e2e tests, and then shuts down backend
 ci-ios::
 	@echo "[INFO] [CI] Starting pipeline..."
+	@echo "[INFO] [CI] Calling 'down-backend' target to ensure clean state..."
+	@$(MAKE) down-backend --no-print-directory
 	@echo "[INFO] [CI] Calling 'integration-test-ios' target..."
 	@$(MAKE) integration-test-ios --no-print-directory AUTO_LAUNCH_BACKEND=1
 	@# $(MAKE) e2e-test-ios --no-print-directory # TODO: implement e2e tests
@@ -93,6 +95,8 @@ ci-ios::
 ## CI Android pipeline: Starts backend, runs both integration and e2e tests, and then shuts down backend
 ci-android::
 	@echo "[INFO] [CI] Starting pipeline..."
+	@echo "[INFO] [CI] Calling 'down-backend' target to ensure clean state..."
+	@$(MAKE) down-backend --no-print-directory
 	@echo "[INFO] [CI] Calling 'integration-test-android' target..."
 	@$(MAKE) integration-test-android --no-print-directory AUTO_LAUNCH_BACKEND=1
 	@# $(MAKE) e2e-test-android --no-print-directory # TODO: implement e2e tests

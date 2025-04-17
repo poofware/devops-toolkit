@@ -52,6 +52,8 @@ build-web: logs
 ## CI Web pipeline: Starts backend, runs both integration and e2e tests, and then shuts down backend
 ci-web::
 	@echo "[INFO] [CI] Starting pipeline..."
+	@echo "[INFO] [CI] Calling 'down-backend' target to ensure clean state..."
+	@$(MAKE) down-backend --no-print-directory
 	@echo "[INFO] [CI] Calling 'integration-test-web' target..."
 	@$(MAKE) integration-test-web --no-print-directory AUTO_LAUNCH_BACKEND=1
 	@# $(MAKE) e2e-test-web --no-print-directory # TODO: implement e2e tests
