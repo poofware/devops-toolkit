@@ -60,6 +60,8 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
 		@$(COMPOSE_CMD) up -d ngrok || exit 1
     endif
 
+    DEPS_PASSTHROUGH_VARS += NGROK_UP
+
     build:: _up-ngrok _export_ngrok_url_as_app_url
     up:: _up-ngrok _export_ngrok_url_as_app_url
     print-public-app-domain:: _export_ngrok_url_as_app_url
