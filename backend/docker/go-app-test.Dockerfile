@@ -149,10 +149,9 @@ RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
 
 WORKDIR /root/
 COPY --from=integration-test-builder /integration_test ./integration_test
-COPY devops-toolkit/backend/scripts/health_check.sh health_check.sh
 COPY devops-toolkit/backend/docker/scripts/integration_test_runner_cmd.sh integration_test_runner_cmd.sh
 
-RUN chmod +x health_check.sh integration_test_runner_cmd.sh;
+RUN chmod +x integration_test_runner_cmd.sh;
 
 # Convert ARG to ENV for runtime use
 ENV ENV=${ENV}

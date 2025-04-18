@@ -44,7 +44,7 @@ services:
       target: stripe-webhook-check-runner
       args:
         <<: *build-args
-        APP_URL_FROM_ANYWHERE: ${APP_URL_FROM_ANYWHERE?Docker Compose Config Error! APP_URL_FROM_ANYWHERE is not set!}
+        APP_URL_FROM_ANYWHERE: ${APP_URL_FROM_ANYWHERE:-}
         STRIPE_WEBHOOK_CHECK_ROUTE: ${STRIPE_WEBHOOK_CHECK_ROUTE?Docker Compose Config Error! STRIPE_WEBHOOK_CHECK_ROUTE is not set!}
         APP_NAME: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}
         UNIQUE_RUN_NUMBER: ${UNIQUE_RUN_NUMBER?Docker Compose Config Error! UNIQUE_RUN_NUMBER is not set!}
