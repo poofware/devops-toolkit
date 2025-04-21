@@ -32,24 +32,12 @@ ifneq ($(origin PACKAGES), file)
     Example: PACKAGES="go-middleware go-repositories go-compose go-models" or PACKAGES="")
 endif
 
-# Optional override configuration env variables #
-
-ifdef LOG_LEVEL
-  ifeq ($(origin LOG_LEVEL), file)
-    $(error LOG_LEVEL override should be set as a runtime/ci environment variable, do not hardcode it in the root Makefile. \
-	  Example: LOG_LEVEL=debug make up)
-  endif
-endif
-
 
 # ------------------------------
 # Internal Variable Declarations
 # ------------------------------
 
 export GO_VERSION := 1.24
-export GO_VERSION := 1.24
-export LOG_LEVEL ?= info
-export DEPS_PASSTHROUGH_VARS += LOG_LEVEL
 export PACKAGES
 
 ifndef INCLUDED_COMPOSE_APP_CONFIGURATION

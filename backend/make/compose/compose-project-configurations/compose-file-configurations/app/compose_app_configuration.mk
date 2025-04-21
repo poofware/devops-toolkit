@@ -49,6 +49,13 @@ ifdef APP_URL_FROM_ANYWHERE
   endif
 endif
 
+ifdef LOG_LEVEL
+  ifeq ($(origin LOG_LEVEL), file)
+    $(error LOG_LEVEL override should be set as a runtime/ci environment variable, do not hardcode it in the root Makefile. \
+	  Example: LOG_LEVEL=debug make up)
+  endif
+endif
+
 
 # ------------------------------
 # Internal Variable Declaration
@@ -57,6 +64,9 @@ endif
 # For specific docker compose fields in our configuration
 export APP_NAME
 export APP_PORT
+
+export LOG_LEVEL ?= info
+export DEPS_PASSTHROUGH_VARS += LOG_LEVEL
 
 ENABLE_NGROK_FOR_DEV ?= 0
 
