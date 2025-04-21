@@ -28,7 +28,7 @@ ifndef INCLUDED_HELP
 endif
 
 logs:
-	mkdir -p logs
+	@mkdir -p logs
 
 ## Run flutter doctor
 check:
@@ -100,7 +100,7 @@ _run-env: logs
 	@echo "[INFO] Running Flutter app for ENV=$(ENV)"
 	@$(call run_command_with_backend, \
 		eval "$$($(MAKE) _export_current_backend_domain --no-print-directory)" && \
-		flutter run --target lib/main/main_$(ENV).dart --dart-define=ENV=$(ENV) --dart-define=LOG_LEVEL=$(LOG_LEVEL) $(VERBOSE_FLAG) 2>&1 | tee logs/run_$(PLATFORM)_$(ENV).log);
+		flutter run --target lib/main/main_$(ENV).dart --dart-define=LOG_LEVEL=$(LOG_LEVEL) $(VERBOSE_FLAG) 2>&1 | tee logs/run_$(PLATFORM)_$(ENV).log);
 
 # Run the app in a specific environment (ENV=dev|dev-test|staging|prod) with respective auto backend behavior
 _run: AUTO_LAUNCH_BACKEND ?= 1

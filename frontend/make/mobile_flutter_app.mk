@@ -58,27 +58,28 @@ run-ios: _ios_app_configuration
 run-android: _android_app_configuration
 	@$(MAKE) _run --no-print-directory PLATFORM=android
 
-## Build command for Android (production, release mode, appbundle for Play Store)
+## Build command for Android
 build-android: logs _android_app_configuration
-	@if [ "$(ENV)" = "$(PROD_ENV)" ]; then \
-		eval "$$($(MAKE) _export_current_backend_domain --no-print-directory)" && \
-		echo "[INFO] [Build Android] Building..."; \
-		flutter build appbundle --release --target lib/main/main_prod.dart $(VERBOSE_FLAG) 2>&1 | tee logs/build_android.log; \
-	else \
-		echo "[ERROR] [Build Android] Skipping Android build for ENV=$(ENV). Only ENV=$(PROD_ENV) is allowed."; \
-		exit 1; \
-	fi
+	@echo "[INFO] [Build Android] Building for ENV=$(ENV)..."
+	@echo "[INFO] [Build Android] Setting up environment..."
+	@eval "$$($(MAKE) _export_current_backend_domain --no-print-directory)" && \
+	echo "[INFO] [Build Android] Building..."; \
+	flutter build appbundle --release --target lib/main/main_$(ENV).dart $(VERBOSE_FLAG) 2>&1 | tee logs/build_android.log; \
+	echo "[INFO] [Build Android] Build complete. Check logs/build_android.log for details."
 
-## Build command for iOS (production, release mode)
+## Build command for iOS
+build-ios: NO_CODE_SIGN ?= 0
 build-ios: logs _ios_app_configuration
-	@if [ "$(ENV)" = "$(PROD_ENV)" ]; then \
-		eval "$$($(MAKE) _export_current_backend_domain --no-print-directory)" && \
-		echo "[INFO] [Build iOS] Building..."; \
-		flutter build ios --release --no-codesign --target lib/main/main_prod.dart $(VERBOSE_FLAG) 2>&1 | tee logs/build_ios.log; \
-	else \
-		echo "[ERROR] [Build iOS] Skipping iOS build for ENV=$(ENV). Only ENV=$(PROD_ENV) is allowed."; \
-		exit 1; \
-	fi
+	@echo "[INFO] [Build iOS] Building for ENV=$(ENV)..."
+	@echo "[INFO] [Build iOS] Setting up environment..."
+	@eval "$$($(MAKE) _export_current_backend_domain --no-print-directory)" && \
+	echo "[INFO] [Build iOS] Building..."; \
+	NO_CODE_SIGN_FLAG=""; \
+	if [ "$(NO_CODE_SIGN)" -eq 1 ]; then \
+		NO_CODE_SIGN_FLAG="--no-codesign"; \
+	fi; \
+	flutter build ipa --release $$NO_CODE_SIGN_FLAG --export-method app-store --target lib/main/main_$(ENV).dart $(VERBOSE_FLAG) 2>&1 | tee logs/build_ios.log; \
+	echo "[INFO] [Build iOS] Build complete. Check logs/build_ios.log for details."
 
 ## CI iOS pipeline: Starts backend, runs both integration and e2e tests, and then shuts down backend
 ci-ios::
