@@ -42,7 +42,9 @@ endif
 # To force a static assignment operation with '?=' behavior, we wrap the ':=' assignment in an ifndef check
 ifndef HCP_ENCRYPTED_API_TOKEN
   export HCP_ENCRYPTED_API_TOKEN := $(shell devops-toolkit/shared/scripts/fetch_hcp_api_token.sh encrypted)
+  $(if $(HCP_ENCRYPTED_API_TOKEN),,$(error Failed to fetch HCP encrypted API token))
   export HCP_API_TOKEN := $(shell devops-toolkit/shared/scripts/fetch_hcp_api_token.sh)
+  $(if $(HCP_API_TOKEN),,$(error Failed to fetch HCP API token))
 endif
 
 # Poof

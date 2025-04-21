@@ -33,5 +33,6 @@ ifndef INCLUDED_HCP_CONFIGURATION
 endif
 ifndef APP_SECRETS_JSON
 	$(eval APP_SECRETS_JSON := $(shell devops-toolkit/shared/scripts/fetch_hcp_secret_from_secrets_json.sh))
+	$(if $(APP_SECRETS_JSON),,$(error Failed to fetch HCP secrets))
 	@echo "[INFO] [App Secrets Json] App Secrets Json set."
 endif
