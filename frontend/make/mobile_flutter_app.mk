@@ -78,7 +78,9 @@ build-ios: logs _ios_app_configuration
 	if [ "$(NO_CODE_SIGN)" -eq 1 ]; then \
 		NO_CODE_SIGN_FLAG="--no-codesign"; \
 	fi; \
-	flutter build ipa --release $$NO_CODE_SIGN_FLAG --export-method app-store --target lib/main/main_$(ENV).dart $(VERBOSE_FLAG) 2>&1 | tee logs/build_ios.log; \
+	set -eo pipefail; \
+	flutter build ipa --release $$NO_CODE_SIGN_FLAG --export-method app-store \
+		--target lib/main/main_$(ENV).dart $(VERBOSE_FLAG) 2>&1 | tee logs/build_ios.log; \
 	echo "[INFO] [Build iOS] Build complete. Check logs/build_ios.log for details."
 
 ## CI iOS pipeline: Starts backend, runs both integration and e2e tests, and then shuts down backend
