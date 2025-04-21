@@ -74,7 +74,7 @@ build-ios: logs _ios_app_configuration
 	@eval "$$($(MAKE) _export_current_backend_domain --no-print-directory)" && \
 	echo "[INFO] [Build iOS] Building..."; \
 	set -eo pipefail; \
-	flutter build ios --release --no-codesign \
+	flutter build ipa --release --no-codesign \
 		--target lib/main/main_$(ENV).dart $(VERBOSE_FLAG) 2>&1 | tee logs/build_ios.log; \
 	echo "[INFO] [Build iOS] Build complete. Check logs/build_ios.log for details."
 
