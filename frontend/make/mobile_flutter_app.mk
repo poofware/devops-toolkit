@@ -64,7 +64,9 @@ build-android: logs _android_app_configuration
 	@echo "[INFO] [Build Android] Setting up environment..."
 	@eval "$$($(MAKE) _export_current_backend_domain --no-print-directory)" && \
 	echo "[INFO] [Build Android] Building..."; \
-	flutter build appbundle --release --target lib/main/main_$(ENV).dart $(VERBOSE_FLAG) 2>&1 | tee logs/build_android.log; \
+	flutter build appbundle --release \
+		--target lib/main/main_$(ENV).dart --dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
+		$(VERBOSE_FLAG) 2>&1 | tee logs/build_android.log; \
 	echo "[INFO] [Build Android] Build complete. Check logs/build_android.log for details."
 
 ## Build command for iOS
@@ -75,7 +77,8 @@ build-ios: logs _ios_app_configuration
 	echo "[INFO] [Build iOS] Building..."; \
 	set -eo pipefail; \
 	flutter build ipa --release --no-codesign \
-		--target lib/main/main_$(ENV).dart $(VERBOSE_FLAG) 2>&1 | tee logs/build_ios.log; \
+		--target lib/main/main_$(ENV).dart --dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
+		$(VERBOSE_FLAG) 2>&1 | tee logs/build_ios.log; \
 	echo "[INFO] [Build iOS] Build complete. Check logs/build_ios.log for details."
 
 ## CI iOS pipeline: Starts backend, runs both integration and e2e tests, and then shuts down backend

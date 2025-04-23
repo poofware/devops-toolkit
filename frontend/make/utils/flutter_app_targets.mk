@@ -72,7 +72,8 @@ _integration-test: logs
 	      echo "[INFO] [Integration Test] Running API tests for ENV=$(ENV)..." && \
 	      set -o pipefail && \
 		  eval "$$($(MAKE) _export_current_backend_domain --no-print-directory)" && \
-	      flutter test integration_test/api --dart-define=ENV=$(ENV) --dart-define=LOG_LEVEL=$(LOG_LEVEL) $(VERBOSE_FLAG) 2>&1 | tee logs/integration_test_$(PLATFORM)_$(ENV).log \
+	      flutter test integration_test/api --dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
+		  --dart-define=ENV=$(ENV) --dart-define=LOG_LEVEL=$(LOG_LEVEL) $(VERBOSE_FLAG) 2>&1 | tee logs/integration_test_$(PLATFORM)_$(ENV).log \
 	    ); \
 	    ;; \
 	  *) \
@@ -88,7 +89,8 @@ _e2e-test: logs
 	      echo "[INFO] [E2E Test] Running UI tests for ENV=$(ENV)..." && \
 	      set -o pipefail && \
 		  eval "$$($(MAKE) _export_current_backend_domain --no-print-directory)" && \
-	      flutter test integration_test/e2e --dart-define=ENV=$(ENV) --dart-define=LOG_LEVEL=$(LOG_LEVEL) $(VERBOSE_FLAG) 2>&1 | tee logs/e2e_test_$(PLATFORM)_$(ENV).log \
+	      flutter test integration_test/e2e --dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
+		  --dart-define=ENV=$(ENV) --dart-define=LOG_LEVEL=$(LOG_LEVEL) $(VERBOSE_FLAG) 2>&1 | tee logs/e2e_test_$(PLATFORM)_$(ENV).log \
 	    ); \
 	    ;; \
 	  *) \
@@ -100,7 +102,8 @@ _run-env: logs
 	@echo "[INFO] Running Flutter app for ENV=$(ENV)"
 	@$(call run_command_with_backend, \
 		eval "$$($(MAKE) _export_current_backend_domain --no-print-directory)" && \
-		flutter run --target lib/main/main_$(ENV).dart --dart-define=LOG_LEVEL=$(LOG_LEVEL) $(VERBOSE_FLAG) 2>&1 | tee logs/run_$(PLATFORM)_$(ENV).log);
+		flutter run --target lib/main/main_$(ENV).dart --dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
+		--dart-define=LOG_LEVEL=$(LOG_LEVEL) $(VERBOSE_FLAG) 2>&1 | tee logs/run_$(PLATFORM)_$(ENV).log);
 
 # Run the app in a specific environment (ENV=dev|dev-test|staging|prod) with respective auto backend behavior
 _run: AUTO_LAUNCH_BACKEND ?= 1
