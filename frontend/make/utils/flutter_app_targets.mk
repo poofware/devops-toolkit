@@ -54,7 +54,7 @@ _export_current_backend_domain:
 	@echo "[INFO] [Export Backend Domain] Exporting backend domain for ENV=$(ENV)..." >&2
 ifneq (,$(filter $(ENV),$(DEV_TEST_ENV)))
 	# Will cause the well_known retrieval to fail silently
-	@echo 'export CURRENT_BACKEND_DOMAIN="example.com"'
+	@echo 'export CURRENT_BACKEND_DOMAIN="$$($(MAKE) -C $(BACKEND_GATEWAY_PATH) print-public-app-domain --no-print-directory PRINT_INFO=0)"'
 else ifneq (,$(filter $(ENV),$(DEV_ENV)))
 	@echo 'export CURRENT_BACKEND_DOMAIN="$$($(MAKE) -C $(BACKEND_GATEWAY_PATH) print-public-app-domain --no-print-directory PRINT_INFO=0)"'
 else ifneq (,$(filter $(ENV),$(STAGING_ENV)))
