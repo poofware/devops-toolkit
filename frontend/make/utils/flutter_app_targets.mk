@@ -101,22 +101,27 @@ _e2e-test: logs
 _run-env: logs
 	@echo "[INFO] Running Flutter app for ENV=$(ENV)"
 	@$(call run_command_with_backend, \
-		eval "$$($(MAKE) _export_current_backend_domain --no-print-directory)" && \
 		flutter run --target lib/main/main_$(ENV).dart --dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
 		--dart-define=LOG_LEVEL=$(LOG_LEVEL) $(VERBOSE_FLAG) 2>&1 | tee logs/run_$(PLATFORM)_$(ENV).log);
 
 # Run the app in a specific environment (ENV=dev|dev-test|staging|prod) with respective auto backend behavior
 _run: AUTO_LAUNCH_BACKEND ?= 1
 _run:
-	@case "$(ENV)" in \
+	@eval "$$($(MAKE) _export_current_backend_domain --no-print-directory)" && \
+	case "$(ENV)" in \
 	  $(DEV_ENV)|$(STAGING_ENV)) \
 	    $(MAKE) _run-env --no-print-directory AUTO_LAUNCH_BACKEND=$(AUTO_LAUNCH_BACKEND) ENV=$(ENV); \
 	    ;; \
-	  $(DEV_TEST_ENV)|$(PROD_ENV)) \
+	  $(DEV_TEST_ENV)) \
+	  	echo "[WARN] [Run] Ignoring any failure to retrieve backend domain when ENV=dev-test, setting the domain to 'example.com'."; \
+	  	export CURRENT_BACKEND_DOMAIN="example.com"; \
+	    $(MAKE) _run-env --no-print-directory AUTO_LAUNCH_BACKEND=0 ENV=$(ENV); \
+	    ;; \
+	  $(PROD_ENV)) \
 	    $(MAKE) _run-env --no-print-directory AUTO_LAUNCH_BACKEND=0 ENV=$(ENV); \
 	    ;; \
 	  *) \
-	    echo "Invalid ENV: $(ENV). Choose from [$(DEV_ENV)|$(DEV_TEST_ENV)|$(STAGING_ENV)|$(PROD_ENV)]."; exit 1;; \
+	    echo "[ERROR] [Run] Invalid ENV: $(ENV). Choose from [$(DEV_ENV)|$(DEV_TEST_ENV)|$(STAGING_ENV)|$(PROD_ENV)]."; exit 1;; \
 	esac
 
 ## Flutter clean, removes build artifacts and logs
