@@ -53,8 +53,9 @@ clean-backend:
 _export_current_backend_domain:
 	@echo "[INFO] [Export Backend Domain] Exporting backend domain for ENV=$(ENV)..." >&2
 ifneq (,$(filter $(ENV),$(DEV_TEST_ENV)))
-	# Will cause the well_known retrieval to fail silently
-	@echo 'export CURRENT_BACKEND_DOMAIN="$$($(MAKE) -C $(BACKEND_GATEWAY_PATH) print-public-app-domain --no-print-directory PRINT_INFO=0)"'
+	@if [ -z $$CURRENT_BACKEND_DOMAIN ]; then \
+		echo 'export CURRENT_BACKEND_DOMAIN="$$($(MAKE) -C $(BACKEND_GATEWAY_PATH) print-public-app-domain --no-print-directory PRINT_INFO=0)"'; \
+	fi
 else ifneq (,$(filter $(ENV),$(DEV_ENV)))
 	@echo 'export CURRENT_BACKEND_DOMAIN="$$($(MAKE) -C $(BACKEND_GATEWAY_PATH) print-public-app-domain --no-print-directory PRINT_INFO=0)"'
 else ifneq (,$(filter $(ENV),$(STAGING_ENV)))
@@ -101,19 +102,19 @@ _e2e-test: logs
 _run-env: logs
 	@echo "[INFO] Running Flutter app for ENV=$(ENV)"
 	@$(call run_command_with_backend, \
+		eval "$$($(MAKE) _export_current_backend_domain --no-print-directory)" && \
 		flutter run --target lib/main/main_$(ENV).dart --dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
 		--dart-define=LOG_LEVEL=$(LOG_LEVEL) $(VERBOSE_FLAG) 2>&1 | tee logs/run_$(PLATFORM)_$(ENV).log);
 
 # Run the app in a specific environment (ENV=dev|dev-test|staging|prod) with respective auto backend behavior
 _run: AUTO_LAUNCH_BACKEND ?= 1
 _run:
-	@eval "$$($(MAKE) _export_current_backend_domain --no-print-directory)" && \
-	case "$(ENV)" in \
+	@case "$(ENV)" in \
 	  $(DEV_ENV)|$(STAGING_ENV)) \
 	    $(MAKE) _run-env --no-print-directory AUTO_LAUNCH_BACKEND=$(AUTO_LAUNCH_BACKEND) ENV=$(ENV); \
 	    ;; \
 	  $(DEV_TEST_ENV)) \
-	  	echo "[WARN] [Run] Ignoring any failure to retrieve backend domain when ENV=dev-test, setting the domain to 'example.com'."; \
+	  	echo "[WARN] [Run] Running ENV=dev-test, backend is not required, setting the domain to 'example.com'."; \
 	  	export CURRENT_BACKEND_DOMAIN="example.com"; \
 	    $(MAKE) _run-env --no-print-directory AUTO_LAUNCH_BACKEND=0 ENV=$(ENV); \
 	    ;; \
