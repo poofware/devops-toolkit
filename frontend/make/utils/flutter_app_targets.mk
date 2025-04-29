@@ -53,8 +53,9 @@ clean-backend:
 _export_current_backend_domain:
 	@echo "[INFO] [Export Backend Domain] Exporting backend domain for ENV=$(ENV)..." >&2
 ifneq (,$(filter $(ENV),$(DEV_TEST_ENV)))
-	# Will cause the well_known retrieval to fail silently
-	@echo 'export CURRENT_BACKEND_DOMAIN="example.com"'
+	@if [ -z $$CURRENT_BACKEND_DOMAIN ]; then \
+		echo 'export CURRENT_BACKEND_DOMAIN="$$($(MAKE) -C $(BACKEND_GATEWAY_PATH) print-public-app-domain --no-print-directory PRINT_INFO=0)"'; \
+	fi
 else ifneq (,$(filter $(ENV),$(DEV_ENV)))
 	@echo 'export CURRENT_BACKEND_DOMAIN="$$($(MAKE) -C $(BACKEND_GATEWAY_PATH) print-public-app-domain --no-print-directory PRINT_INFO=0)"'
 else ifneq (,$(filter $(ENV),$(STAGING_ENV)))
@@ -72,7 +73,8 @@ _integration-test: logs
 	      echo "[INFO] [Integration Test] Running API tests for ENV=$(ENV)..." && \
 	      set -o pipefail && \
 		  eval "$$($(MAKE) _export_current_backend_domain --no-print-directory)" && \
-	      flutter test integration_test/api --dart-define=ENV=$(ENV) --dart-define=LOG_LEVEL=$(LOG_LEVEL) $(VERBOSE_FLAG) 2>&1 | tee logs/integration_test_$(PLATFORM)_$(ENV).log \
+	      flutter test integration_test/api --dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
+		  --dart-define=ENV=$(ENV) --dart-define=LOG_LEVEL=$(LOG_LEVEL) $(VERBOSE_FLAG) 2>&1 | tee logs/integration_test_$(PLATFORM)_$(ENV).log \
 	    ); \
 	    ;; \
 	  *) \
@@ -88,7 +90,8 @@ _e2e-test: logs
 	      echo "[INFO] [E2E Test] Running UI tests for ENV=$(ENV)..." && \
 	      set -o pipefail && \
 		  eval "$$($(MAKE) _export_current_backend_domain --no-print-directory)" && \
-	      flutter test integration_test/e2e --dart-define=ENV=$(ENV) --dart-define=LOG_LEVEL=$(LOG_LEVEL) $(VERBOSE_FLAG) 2>&1 | tee logs/e2e_test_$(PLATFORM)_$(ENV).log \
+	      flutter test integration_test/e2e --dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
+		  --dart-define=ENV=$(ENV) --dart-define=LOG_LEVEL=$(LOG_LEVEL) $(VERBOSE_FLAG) 2>&1 | tee logs/e2e_test_$(PLATFORM)_$(ENV).log \
 	    ); \
 	    ;; \
 	  *) \
@@ -100,7 +103,8 @@ _run-env: logs
 	@echo "[INFO] Running Flutter app for ENV=$(ENV)"
 	@$(call run_command_with_backend, \
 		eval "$$($(MAKE) _export_current_backend_domain --no-print-directory)" && \
-		flutter run --target lib/main/main_$(ENV).dart --dart-define=LOG_LEVEL=$(LOG_LEVEL) $(VERBOSE_FLAG) 2>&1 | tee logs/run_$(PLATFORM)_$(ENV).log);
+		flutter run --target lib/main/main_$(ENV).dart --dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
+		--dart-define=LOG_LEVEL=$(LOG_LEVEL) $(VERBOSE_FLAG) 2>&1 | tee logs/run_$(PLATFORM)_$(ENV).log);
 
 # Run the app in a specific environment (ENV=dev|dev-test|staging|prod) with respective auto backend behavior
 _run: AUTO_LAUNCH_BACKEND ?= 1
@@ -109,11 +113,16 @@ _run:
 	  $(DEV_ENV)|$(STAGING_ENV)) \
 	    $(MAKE) _run-env --no-print-directory AUTO_LAUNCH_BACKEND=$(AUTO_LAUNCH_BACKEND) ENV=$(ENV); \
 	    ;; \
-	  $(DEV_TEST_ENV)|$(PROD_ENV)) \
+	  $(DEV_TEST_ENV)) \
+	  	echo "[WARN] [Run] Running ENV=dev-test, backend is not required, setting the domain to 'example.com'."; \
+	  	export CURRENT_BACKEND_DOMAIN="example.com"; \
+	    $(MAKE) _run-env --no-print-directory AUTO_LAUNCH_BACKEND=0 ENV=$(ENV); \
+	    ;; \
+	  $(PROD_ENV)) \
 	    $(MAKE) _run-env --no-print-directory AUTO_LAUNCH_BACKEND=0 ENV=$(ENV); \
 	    ;; \
 	  *) \
-	    echo "Invalid ENV: $(ENV). Choose from [$(DEV_ENV)|$(DEV_TEST_ENV)|$(STAGING_ENV)|$(PROD_ENV)]."; exit 1;; \
+	    echo "[ERROR] [Run] Invalid ENV: $(ENV). Choose from [$(DEV_ENV)|$(DEV_TEST_ENV)|$(STAGING_ENV)|$(PROD_ENV)]."; exit 1;; \
 	esac
 
 ## Flutter clean, removes build artifacts and logs
