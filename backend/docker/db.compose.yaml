@@ -38,6 +38,8 @@ services:
         HCP_ENCRYPTED_API_TOKEN: ${HCP_ENCRYPTED_API_TOKEN?Docker Compose Config Error! HCP_ENCRYPTED_API_TOKEN is not set!}
         HCP_APP_NAME_FOR_DB_SECRETS: ${HCP_APP_NAME_FOR_DB_SECRETS?Docker Compose Config Error! HCP_APP_NAME_FOR_DB_SECRETS is not set!}
         MIGRATIONS_PATH: ${MIGRATIONS_PATH?Docker Compose Config Error! MIGRATIONS_PATH is not set!}
+        UNIQUE_RUN_NUMBER: ${UNIQUE_RUN_NUMBER?Docker Compose Config Error! UNIQUE_RUN_NUMBER is not set!}
+        UNIQUE_RUNNER_ID: ${UNIQUE_RUNNER_ID?Docker Compose Config Error! UNIQUE_RUNNER_ID is not set!}
     image: ${COMPOSE_PROJECT_NAME?Docker Compose Config Error! COMPOSE_PROJECT_NAME is not set!}-migrate
     container_name: ${COMPOSE_PROJECT_NAME?Docker Compose Config Error! COMPOSE_PROJECT_NAME is not set!}-migrate_instance
     profiles:
