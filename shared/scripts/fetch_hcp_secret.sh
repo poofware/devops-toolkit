@@ -32,17 +32,26 @@ else
   URL="https://api.cloud.hashicorp.com/secrets/2023-11-28/organizations/${HCP_ORG_ID}/projects/${HCP_PROJECT_ID}/apps/${HCP_APP_NAME}/secrets:open"
 fi
 
-# Perform the API request
-RESPONSE="$(curl --silent --show-error --location \
-  "$URL" \
-  --header "Authorization: Bearer ${HCP_API_TOKEN}")"
+for attempt in 1 2; do
+  RESPONSE="$(curl --silent --show-error --location \
+    "$URL" \
+    --header "Authorization: Bearer ${HCP_API_TOKEN}")"
+  curl_exit=$?
 
-if [ $? -ne 0 ]; then
-  echo "[ERROR] Failed to make request to HCP." >&2
-  echo "Full response from HCP was:" >&2
-  echo "$RESPONSE" >&2
-  exit 1
-fi
+  if [ "$curl_exit" -eq 0 ]; then
+    break            # success → exit the loop
+  fi
+
+  if [ "$attempt" -eq 1 ]; then
+    echo "[WARN] First attempt to contact HCP failed (exit $curl_exit). Retrying in 5 s…" >&2
+    sleep 5
+  else
+    echo "[ERROR] Failed to make request to HCP after retry." >&2
+    echo "Full response from HCP was:" >&2
+    echo "$RESPONSE" >&2
+    exit 1
+  fi
+done
 
 # If a single secret is requested, parse just that secret value;
 # otherwise, parse all secrets into a JSON object of { "name": "value" }.

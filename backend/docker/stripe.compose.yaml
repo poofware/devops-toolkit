@@ -1,3 +1,6 @@
+x-build-network: &build-network
+  network: host
+
 x-environment: &environment
   environment:
     HCP_TOKEN_ENC_KEY: ${HCP_TOKEN_ENC_KEY?Docker Compose Config Error! HCP_TOKEN_ENC_KEY is not set!}
@@ -18,6 +21,7 @@ services:
       context: .
       dockerfile: devops-toolkit/backend/docker/stripe.Dockerfile
       target: stripe-listener-runner
+      <<: *build-network
       args:
         <<: *build-args
         APP_URL_FROM_COMPOSE_NETWORK: ${APP_URL_FROM_COMPOSE_NETWORK?Docker Compose Config Error! APP_URL_FROM_COMPOSE_NETWORK is not set!}
@@ -42,6 +46,7 @@ services:
       context: .
       dockerfile: devops-toolkit/backend/docker/stripe.Dockerfile
       target: stripe-webhook-check-runner
+      <<: *build-network
       args:
         <<: *build-args
         APP_URL_FROM_ANYWHERE: ${APP_URL_FROM_ANYWHERE:-}

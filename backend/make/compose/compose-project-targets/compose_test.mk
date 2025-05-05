@@ -30,8 +30,7 @@ endif
 #	@echo "[INFO] [Unit Test] Completed successfully!"
 # TODO: implement unit tests!!!
 
-## Runs integration tests in a one-off container
-integration-test::
+_integration-test:
 	@if [ -z "$(COMPOSE_PROFILE_APP_INTEGRATION_TEST_SERVICES)" ]; then \
 		echo "[WARN] [Integration Test] No services found matching the '$(COMPOSE_PROFILE_APP_INTEGRATION_TEST)' profile. Skipping..."; \
 	else \
@@ -53,6 +52,10 @@ integration-test::
 		}; \
 		echo "[INFO] [Integration Test] Completed successfully!"; \
 	fi
+
+## Runs integration tests in a one-off container
+integration-test::
+	@$(MAKE) _integration-test --no-print-directory
 
 
 INCLUDED_COMPOSE_TEST := 1

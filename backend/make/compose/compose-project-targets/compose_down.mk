@@ -37,7 +37,7 @@ down::
 
 	@$(MAKE) _down-network --no-print-directory
 
-	@echo "[INFO] [Down] Done."
+	@echo "[INFO] [Down] Done. Containers and volumes removed, images kept."
 
 
 INCLUDED_COMPOSE_DOWN := 1

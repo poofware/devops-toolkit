@@ -83,22 +83,24 @@ _up-app:
 
 _up-network:
 	@echo "[INFO] [Up-Network] Creating network '$(COMPOSE_NETWORK_NAME)'..."
-	@docker network create $(COMPOSE_NETWORK_NAME) && \
+	@docker network create --ipv4 --subnet 172.31.0.0/16 --ipv6 --subnet fd00:db00::/64 $(COMPOSE_NETWORK_NAME) && \
 		echo "[INFO] [Up-Network] Network '$(COMPOSE_NETWORK_NAME)' successfully created." || \
 		echo "[WARN] [Up-Network] 'docker network create $(COMPOSE_NETWORK_NAME)' failed (network most likely already exists). Ignoring..."
 	
-
-## Starts services for all compose profiles in order (EXCLUDE_COMPOSE_PROFILE_APP=1 to exclude profile 'app' from 'up' - EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK=1 to exclude profile 'app_post_check' from 'up' - WITH_DEPS=1 to 'up' dependency projects as well)
-up: EXCLUDE_COMPOSE_PROFILE_APP ?= 0
-up: EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK ?= 0
-up::
+_up: EXCLUDE_COMPOSE_PROFILE_APP ?= 0
+_up: EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK ?= 0
+_up:
 	@echo "[INFO] [Up] Calling 'build' target..."
 	@$(MAKE) build --no-print-directory WITH_DEPS=0
 
 	@$(MAKE) _up-network --no-print-directory
 
+ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
 	@$(MAKE) _up-db --no-print-directory
+endif
+
 	@$(MAKE) _up-migrate --no-print-directory
+
 	@$(MAKE) _up-app-pre --no-print-directory
 
 	@if [ "$(EXCLUDE_COMPOSE_PROFILE_APP)" -eq 1 ]; then \
@@ -112,6 +114,10 @@ up::
 	else \
 	  $(MAKE) _up-app-post-check --no-print-directory; \
 	fi
+
+## Starts services for all compose profiles in order (EXCLUDE_COMPOSE_PROFILE_APP=1 to exclude profile 'app' from 'up' - EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK=1 to exclude profile 'app_post_check' from 'up' - WITH_DEPS=1 to 'up' dependency projects as well)
+up::
+	$(MAKE) _up --no-print-directory
 
 
 INCLUDED_COMPOSE_UP := 1

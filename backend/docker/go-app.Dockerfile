@@ -29,7 +29,6 @@ RUN --mount=type=ssh if [ -z "$(ls vendor)" ]; then go mod download && rm -rf ve
 FROM base AS builder-config-validator
 
 ARG APP_NAME
-ARG APP_PORT
 ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
 ARG LD_SERVER_CONTEXT_KEY
@@ -38,10 +37,6 @@ ARG LD_SERVER_CONTEXT_KIND
 # Validate the configuration
 RUN test -n "${APP_NAME}" || ( \
   echo "Error: APP_NAME is not set! Use --build-arg APP_NAME=xxx" && \
-  exit 1 \
-);
-RUN test -n "${APP_PORT}" || ( \
-  echo "Error: APP_PORT is not set! Use --build-arg APP_PORT=xxx" && \
   exit 1 \
 );
 RUN test -n "${HCP_ORG_ID}" || ( \
@@ -67,7 +62,6 @@ RUN test -n "${LD_SERVER_CONTEXT_KIND}" || ( \
 FROM builder-config-validator AS app-builder
 
 ARG APP_NAME
-ARG APP_PORT
 ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
 ARG LD_SERVER_CONTEXT_KEY
@@ -92,7 +86,6 @@ COPY cmd/ ./cmd/
 # Transform ENV by replacing dashes (-) with underscores (_) to ensure valid Go 1.24 build tags
 RUN go build \
       -ldflags "\
-        -X 'github.com/poofware/${APP_NAME}/internal/config.AppPort=${APP_PORT}' \
         -X 'github.com/poofware/${APP_NAME}/internal/config.AppName=${APP_NAME}' \
         -X 'github.com/poofware/${APP_NAME}/internal/config.UniqueRunNumber=${UNIQUE_RUN_NUMBER}' \
         -X 'github.com/poofware/${APP_NAME}/internal/config.UniqueRunnerID=${UNIQUE_RUNNER_ID}' \
@@ -139,6 +132,10 @@ ARG ENV
 ARG HCP_ENCRYPTED_API_TOKEN
 
 # TODO: Clean this up later, figure out best way to validate all args
+RUN test -n "${APP_PORT}" || ( \
+  echo "Error: APP_PORT is not set! Use --build-arg APP_PORT=xxx" && \
+  exit 1 \
+);
 RUN test -n "${ENV}" || ( \
   echo "Error: ENV is not set! Use --build-arg ENV=xxx" && \
   exit 1 \

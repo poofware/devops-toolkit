@@ -1,3 +1,6 @@
+x-build-network: &build-network
+  network: host
+
 services:
   # ----------------------
   # 1) Postgres DB
@@ -32,7 +35,9 @@ services:
     build:
       context: .
       dockerfile: devops-toolkit/backend/docker/migrate.Dockerfile
+      <<: *build-network
       args:
+        ENV: ${ENV?Docker Compose Config Error! ENV is not set!}
         HCP_ORG_ID: ${HCP_ORG_ID?Docker Compose Config Error! HCP_ORG_ID is not set!}
         HCP_PROJECT_ID: ${HCP_PROJECT_ID?Docker Compose Config Error! HCP_PROJECT_ID is not set!}
         HCP_ENCRYPTED_API_TOKEN: ${HCP_ENCRYPTED_API_TOKEN?Docker Compose Config Error! HCP_ENCRYPTED_API_TOKEN is not set!}
@@ -48,6 +53,7 @@ services:
       - db_network
     environment:
       HCP_TOKEN_ENC_KEY: ${HCP_TOKEN_ENC_KEY?Docker Compose Config Error! HCP_TOKEN_ENC_KEY is not set!}
+      MIGRATE_MODE: ${MIGRATE_MODE:-forward}
 
 volumes:
   db_data:

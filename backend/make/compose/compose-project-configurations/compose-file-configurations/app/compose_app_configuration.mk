@@ -26,6 +26,16 @@ ifndef APP_PORT
 	Example: APP_PORT=8080)
 endif
 
+ifndef FLY_STAGING_TOML_PATH
+  $(error FLY_STAGING_TOML_PATH is not set. Please define it in your local Makefile or runtime/ci environment. \
+    Example: FLY_STAGING_TOML_PATH=staging.fly.toml)
+endif
+
+ifndef FLY_TOML_PATH
+  $(error FLY_TOML_PATH is not set. Please define it in your local Makefile or runtime/ci environment. \
+	Example: FLY_TOML_PATH=fly.toml)
+endif
+
 # Root Makefile variables #
 
 ifneq ($(origin APP_NAME), file)
@@ -89,8 +99,24 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
     export NGROK_PORT := 4040
   endif
 
-else
-  # Staging and prod not supported at this time.
+else ifneq (,$(filter $(ENV),$(STAGING_ENV) $(STAGING_TEST_ENV)))
+
+  ifndef INCLUDED_FLY_CONSTANTS
+    include devops-toolkit/backend/make/utils/fly_constants.mk
+  endif
+
+  FLY_WIREGUARD_PEER_NAME := $(FLY_STAGING_ORG_NAME)-$(UNIQUE_RUNNER_ID)-$(UNIQUE_RUN_NUMBER)
+  FLY_APP_NAME := $(APP_NAME)-$(UNIQUE_RUNNER_ID)-$(UNIQUE_RUN_NUMBER)
+  FLY_URL := https://$(FLY_APP_NAME).fly.dev
+
+  ifndef APP_URL_FROM_COMPOSE_NETWORK
+    export APP_URL_FROM_COMPOSE_NETWORK := $(FLY_URL)
+  endif
+
+  ifndef APP_URL_FROM_ANYWHERE
+    export APP_URL_FROM_ANYWHERE := $(FLY_URL)
+  endif
+
 endif
 
 

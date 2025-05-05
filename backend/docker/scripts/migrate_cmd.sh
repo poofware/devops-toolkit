@@ -1,22 +1,44 @@
 #!/usr/bin/env bash
 #
-# run_migrations.sh — LaunchDarkly-driven, isolated-schema capable
+# migrate_cmd.sh — LaunchDarkly–driven, isolated-schema capable
+#                  now powered by **Tern** with flexible modes
 #
 # Flow:
 #   0. Validate essential env vars
 #   1. Decrypt HCP_ENCRYPTED_API_TOKEN          (via encryption.sh)
 #   2. Fetch DB_URL and LD_SDK_KEY              (via HCP)
-#   3. Ask LaunchDarkly for `using_isolated_schema`
-#   4. If flag is TRUE → build/ensure isolated schema
+#   3. Ask LaunchDarkly for using_isolated_schema
+#   4. Build / ensure isolated schema & schema-named role
 #   5. Wait for DB readiness
-#   6. Run migrations
+#   6. Act according to MIGRATE_MODE & ENV
+#   7. Run Tern migrations
+#   8. Post-migration cleanup (if needed)
+#
+# Supported behaviour ---------------------------------------------------------
+#   ENV=prod
+#     - MIGRATE_MODE=forward|unset   : tern migrate --destination +1
+#     - MIGRATE_MODE=backward        : tern migrate --destination -1
+#
+#   ENV≠prod
+#     - MIGRATE_MODE=forward|unset   : tern migrate (to head)
+#     - MIGRATE_MODE=backward        : tern migrate --destination 0
+#                                       ⇢ if using an isolated schema:
+#                                           • verify schema exists first
+#                                           • drop it (and its role) afterwards
+#
+# Tern destination syntax reference: +N (forward N), -N (back N)
+# ---------------------------------------------------------------------------
+
 set -euo pipefail
 IFS=$'\n\t'
 
 ###############################################################################
 # 0. Required environment
 ###############################################################################
+: "${ENV:?ENV env var is required (e.g. dev, staging, prod)}"
 : "${HCP_ENCRYPTED_API_TOKEN:?HCP_ENCRYPTED_API_TOKEN env var is required}"
+# MIGRATE_MODE is optional; defaults to "forward"
+MIGRATE_MODE="$(echo "${MIGRATE_MODE:-forward}" | tr '[:upper:]' '[:lower:]')"
 
 ###############################################################################
 # 1. Decrypt API token (for HCP)
@@ -30,8 +52,8 @@ echo "[INFO] HCP_API_TOKEN decrypted."
 ###############################################################################
 echo "[INFO] Fetching secrets from HCP…"
 
-DB_URL="$(./fetch_hcp_secret_from_secrets_json.sh DB_URL      | jq -r '.DB_URL      // empty')"
-LD_SDK_KEY="$(./fetch_hcp_secret_from_secrets_json.sh LD_SDK_KEY | jq -r '.LD_SDK_KEY // empty')"
+DB_URL="$(./fetch_hcp_secret_from_secrets_json.sh DB_URL)"
+LD_SDK_KEY="$(./fetch_hcp_secret_from_secrets_json.sh LD_SDK_KEY)"
 
 if [[ -z "${DB_URL}"    || "${DB_URL}"    == "null" ]]; then
   echo "[ERROR] Could not retrieve 'DB_URL' from HCP." >&2
@@ -45,6 +67,15 @@ export LD_SDK_KEY
 echo "[INFO] Secrets fetched."
 
 ###############################################################################
+# Helper → extract password from postgres://user:pass@host/…
+###############################################################################
+db_password() {
+  perl -pe 's#.*/[^:]+:([^@/]+)@.*#\1#'
+}
+DB_PASSWORD="$(printf '%s\n' "${DB_URL}" | db_password)"
+MIGRATION_USER=""
+
+###############################################################################
 # 3. Evaluate LaunchDarkly flag
 ###############################################################################
 echo "[INFO] Evaluating LaunchDarkly flag 'using_isolated_schema'…"
@@ -55,38 +86,7 @@ USE_ISOLATED_SCHEMA=false
 [[ "${ISOLATED_FLAG}" == "true" ]] && USE_ISOLATED_SCHEMA=true
 
 ###############################################################################
-# 4. Build / ensure isolated schema if flag is TRUE
-###############################################################################
-EFFECTIVE_DB_URL="${DB_URL}"   # default (shared schema)
-
-if $USE_ISOLATED_SCHEMA; then
-  echo "[INFO] Flag is TRUE – enabling isolated schema."
-
-  : "${UNIQUE_RUNNER_ID:?UNIQUE_RUNNER_ID env var is required when isolation is enabled}"
-  : "${UNIQUE_RUN_NUMBER:?UNIQUE_RUN_NUMBER env var is required when isolation is enabled}"
-
-  ISOLATED_SCHEMA="$(echo "${UNIQUE_RUNNER_ID}-${UNIQUE_RUN_NUMBER}" \
-                      | tr '[:upper:]' '[:lower:]')"
-
-  # Append `search_path` param, preserving any existing query string
-  if [[ "${DB_URL}" == *\?* ]]; then
-    EFFECTIVE_DB_URL="${DB_URL}&search_path=${ISOLATED_SCHEMA}"
-  else
-    EFFECTIVE_DB_URL="${DB_URL}?search_path=${ISOLATED_SCHEMA}"
-  fi
-
-  echo "[INFO] Using isolated schema '${ISOLATED_SCHEMA}'."
-
-  # Ensure schema exists (idempotent)
-  echo "[INFO] Ensuring schema '${ISOLATED_SCHEMA}' exists…"
-  psql "${DB_URL}" -v ON_ERROR_STOP=1 \
-       -c "CREATE SCHEMA IF NOT EXISTS \"${ISOLATED_SCHEMA}\";" >/dev/null
-else
-  echo "[INFO] Flag is FALSE – running migrations against shared schema."
-fi
-
-###############################################################################
-# 5. Wait for database readiness
+# 4. Wait for database readiness
 ###############################################################################
 echo "[INFO] Waiting for database readiness…"
 attempts=10
@@ -100,9 +100,139 @@ if (( attempts < 0 )); then
 fi
 
 ###############################################################################
-# 6. Run migrations
+# 5. Build / ensure isolated schema & schema-named role
 ###############################################################################
-echo "[INFO] Running migrations…"
-migrate -path migrations -database "${EFFECTIVE_DB_URL}" up
+EFFECTIVE_DB_URL="${DB_URL}"   # unchanged (no search_path or port tweaks)
+
+if $USE_ISOLATED_SCHEMA; then
+  echo "[INFO] Flag is TRUE – enabling isolated schema."
+
+  : "${UNIQUE_RUNNER_ID:?UNIQUE_RUNNER_ID env var is required when isolation is enabled}"
+  : "${UNIQUE_RUN_NUMBER:?UNIQUE_RUN_NUMBER env var is required when isolation is enabled}"
+
+  ISOLATED_SCHEMA="$(echo "${UNIQUE_RUNNER_ID}-${UNIQUE_RUN_NUMBER}" \
+                   | tr '[:upper:]' '[:lower:]')"
+  MIGRATION_USER="${ISOLATED_SCHEMA}"
+
+  if [[ "${MIGRATE_MODE}" != "backward" ]]; then
+    echo "[INFO] Ensuring schema '${ISOLATED_SCHEMA}' exists…"
+    psql "${DB_URL}" -v ON_ERROR_STOP=1 \
+         -c "CREATE SCHEMA IF NOT EXISTS \"${ISOLATED_SCHEMA}\";" >/dev/null
+  else
+    if ! psql "${DB_URL}" -tAc \
+          "SELECT 1 FROM pg_namespace WHERE nspname='${ISOLATED_SCHEMA}'" \
+          | grep -q 1; then
+      echo "[WARN] Isolated schema '${ISOLATED_SCHEMA}' does not exist — nothing to roll back."
+      exit 0
+    fi
+    echo "[INFO] Skipping schema creation – running in backward mode."
+  fi
+
+  # -------------------------------------------------------------------------
+  # Create or reuse a role whose *name == schema*
+  # -------------------------------------------------------------------------
+  echo "[INFO] Ensuring role '${MIGRATION_USER}' exists and can log in…"
+  psql "${DB_URL}" -v ON_ERROR_STOP=1 <<SQL >/dev/null
+DO \$\$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${MIGRATION_USER}') THEN
+    CREATE ROLE "${MIGRATION_USER}" LOGIN PASSWORD '${DB_PASSWORD}';
+  END IF;
+END
+\$\$;
+GRANT USAGE, CREATE ON SCHEMA "${ISOLATED_SCHEMA}" TO "${MIGRATION_USER}";
+ALTER ROLE "${MIGRATION_USER}" SET search_path = "${ISOLATED_SCHEMA}";
+SQL
+
+  # -------------------------------------------------------------------------
+  # Rewrite connection string to use the isolated role instead of --user
+  # -------------------------------------------------------------------------
+  echo "[INFO] Rewriting connection string to use migration user '${MIGRATION_USER}'…"
+  # Replace the user portion between 'postgres://' and the next ':' or '@'
+  EFFECTIVE_DB_URL="$(echo "${DB_URL}" \
+                       | sed -E "s#(postgres://)[^:/@]+#\1${MIGRATION_USER}#")"
+else
+  echo "[INFO] Flag is FALSE – running migrations against shared schema."
+fi
+
+###############################################################################
+# 6. Act according to MIGRATE_MODE & ENV
+###############################################################################
+if [[ "${MIGRATE_MODE}" == "backward" && "${USE_ISOLATED_SCHEMA}" == true ]]; then
+  if ! psql "${DB_URL}" -tAc \
+        "SELECT 1 FROM pg_namespace WHERE nspname='${ISOLATED_SCHEMA}'" \
+        | grep -q 1; then
+    echo "[WARN] Isolated schema '${ISOLATED_SCHEMA}' does not exist — nothing to roll back."
+    exit 0
+  fi
+fi
+
+DESTINATION=""
+DROP_ISOLATED_AFTER=false
+
+case "${MIGRATE_MODE}" in
+  forward|"")
+    if [[ "${ENV}" == "prod" ]]; then
+      echo "[INFO] (prod) Migrating forward **one** version…"
+      DESTINATION="+1"
+    else
+      echo "[INFO] (non-prod) Migrating to latest version…"
+      DESTINATION=""
+    fi
+    ;;
+  backward)
+    if [[ "${ENV}" == "prod" ]]; then
+      echo "[INFO] (prod) Rolling back **one** version…"
+      DESTINATION="-1"
+    else
+      echo "[INFO] (non-prod) Rolling back to version 0 (clean slate)…"
+      DESTINATION="0"
+      if $USE_ISOLATED_SCHEMA; then
+        echo "[INFO] Will drop isolated schema and role after rollback."
+        DROP_ISOLATED_AFTER=true
+      fi
+    fi
+    ;;
+  *)
+    echo "[ERROR] Unknown MIGRATE_MODE '${MIGRATE_MODE}'. Allowed: forward, backward." >&2
+    exit 1
+    ;;
+esac
+
+###############################################################################
+# 7. Run Tern migrations
+###############################################################################
+echo "[INFO] Running migrations with Tern…"
+
+EXTRA_TERN_ARGS=()
+if $USE_ISOLATED_SCHEMA; then
+  EXTRA_TERN_ARGS+=(--version-table "\"${ISOLATED_SCHEMA}\".schema_version")
+fi
+
+if [[ -n "${DESTINATION:-}" ]]; then
+  time tern migrate \
+       --migrations migrations \
+       --conn-string "${EFFECTIVE_DB_URL}" \
+       --destination "${DESTINATION}" \
+       "${EXTRA_TERN_ARGS[@]}"
+else
+  time tern migrate \
+       --migrations migrations \
+       --conn-string "${EFFECTIVE_DB_URL}" \
+       "${EXTRA_TERN_ARGS[@]}"
+fi
+
+###############################################################################
+# 8. Post-migration cleanup (non-prod backward, isolated schema)
+###############################################################################
+if [[ "${DROP_ISOLATED_AFTER}" == true ]]; then
+  echo "[INFO] Dropping isolated schema and role '${ISOLATED_SCHEMA}'…"
+  psql "${DB_URL}" -v ON_ERROR_STOP=1 \
+       -c "DROP SCHEMA IF EXISTS \"${ISOLATED_SCHEMA}\" CASCADE;"
+  psql "${DB_URL}" -v ON_ERROR_STOP=1 \
+       -c "DROP ROLE IF EXISTS \"${MIGRATION_USER}\";"
+  echo "[INFO] Isolated schema and role dropped."
+fi
+
 echo "[INFO] Migrations complete."
 

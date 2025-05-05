@@ -48,14 +48,12 @@ if [ -n "$SECRET_FIELD_NAME" ]; then
   SECRET_FIELD_VALUE="$(echo "$SECRETS_JSON" | jq -r --arg field "$SECRET_FIELD_NAME" '.[$field] // empty')"
   if [ -z "$SECRET_FIELD_VALUE" ]; then
     echo "[ERROR] Could not find '$SECRET_FIELD_NAME' inside SECRETS_JSON." >&2
-    echo "Full SECRETS_JSON was:" >&2
-    echo "$SECRETS_JSON" >&2
     exit 1
   fi
 
   echo "[INFO] Fetched secret '$SECRET_FIELD_NAME' successfully." >&2
 
-  echo "{\"${SECRET_FIELD_NAME}\": \"${SECRET_FIELD_VALUE}\"}"
+  echo "$SECRET_FIELD_VALUE"
 else
   
   echo "[INFO] Fetched SECRETS_JSON successfully." >&2

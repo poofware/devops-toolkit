@@ -1,3 +1,6 @@
+x-build-network: &build-network
+  network: host
+
 x-networks: &networks
   networks:
     - app_network
@@ -28,6 +31,7 @@ services:
       context: .
       dockerfile: devops-toolkit/backend/docker/go-app.Dockerfile
       target: app-runner
+      <<: *build-network
       args:
         <<: *build-args
         APP_URL_FROM_ANYWHERE: ${APP_URL_FROM_ANYWHERE:-}
@@ -57,6 +61,7 @@ services:
       context: .
       dockerfile: devops-toolkit/backend/docker/go-app-test.Dockerfile
       target: integration-test-runner
+      <<: *build-network
       args:
         <<: *build-args
         APP_URL_FROM_COMPOSE_NETWORK: ${APP_URL_FROM_COMPOSE_NETWORK?Docker Compose Config Error! APP_URL_FROM_COMPOSE_NETWORK is not set!}
@@ -88,6 +93,7 @@ services:
       context: .
       dockerfile: devops-toolkit/backend/docker/go-app.Dockerfile
       target: health-check-runner
+      <<: *build-network
       args:
         APP_URL_FROM_ANYWHERE: ${APP_URL_FROM_ANYWHERE:-}
     image: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-health-check

@@ -30,7 +30,6 @@ RUN --mount=type=ssh if [ -z "$(ls vendor)" ]; then go mod download && rm -rf ve
 FROM base AS builder-config-validator
 
 ARG APP_NAME
-ARG APP_PORT
 ARG HCP_ORG_ID
 ARG HCP_PROJECT_ID
 ARG LD_SERVER_CONTEXT_KEY
@@ -41,10 +40,6 @@ ARG UNIQUE_RUNNER_ID
 # Validate the configuration
 RUN test -n "${APP_NAME}" || ( \
   echo "Error: APP_NAME is not set! Use --build-arg APP_NAME=xxx" && \
-  exit 1 \
-);
-RUN test -n "${APP_PORT}" || ( \
-  echo "Error: APP_PORT is not set! Use --build-arg APP_PORT=xxx" && \
   exit 1 \
 );
 RUN test -n "${HCP_ORG_ID}" || ( \
@@ -133,7 +128,7 @@ RUN apk update && apk add --no-cache curl jq openssl bash ca-certificates && upd
 ARG ENV
 ARG APP_URL_FROM_COMPOSE_NETWORK
 ARG HCP_ENCRYPTED_API_TOKEN
-  
+ 
 RUN test -n "${ENV}" || ( \
   echo "Error: ENV is not set! Use --build-arg ENV=xxx" && \
   exit 1 \

@@ -4,7 +4,7 @@
 
 SHELL := /bin/bash
 
-.PHONY: help build
+.PHONY: help
 
 # Check that the current working directory is the root of a project by verifying that the root Makefile exists.
 ifeq ($(wildcard Makefile),)
@@ -29,15 +29,19 @@ endif
 # Targets
 # --------------------------------
 
+ifeq ($(APP_IS_GATEWAY),1)
+# If the app is a gateway to its dependencies, we need to passthrough some key network configurations to the deps targets.
+# This ensures that the deps of the gateway app use the gateways addresses. This is important for obvious reasons.
+DEPS_PASSTHROUGH_VARS += APP_URL_FROM_COMPOSE_NETWORK
+DEPS_PASSTHROUGH_VARS += APP_URL_FROM_ANYWHERE
+endif
+
 ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
-  ifeq ($(APP_IS_GATEWAY),1)
-    # If the app is a gateway to its dependencies, we need to passthrough some key network configurations to the deps targets.
-	# This ensures that the deps of the gateway app use the gateways addresses. This is important for obvious reasons.
-    DEPS_PASSTHROUGH_VARS += APP_URL_FROM_COMPOSE_NETWORK
-    DEPS_PASSTHROUGH_VARS += APP_URL_FROM_ANYWHERE
-  else
+
+  ifneq ($(APP_IS_GATEWAY),1)
     # If the app is not a gateway to its dependencies, we need to include the deps targets prior to the app targets.
     # This ensures that the app targets are run after the deps are built/up, ensuring no interference with the deps and vice versa.
+    # Specifically, APP_HOST_PORT compute
     include devops-toolkit/backend/make/compose/compose-project-targets/compose-deps-targets/compose_deps_targets.mk
   endif
 
@@ -50,7 +54,6 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
 		@echo "[INFO] [Export Ngrok URL] Done. App Url From Anywhere is set to: $(APP_URL_FROM_ANYWHERE)" >&2
     endif
 
-    # Override the COMPOSE_FILE variable to only include the ngrok compose file.
     _up-ngrok: 
     # Only need to start ngrok once, but the target may be invoked multiple times.
     ifndef NGROK_UP
@@ -60,7 +63,9 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
 		@$(COMPOSE_CMD) up -d ngrok || exit 1
     endif
 
-    DEPS_PASSTHROUGH_VARS += NGROK_UP
+    ifeq ($(APP_IS_GATEWAY),1)
+      DEPS_PASSTHROUGH_VARS += NGROK_UP
+    endif
 
     build:: _up-ngrok _export_ngrok_url_as_app_url
     up:: _up-ngrok _export_ngrok_url_as_app_url
@@ -95,12 +100,116 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
   # If the app is a gateway to apps that are in deps, we need to include the deps targets after the app targets.
   # This ensures that gateway app targets run first, causing the dependency apps to reuse the same exported network configurations.
 
-else
-	# Staging and prod not supported at this time.
+else ifneq (,$(filter $(ENV),$(STAGING_ENV) $(STAGING_TEST_ENV)))
+  
+  _export_fly_api_token:
+  ifndef FLY_API_TOKEN
+	  $(eval export HCP_APP_NAME := $(APP_NAME)-$(ENV))
+	  $(eval export FLY_API_TOKEN := $(shell devops-toolkit/shared/scripts/fetch_hcp_secret_from_secrets_json.sh FLY_API_TOKEN))
+	  $(if $(FLY_API_TOKEN),,$(error Failed to fetch HCP secret 'FLY_API_TOKEN'))
+	  @echo "[INFO] [Export Fly Api Token] Fly API token set."
+  endif
+
+  DEPS_PASSTHROUGH_VARS += FLY_API_TOKEN
+
+  _fly_wireguard_up:
+  ifndef FLY_WIREGUARD_UP
+	  $(eval export FLY_WIREGUARD_UP := 1)
+	  @export LOG_LEVEL=; \
+	  echo "[INFO] Cleaning up leftover wireguard connections..."; \
+	  env -u MAKELEVEL $(MAKE) _fly_wireguard_down --no-print-directory; \
+	  echo "[INFO] [Fly Wireguard Up] Creating WireGuard peer (with auto-retry)…"; \
+	  set -e ; \
+	  if fly wireguard create $(FLY_STAGING_ORG_NAME) \
+	  	$(FLY_WIREGUARD_PEER_REGION) \
+	  	$(FLY_WIREGUARD_PEER_NAME) \
+	  	$(FLY_WIREGUARD_CONF_FILE); then \
+	  	echo "[INFO] [Fly Wireguard Up] Peer created on first attempt." ; \
+	  else \
+		echo "[WARN] [Fly Wireguard Up] Peer creation failed – duplicate or peer-limit. Selecting a peer to delete…" ; \
+		PEERS_JSON=$$(fly wireguard list $(FLY_STAGING_ORG_NAME) --json) ; \
+		TARGET_PEER=$$(echo "$$PEERS_JSON" \
+			| jq -r --arg name "$(FLY_WIREGUARD_PEER_NAME)" 'map(select(.Name==$$name))[0].Name // empty') ; \
+		if [ -z "$$TARGET_PEER" ] ; then \
+			TARGET_PEER=$$(echo "$$PEERS_JSON" | jq -r '.[-1].Name // empty') ; \
+		fi ; \
+		if [ -n "$$TARGET_PEER" ] ; then \
+			echo "[INFO] [Fly Wireguard Up] Removing peer '$$TARGET_PEER'…"; \
+			fly wireguard remove $(FLY_STAGING_ORG_NAME) $$TARGET_PEER || true ; \
+		else \
+			echo "[ERROR] [Fly Wireguard Up] No peers found to delete; aborting." ; \
+			exit 1 ; \
+		fi ; \
+		fly wireguard create $(FLY_STAGING_ORG_NAME) \
+			$(FLY_WIREGUARD_PEER_REGION) \
+			$(FLY_WIREGUARD_PEER_NAME) \
+			$(FLY_WIREGUARD_CONF_FILE) ; \
+	  fi
+
+	  @echo "[INFO] [Fly Wireguard Up] Starting WireGuard interface…"
+	  @sudo wg-quick up $(FLY_WIREGUARD_CONF_FILE)
+	  @echo "[INFO] [Fly Wireguard Up] Done – tunnel is live."
+  endif
+
+  DEPS_PASSTHROUGH_VARS += FLY_WIREGUARD_UP
+
+  _fly_wireguard_down:
+	  @if [ "$(MAKELEVEL)" -eq 0 ]; then \
+		  export LOG_LEVEL=; \
+		  echo "[INFO] [Fly Wireguard Down] Stopping wireguard connection to fly.io..."; \
+		  sudo wg-quick down $(FLY_WIREGUARD_CONF_FILE) || true; \
+		  rm -f $(FLY_WIREGUARD_CONF_FILE); \
+		  fly wireguard list $(FLY_STAGING_ORG_NAME) | grep -q "\b$(FLY_WIREGUARD_PEER_NAME)\b" && \
+			  fly wireguard remove $(FLY_STAGING_ORG_NAME) $(FLY_WIREGUARD_PEER_NAME) || true; \
+		  echo "[INFO] [Fly Wireguard Down] Done. Wireguard connection to fly.io is down."; \
+	  fi
+
+  integration-test:: _export_fly_api_token _fly_wireguard_up
+  up:: _export_fly_api_token _fly_wireguard_up
+  ci:: _export_fly_api_token _fly_wireguard_up
+
+  down:: _export_fly_api_token _fly_wireguard_up _up-network
+	  @export LOG_LEVEL=; \
+	  echo "[INFO] [Down] Stopping app $(FLY_APP_NAME) on fly.io..."; \
+	  fly app destroy $(FLY_APP_NAME) --yes; \
+	  echo "[INFO] [Down] Done. App $(FLY_APP_NAME) stopped."; \
+	  echo "[INFO] [Down] Wipe the migrated isolated schema from the database..."; \
+	  $(MAKE) _up-migrate --no-print-directory MIGRATE_MODE=backward; \
+	  echo "[INFO] [Down] Done. Isolated schema wiped from the database."
+
+  ifndef INCLUDED_COMPOSE_PROJECT_TARGETS
+    include devops-toolkit/backend/make/compose/compose-project-targets/compose_project_targets.mk
+  endif
+  
+  integration-test:: _fly_wireguard_down
+  up:: _fly_wireguard_down
+  ci:: _fly_wireguard_down
+  down:: _fly_wireguard_down
+
+  # OVERRIDE default _up-app target to use fly.io instead of docker-compose
+  _up-app:
+	  @export LOG_LEVEL=; \
+	  if fly app list -q | grep -q "\b$(FLY_APP_NAME)\b"; then \
+		  echo "[INFO] [Up App] App $(FLY_APP_NAME) already exists. Skipping..."; \
+	  else \
+		  echo "[INFO] [Up App] Creating app $(FLY_APP_NAME) on fly.io..."; \
+		  fly apps create $(FLY_APP_NAME) --org $(FLY_STAGING_ORG_NAME); \
+		  echo "[INFO] [Up App] Done. App $(FLY_APP_NAME) created."; \
+		  echo "[INFO] [Up App] Setting secrets for app $(FLY_APP_NAME)..."; \
+		  fly secrets set HCP_TOKEN_ENC_KEY=$(HCP_TOKEN_ENC_KEY) --app $(FLY_APP_NAME); \
+		  echo "[INFO] [Up App] Done. Secrets set for app $(FLY_APP_NAME)."; \
+	  fi; \
+	  echo "[INFO] [Up App] Starting app $(FLY_APP_NAME) on fly.io..."; \
+	  fly deploy -a $(FLY_APP_NAME) -c $(FLY_STAGING_TOML_PATH) --image $(APP_NAME) --local-only --ha=false --yes; \
+	  echo "[INFO] [Up App] Done. App $(FLY_APP_NAME) started."
+
+else ifneq (,$(filter $(ENV),$(PROD_ENV)))
+  # Prod not supported at this time.
 endif
 
 ## Prints the domain that you can use to access the app from anywhere with https
 print-public-app-domain::
+	@./devops-toolkit/backend/scripts/health_check.sh
 	@echo $$APP_URL_FROM_ANYWHERE | sed -e 's~^https://~~'
 
 ifndef INCLUDED_COMPOSE_PROJECT_TARGETS
