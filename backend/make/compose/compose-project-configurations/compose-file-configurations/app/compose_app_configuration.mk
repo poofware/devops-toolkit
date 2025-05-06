@@ -105,8 +105,8 @@ else ifneq (,$(filter $(ENV),$(STAGING_ENV) $(STAGING_TEST_ENV)))
     include devops-toolkit/backend/make/utils/fly_constants.mk
   endif
 
-  FLY_WIREGUARD_PEER_NAME := $(FLY_STAGING_ORG_NAME)-$(UNIQUE_RUNNER_ID)-$(UNIQUE_RUN_NUMBER)
-  FLY_APP_NAME := $(APP_NAME)-$(UNIQUE_RUNNER_ID)-$(UNIQUE_RUN_NUMBER)
+  FLY_WIREGUARD_PEER_NAME := $(subst _,-,$(FLY_STAGING_ORG_NAME)-$(UNIQUE_RUNNER_ID)-$(UNIQUE_RUN_NUMBER))
+  FLY_APP_NAME            := $(subst _,-,$(APP_NAME)-$(UNIQUE_RUNNER_ID)-$(UNIQUE_RUN_NUMBER))
   FLY_URL := https://$(FLY_APP_NAME).fly.dev
 
   ifndef APP_URL_FROM_COMPOSE_NETWORK

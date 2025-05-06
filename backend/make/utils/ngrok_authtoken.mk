@@ -7,13 +7,21 @@
 SHELL := /bin/bash
 
 
+# --------------------------------
+# External Variable Validation
+# --------------------------------
+
+# Runtime/Ci environment variables #
+
+ifneq ($(origin NGROK_AUTHTOKEN), environment)
+  $(error NGROK_AUTHTOKEN is either not set or set in the root Makefile. Please define it in your runtime/ci environment only. \
+  Example: export NGROK_AUTHTOKEN="********")
+endif
+
 # ---------------------------------
 # Internal Variable Declaration
 # ---------------------------------
 
-ifndef NGROK_AUTHTOKEN
-  export NGROK_AUTHTOKEN := 2whJdsbLfd2hSZxeYJqoWyMkBRK_4oxi113BZQkFuHApSfNek
-endif
-
+# Removed default ngrok authtoken...caused conflicts with people who forgot to set theirs):
 
 INCLUDED_NGROK_AUTHTOKEN := 1
