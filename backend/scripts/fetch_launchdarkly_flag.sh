@@ -50,7 +50,7 @@ ALL_FLAGS="$(echo "$RESPONSE" | jq -r '
           if .value.on == true then
             .value.variations[ .value.fallthrough.variation ]
           else
-            .value.variations[ .value.offVariation ]
+            .value.variations[ .value.offVariation // 0]
           end
         )
       }
@@ -68,13 +68,13 @@ fi
 
 if [ -n "$FLAG_NAME" ]; then
   # Extract the single requested flag’s value by nested key
-  FLAG_VALUE="$(echo "$ALL_FLAGS" | jq -r --arg FLAG "$FLAG_NAME" '.[$FLAG] // empty')"
+  FLAG_VALUE="$(echo "$ALL_FLAGS" | jq -r --arg FLAG "$FLAG_NAME" '.[$FLAG]')"
 
   # If we got an empty result, that likely means the flag wasn’t found by its nested key
-  if [ -z "$FLAG_VALUE" ]; then
+  if [ -z "$FLAG_VALUE" ] || [ "$FLAG_VALUE" = "null" ]; then
     echo "[ERROR] Could not retrieve the flag '$FLAG_NAME' by its nested \"key\" field." >&2
     echo "All available flags/values (by nested key) were:" >&2
-    echo "$ALL_FLAGS" | jq
+    echo "$ALL_FLAGS" | jq >&2
     exit 1
   fi
 

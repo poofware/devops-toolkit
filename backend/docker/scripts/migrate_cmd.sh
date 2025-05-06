@@ -82,6 +82,7 @@ echo "[INFO] Evaluating LaunchDarkly flag 'using_isolated_schema'…"
 ISOLATED_FLAG="$(./fetch_launchdarkly_flag.sh using_isolated_schema \
                  | jq -r '.using_isolated_schema' | tr '[:upper:]' '[:lower:]')"
 
+
 USE_ISOLATED_SCHEMA=false
 [[ "${ISOLATED_FLAG}" == "true" ]] && USE_ISOLATED_SCHEMA=true
 

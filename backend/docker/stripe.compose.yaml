@@ -6,6 +6,7 @@ x-environment: &environment
     HCP_TOKEN_ENC_KEY: ${HCP_TOKEN_ENC_KEY?Docker Compose Config Error! HCP_TOKEN_ENC_KEY is not set!}
 
 x-build-args: &build-args
+  APP_NAME: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}
   ENV: ${ENV?Docker Compose Config Error! ENV is not set!}
   HCP_ORG_ID: ${HCP_ORG_ID?Docker Compose Config Error! HCP_ORG_ID is not set!}
   HCP_PROJECT_ID: ${HCP_PROJECT_ID?Docker Compose Config Error! HCP_PROJECT_ID is not set!}
@@ -51,7 +52,6 @@ services:
         <<: *build-args
         APP_URL_FROM_ANYWHERE: ${APP_URL_FROM_ANYWHERE:-}
         STRIPE_WEBHOOK_CHECK_ROUTE: ${STRIPE_WEBHOOK_CHECK_ROUTE?Docker Compose Config Error! STRIPE_WEBHOOK_CHECK_ROUTE is not set!}
-        APP_NAME: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}
         UNIQUE_RUN_NUMBER: ${UNIQUE_RUN_NUMBER?Docker Compose Config Error! UNIQUE_RUN_NUMBER is not set!}
         UNIQUE_RUNNER_ID: ${UNIQUE_RUNNER_ID?Docker Compose Config Error! UNIQUE_RUNNER_ID is not set!}
     image: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-stripe-webhook-check

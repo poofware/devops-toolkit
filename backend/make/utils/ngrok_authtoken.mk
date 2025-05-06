@@ -12,7 +12,7 @@ SHELL := /bin/bash
 # ---------------------------------
 
 ifndef NGROK_AUTHTOKEN
-  export NGROK_AUTHTOKEN := 2v90FpXFnLir5EBXVIf6XI6Xi2c_47g5fXsoRjHHyRVGH5X1n
+  export NGROK_AUTHTOKEN := 2whJdsbLfd2hSZxeYJqoWyMkBRK_4oxi113BZQkFuHApSfNek
 endif
 
 
