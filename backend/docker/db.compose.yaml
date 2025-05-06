@@ -46,6 +46,7 @@ services:
         UNIQUE_RUN_NUMBER: ${UNIQUE_RUN_NUMBER?Docker Compose Config Error! UNIQUE_RUN_NUMBER is not set!}
         UNIQUE_RUNNER_ID: ${UNIQUE_RUNNER_ID?Docker Compose Config Error! UNIQUE_RUNNER_ID is not set!}
     image: ${COMPOSE_PROJECT_NAME?Docker Compose Config Error! COMPOSE_PROJECT_NAME is not set!}-migrate
+    pull_policy: build
     container_name: ${COMPOSE_PROJECT_NAME?Docker Compose Config Error! COMPOSE_PROJECT_NAME is not set!}-migrate_instance
     profiles:
       - unassigned
