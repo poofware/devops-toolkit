@@ -104,7 +104,7 @@ else ifneq (,$(filter $(ENV),$(STAGING_ENV) $(STAGING_TEST_ENV)))
   
   _export_fly_api_token:
   ifndef FLY_API_TOKEN
-	  $(eval export HCP_APP_NAME := $(APP_NAME)-$(ENV))
+	  $(eval export HCP_APP_NAME := shared-$(ENV))
 	  $(eval export FLY_API_TOKEN := $(shell devops-toolkit/shared/scripts/fetch_hcp_secret_from_secrets_json.sh FLY_API_TOKEN))
 	  $(if $(FLY_API_TOKEN),,$(error Failed to fetch HCP secret 'FLY_API_TOKEN'))
 	  @echo "[INFO] [Export Fly Api Token] Fly API token set."
