@@ -26,9 +26,9 @@ ifndef APP_PORT
 	Example: APP_PORT=8080)
 endif
 
-ifndef FLY_STAGING_TOML_PATH
-  $(error FLY_STAGING_TOML_PATH is not set. Please define it in your local Makefile or runtime/ci environment. \
-    Example: FLY_STAGING_TOML_PATH=staging.fly.toml)
+ifndef STAGING_FLY_TOML_PATH
+  $(error STAGING_FLY_TOML_PATH is not set. Please define it in your local Makefile or runtime/ci environment. \
+    Example: STAGING_FLY_TOML_PATH=staging.fly.toml)
 endif
 
 ifndef FLY_TOML_PATH

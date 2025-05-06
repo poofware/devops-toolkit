@@ -200,7 +200,7 @@ else ifneq (,$(filter $(ENV),$(STAGING_ENV) $(STAGING_TEST_ENV)))
 		  echo "[INFO] [Up App] Done. Secrets set for app $(FLY_APP_NAME)."; \
 	  fi; \
 	  echo "[INFO] [Up App] Starting app $(FLY_APP_NAME) on fly.io..."; \
-	  fly deploy -a $(FLY_APP_NAME) -c $(FLY_STAGING_TOML_PATH) --image $(APP_NAME) --local-only --ha=false --yes; \
+	  fly deploy -a $(FLY_APP_NAME) -c $(STAGING_FLY_TOML_PATH) --image $(APP_NAME) --local-only --ha=false --yes; \
 	  echo "[INFO] [Up App] Done. App $(FLY_APP_NAME) started."
 
 else ifneq (,$(filter $(ENV),$(PROD_ENV)))
