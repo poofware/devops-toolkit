@@ -26,16 +26,6 @@ ifndef APP_PORT
 	Example: APP_PORT=8080)
 endif
 
-ifndef STAGING_FLY_TOML_PATH
-  $(error STAGING_FLY_TOML_PATH is not set. Please define it in your local Makefile or runtime/ci environment. \
-    Example: STAGING_FLY_TOML_PATH=staging.fly.toml)
-endif
-
-ifndef FLY_TOML_PATH
-  $(error FLY_TOML_PATH is not set. Please define it in your local Makefile or runtime/ci environment. \
-	Example: FLY_TOML_PATH=fly.toml)
-endif
-
 # Root Makefile variables #
 
 ifneq ($(origin APP_NAME), file)
@@ -101,6 +91,11 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
 
 else ifneq (,$(filter $(ENV),$(STAGING_ENV) $(STAGING_TEST_ENV)))
 
+  ifndef STAGING_FLY_TOML_PATH
+    $(error STAGING_FLY_TOML_PATH is not set. Please define it in your local Makefile or runtime/ci environment. \
+      Example: STAGING_FLY_TOML_PATH=staging.fly.toml)
+  endif
+
   ifndef INCLUDED_FLY_CONSTANTS
     include devops-toolkit/backend/make/utils/fly_constants.mk
   endif
@@ -116,6 +111,15 @@ else ifneq (,$(filter $(ENV),$(STAGING_ENV) $(STAGING_TEST_ENV)))
   ifndef APP_URL_FROM_ANYWHERE
     export APP_URL_FROM_ANYWHERE := $(FLY_URL)
   endif
+
+else ifneq (,$(filter $(ENV),$(PROD_ENV)))
+
+  ifndef FLY_TOML_PATH
+    $(error FLY_TOML_PATH is not set. Please define it in your local Makefile or runtime/ci environment. \
+      Example: FLY_TOML_PATH=fly.toml)
+  endif
+
+  # PROD IS NOT SUPPORTED YET
 
 endif
 
