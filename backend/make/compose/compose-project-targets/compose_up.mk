@@ -87,8 +87,6 @@ _up-network:
 		echo "[INFO] [Up-Network] Network '$(COMPOSE_NETWORK_NAME)' successfully created." || \
 		echo "[WARN] [Up-Network] 'docker network create $(COMPOSE_NETWORK_NAME)' failed (network most likely already exists). Ignoring..."
 	
-_up: EXCLUDE_COMPOSE_PROFILE_APP ?= 0
-_up: EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK ?= 0
 _up:
 	@echo "[INFO] [Up] Calling 'build' target..."
 	@$(MAKE) build --no-print-directory WITH_DEPS=0

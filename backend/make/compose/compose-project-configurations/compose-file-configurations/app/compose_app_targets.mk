@@ -170,10 +170,14 @@ else ifneq (,$(filter $(ENV),$(STAGING_ENV) $(STAGING_TEST_ENV)))
   clean:: _export_fly_api_token _fly_wireguard_up
   down:: _export_fly_api_token _fly_wireguard_up _up-network
 	  @export LOG_LEVEL=; \
-	  echo "[INFO] [Down] Stopping app $(FLY_APP_NAME) on fly.io..."; \
-	  fly app destroy $(FLY_APP_NAME) --yes; \
-	  echo "[INFO] [Down] Done. App $(FLY_APP_NAME) stopped."; \
-	  echo "[INFO] [Down] Wipe the migrated isolated schema from the database..."; \
+	  if [ "$(EXCLUDE_COMPOSE_PROFILE_APP)" -eq 1 ]; then \
+		echo "[INFO] [Down] Skipping fly app destruction... EXCLUDE_COMPOSE_PROFILE_APP is set to 1"; \
+	  else \
+		echo "[INFO] [Down] Destroying app $(FLY_APP_NAME) on fly.io..."; \
+		fly app destroy $(FLY_APP_NAME) --yes; \
+		echo "[INFO] [Down] Done. App $(FLY_APP_NAME) destroyed."; \
+	  fi; \
+	  echo "[INFO] [Down] Wiping the migrated isolated schema from the database..."; \
 	  $(MAKE) _up-migrate --no-print-directory MIGRATE_MODE=backward; \
 	  echo "[INFO] [Down] Done. Isolated schema wiped from the database."
 
