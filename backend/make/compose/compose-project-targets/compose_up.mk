@@ -115,7 +115,7 @@ endif
 
 ## Starts services for all compose profiles in order (EXCLUDE_COMPOSE_PROFILE_APP=1 to exclude profile 'app' from 'up' - EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK=1 to exclude profile 'app_post_check' from 'up' - WITH_DEPS=1 to 'up' dependency projects as well)
 up::
-	$(MAKE) _up --no-print-directory
+	@$(MAKE) _up --no-print-directory
 
 
 INCLUDED_COMPOSE_UP := 1

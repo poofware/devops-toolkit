@@ -34,7 +34,8 @@ _deps-%::
 				exit 1; \
 			fi; \
 			echo "[INFO] [Deps-$*] Running 'make $* -C $$dep_path' with passthrough vars and APP_PORT=$$dep_port..."; \
-			env -i HOME="$(HOME)" TERM="$(TERM)" PATH="$(PATH)" $(foreach var,$(DEPS_PASSTHROUGH_VARS),$(var)="$($(var))") \
+			env -i HOME="$(HOME)" TERM="$(TERM)" PATH="$(PATH)" MAKEFLAGS="$(MAKEFLAGS)" MAKELEVEL="$$(($(MAKELEVEL) + 1))" \
+			$(foreach var,$(DEPS_PASSTHROUGH_VARS),$(var)="$($(var))") \
 				$(MAKE) -C $$dep_path $* APP_PORT=$$dep_port || exit $$?; \
 		done; \
 	fi
