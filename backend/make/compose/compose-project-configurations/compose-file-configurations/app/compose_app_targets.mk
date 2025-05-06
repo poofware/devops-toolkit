@@ -157,7 +157,7 @@ else ifneq (,$(filter $(ENV),$(STAGING_ENV) $(STAGING_TEST_ENV)))
 	  @if [ "$(MAKELEVEL)" -eq 0 ]; then \
 		  export LOG_LEVEL=; \
 		  echo "[INFO] [Fly Wireguard Down] Stopping wireguard connection to fly.io..."; \
-		  sudo wg-quick down $(FLY_WIREGUARD_CONF_FILE) || true; \
+		  sudo wg-quick down $(FLY_WIREGUARD_CONF_FILE) || echo "[WARN] [Fly Wireguard Down] Ignoring...no wireguard connection to fly.io found."; \
 		  rm -f $(FLY_WIREGUARD_CONF_FILE); \
 		  fly wireguard list $(FLY_STAGING_ORG_NAME) | grep -q "\b$(FLY_WIREGUARD_PEER_NAME)\b" && \
 			  fly wireguard remove $(FLY_STAGING_ORG_NAME) $(FLY_WIREGUARD_PEER_NAME) || true; \
@@ -167,7 +167,7 @@ else ifneq (,$(filter $(ENV),$(STAGING_ENV) $(STAGING_TEST_ENV)))
   integration-test:: _export_fly_api_token _fly_wireguard_up
   up:: _export_fly_api_token _fly_wireguard_up
   ci:: _export_fly_api_token _fly_wireguard_up
-
+  clean:: _export_fly_api_token _fly_wireguard_up
   down:: _export_fly_api_token _fly_wireguard_up _up-network
 	  @export LOG_LEVEL=; \
 	  echo "[INFO] [Down] Stopping app $(FLY_APP_NAME) on fly.io..."; \
@@ -184,6 +184,7 @@ else ifneq (,$(filter $(ENV),$(STAGING_ENV) $(STAGING_TEST_ENV)))
   integration-test:: _fly_wireguard_down
   up:: _fly_wireguard_down
   ci:: _fly_wireguard_down
+  clean:: _fly_wireguard_down
   down:: _fly_wireguard_down
 
   # OVERRIDE default _up-app target to use fly.io instead of docker-compose

@@ -59,6 +59,11 @@ if [ -n "$SECRET_NAME" ]; then
   SECRET_VALUE="$(echo "$RESPONSE" | jq -r '.secret.static_version.value // empty')"
   if [ -z "$SECRET_VALUE" ]; then
     echo "[ERROR] Could not retrieve the secret '$SECRET_NAME' for app '$HCP_APP_NAME'." >&2
+    echo "[ERROR] Try the following:" >&2
+    echo "[ERROR]     1. Check if the secret name is correct." >&2
+    echo "[ERROR]     2. Check if the secret exists in the HCP app." >&2
+    echo "[ERROR]     3. Check if the app name is correct." >&2
+    echo "[ERROR]     4. Make sure the HCP API token is fresh and has proper permissions." >&2
     echo "Full response from HCP was:" >&2
     echo "$RESPONSE" >&2
     exit 1
