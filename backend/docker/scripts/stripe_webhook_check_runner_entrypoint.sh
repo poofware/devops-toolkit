@@ -19,12 +19,10 @@ export HCP_API_TOKEN="$(decrypt_token "${HCP_ENCRYPTED_API_TOKEN}")"
 echo "[INFO] Decrypted HCP_API_TOKEN successfully."
 
 # 3) Fetch Stripe secret from HCP for CLI usage
-PAYLOAD="$(./fetch_hcp_secret_from_secrets_json.sh STRIPE_SECRET_KEY)"
-STRIPE_SECRET_KEY="$(echo "$PAYLOAD" | jq -r '.STRIPE_SECRET_KEY // empty')"
+STRIPE_SECRET_KEY="$(./fetch_hcp_secret_from_secrets_json.sh STRIPE_SECRET_KEY)"
+
 if [ -z "$STRIPE_SECRET_KEY" ] || [ "$STRIPE_SECRET_KEY" = "null" ]; then
   echo "[ERROR] Could not retrieve 'STRIPE_SECRET_KEY' from HCP."
-  echo "Full response from fetch_hcp_secret_from_secrets_json.sh was:"
-  echo "$PAYLOAD"
   exit 1
 fi
 echo "[INFO] 'STRIPE_SECRET_KEY' fetched from HCP."
