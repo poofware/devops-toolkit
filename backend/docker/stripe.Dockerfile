@@ -54,8 +54,9 @@ WORKDIR /root/
 
 COPY devops-toolkit/backend/scripts/encryption.sh encryption.sh
 COPY devops-toolkit/shared/scripts/fetch_hcp_secret.sh fetch_hcp_secret.sh
+COPY devops-toolkit/shared/scripts/fetch_hcp_secret_from_secrets_json.sh fetch_hcp_secret_from_secrets_json.sh
 
-RUN chmod +x encryption.sh fetch_hcp_secret.sh;
+RUN chmod +x *.sh;
 
 #######################################
 # Stage 2: Stripe Webhook Check Runner
@@ -137,7 +138,6 @@ ENV HCP_APP_NAME_FOR_STRIPE_SECRET=shared-${ENV}
 ENV HCP_APP_NAME_FOR_ENABLE_LISTENER=${APP_NAME}-${ENV}
 
 COPY devops-toolkit/backend/scripts/fetch_launchdarkly_flag.sh fetch_launchdarkly_flag.sh
-COPY devops-toolkit/shared/scripts/fetch_hcp_secret_from_secrets_json.sh fetch_hcp_secret_from_secrets_json.sh
 COPY devops-toolkit/backend/docker/scripts/stripe_listener_runner_entrypoint.sh stripe_listener_runner_entrypoint.sh
 
 RUN chmod +x *.sh;

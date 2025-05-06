@@ -80,12 +80,12 @@ echo "[INFO] Flag is FALSE — proceeding to start Stripe listener."
 export HCP_APP_NAME="${HCP_APP_NAME_FOR_STRIPE_SECRET}"
 echo "[INFO] Fetching 'STRIPE_SECRET_KEY' from HCP (app=${HCP_APP_NAME})…"
 
-PAYLOAD="$(./fetch_hcp_secret.sh STRIPE_SECRET_KEY)"
+PAYLOAD="$(./fetch_hcp_secret_from_secrets_json.sh STRIPE_SECRET_KEY)"
 STRIPE_SECRET_KEY="$(echo "${PAYLOAD}" | jq -r '.STRIPE_SECRET_KEY // empty')"
 
 if [[ -z "${STRIPE_SECRET_KEY}" || "${STRIPE_SECRET_KEY}" == "null" ]]; then
   echo "[ERROR] Could not retrieve 'STRIPE_SECRET_KEY' from HCP."
-  echo "Full response from fetch_hcp_secret.sh was:"
+  echo "Full response from fetch_hcp_secret_from_secrets_json.sh was:"
   echo "${PAYLOAD}"
   exit 1
 fi
