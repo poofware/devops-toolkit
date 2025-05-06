@@ -118,7 +118,7 @@ else ifneq (,$(filter $(ENV),$(STAGING_ENV) $(STAGING_TEST_ENV)))
 	  @export LOG_LEVEL=; \
 	  echo "[INFO] Cleaning up leftover wireguard connections..."; \
 	  env -u MAKELEVEL $(MAKE) _fly_wireguard_down --no-print-directory; \
-	  echo "[INFO] [Fly Wireguard Up] Creating WireGuard peer (with auto-retry)…"; \
+	  echo "[INFO] [Fly Wireguard Up] Creating WireGuard peer $(FLY_WIREGUARD_PEER_NAME) in region $(FLY_WIREGUARD_PEER_REGION) (with auto-retry)…"; \
 	  set -e ; \
 	  if fly wireguard create $(FLY_STAGING_ORG_NAME) \
 	  	$(FLY_WIREGUARD_PEER_REGION) \
