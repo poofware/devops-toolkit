@@ -62,8 +62,11 @@ run-android: _android_app_configuration
 build-android: logs _android_app_configuration
 	@echo "[INFO] [Build Android] Building for ENV=$(ENV)..."
 	@echo "[INFO] [Build Android] Setting up environment..."
-	@eval "$$($(MAKE) _export_current_backend_domain --no-print-directory)" && \
+	@backend_export="$$( $(MAKE) _export_current_backend_domain --no-print-directory )"; \
+	rc=$$?; [ $$rc -eq 0 ] || exit $$rc; \
+	eval "$$backend_export"; \
 	echo "[INFO] [Build Android] Building..."; \
+	set -eo pipefail; \
 	flutter build appbundle --release \
 		--target lib/main/main_$(ENV).dart --dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
 		$(VERBOSE_FLAG) 2>&1 | tee logs/build_android.log; \
@@ -73,7 +76,9 @@ build-android: logs _android_app_configuration
 build-ios: logs _ios_app_configuration
 	@echo "[INFO] [Build iOS] Building for ENV=$(ENV)..."
 	@echo "[INFO] [Build iOS] Setting up environment..."
-	@eval "$$($(MAKE) _export_current_backend_domain --no-print-directory)" && \
+	@backend_export="$$( $(MAKE) _export_current_backend_domain --no-print-directory )"; \
+	rc=$$?; [ $$rc -eq 0 ] || exit $$rc; \
+	eval "$$backend_export"; \
 	echo "[INFO] [Build iOS] Building..."; \
 	set -eo pipefail; \
 	flutter build ipa --release --no-codesign \

@@ -49,17 +49,26 @@ clean-backend:
 	@echo "[INFO] [Clean Backend] Cleaning backend for ENV=$(ENV)..."
 	@$(MAKE) -C $(BACKEND_GATEWAY_PATH) clean PRINT_INFO=0
 
+# --------------------------------
 # Export the current backend domain based on the environment
+# --------------------------------
+_backend_domain_cmd = $(MAKE) -C $(BACKEND_GATEWAY_PATH) \
+                      --no-print-directory PRINT_INFO=0 print-public-app-domain
+
 _export_current_backend_domain:
 	@echo "[INFO] [Export Backend Domain] Exporting backend domain for ENV=$(ENV)..." >&2
 ifneq (,$(filter $(ENV),$(DEV_TEST_ENV)))
-	@if [ -z $$CURRENT_BACKEND_DOMAIN ]; then \
-		echo 'export CURRENT_BACKEND_DOMAIN="$$($(MAKE) -C $(BACKEND_GATEWAY_PATH) print-public-app-domain --no-print-directory PRINT_INFO=0)"'; \
+	@if [ -z "$$CURRENT_BACKEND_DOMAIN" ]; then \
+		domain="$$( $(_backend_domain_cmd) )"; rc=$$?; \
+		[ $$rc -eq 0 ] || exit $$rc; \
+		echo "export CURRENT_BACKEND_DOMAIN=\"$$domain\""; \
 	fi
 else ifneq (,$(filter $(ENV),$(DEV_ENV)))
-	@echo 'export CURRENT_BACKEND_DOMAIN="$$($(MAKE) -C $(BACKEND_GATEWAY_PATH) print-public-app-domain --no-print-directory PRINT_INFO=0)"'
+	@domain="$$( $(_backend_domain_cmd) )"; rc=$$?; \
+	[ $$rc -eq 0 ] || exit $$rc; \
+	echo "export CURRENT_BACKEND_DOMAIN=\"$$domain\""
 else ifneq (,$(filter $(ENV),$(STAGING_ENV)))
-	# Staging not supported yet
+	# Staging not supported yet – nothing to export
 else ifneq (,$(filter $(ENV),$(PROD_ENV)))
 	@echo 'export CURRENT_BACKEND_DOMAIN="thepoofapp.com"'
 endif
@@ -70,9 +79,11 @@ _integration-test: logs
 	@case "$(ENV)" in \
 	  $(DEV_TEST_ENV)|$(STAGING_TEST_ENV)) \
 	    $(call run_command_with_backend, \
-	      echo "[INFO] [Integration Test] Running API tests for ENV=$(ENV)..." && \
-	      set -o pipefail && \
-		  eval "$$($(MAKE) _export_current_backend_domain --no-print-directory)" && \
+	      echo "[INFO] [Integration Test] Running API tests for ENV=$(ENV)..."; \
+		  backend_export="$$( $(MAKE) _export_current_backend_domain --no-print-directory )"; \
+		  rc=$$?; [ $$rc -eq 0 ] || exit $$rc; \
+		  eval "$$backend_export"; \
+		  set -eo pipefail; \
 	      flutter test integration_test/api --dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
 		  --dart-define=ENV=$(ENV) --dart-define=LOG_LEVEL=$(LOG_LEVEL) $(VERBOSE_FLAG) 2>&1 | tee logs/integration_test_$(PLATFORM)_$(ENV).log \
 	    ); \
@@ -87,9 +98,11 @@ _e2e-test: logs
 	@case "$(ENV)" in \
 	  $(DEV_TEST_ENV)|$(STAGING_TEST_ENV)) \
 	    $(call run_command_with_backend, \
-	      echo "[INFO] [E2E Test] Running UI tests for ENV=$(ENV)..." && \
-	      set -o pipefail && \
-		  eval "$$($(MAKE) _export_current_backend_domain --no-print-directory)" && \
+	      echo "[INFO] [E2E Test] Running UI tests for ENV=$(ENV)..."; \
+		  backend_export="$$( $(MAKE) _export_current_backend_domain --no-print-directory )"; \
+		  rc=$$?; [ $$rc -eq 0 ] || exit $$rc; \
+		  eval "$$backend_export"; \
+		  set -eo pipefail; \
 	      flutter test integration_test/e2e --dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
 		  --dart-define=ENV=$(ENV) --dart-define=LOG_LEVEL=$(LOG_LEVEL) $(VERBOSE_FLAG) 2>&1 | tee logs/e2e_test_$(PLATFORM)_$(ENV).log \
 	    ); \
@@ -102,7 +115,10 @@ _e2e-test: logs
 _run-env: logs
 	@echo "[INFO] Running Flutter app for ENV=$(ENV)"
 	@$(call run_command_with_backend, \
-		eval "$$($(MAKE) _export_current_backend_domain --no-print-directory)" && \
+		backend_export="$$( $(MAKE) _export_current_backend_domain --no-print-directory )"; \
+		rc=$$?; [ $$rc -eq 0 ] || exit $$rc; \
+		eval "$$backend_export"; \
+		set -eo pipefail; \
 		flutter run --target lib/main/main_$(ENV).dart --dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
 		--dart-define=LOG_LEVEL=$(LOG_LEVEL) $(VERBOSE_FLAG) 2>&1 | tee logs/run_$(PLATFORM)_$(ENV).log);
 
