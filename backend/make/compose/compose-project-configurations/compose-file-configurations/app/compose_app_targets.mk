@@ -177,9 +177,11 @@ else ifneq (,$(filter $(ENV),$(STAGING_ENV) $(STAGING_TEST_ENV)))
 		fly app destroy $(FLY_APP_NAME) --yes; \
 		echo "[INFO] [Down] Done. App $(FLY_APP_NAME) destroyed."; \
 	  fi; \
-	  echo "[INFO] [Down] Wiping the migrated isolated schema from the database..."; \
-	  $(MAKE) _up-migrate --no-print-directory MIGRATE_MODE=backward; \
-	  echo "[INFO] [Down] Done. Isolated schema wiped from the database."
+	  if [ -n "$(COMPOSE_PROFILE_MIGRATE_SERVICES)" ]; then \
+		  echo "[INFO] [Down] Wiping the migrated isolated schema from the database..."; \
+		  $(MAKE) _up-migrate --no-print-directory MIGRATE_MODE=backward COMPOSE_PROFILE_MIGRATE_SERVICES="$(COMPOSE_PROFILE_MIGRATE_SERVICES)"; \
+		  echo "[INFO] [Down] Done. Isolated schema wiped from the database."; \
+	  fi
 
   ifndef INCLUDED_COMPOSE_PROJECT_TARGETS
     include devops-toolkit/backend/make/compose/compose-project-targets/compose_project_targets.mk
