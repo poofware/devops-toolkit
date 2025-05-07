@@ -41,7 +41,12 @@ run-web:
 ## Build command for Web (production, release mode)
 build-web: logs
 	@if [ "$(ENV)" = "$(PROD_ENV)" ]; then \
-		eval "$$($(MAKE) _export_current_backend_domain --no-print-directory)" && \
+		echo "[WARN] [Run] Running ENV=dev-test, backend is not required, setting the domain to 'example.com'."; \
+		export CURRENT_BACKEND_DOMAIN="example.com"; \
+		@backend_export="$$( $(MAKE) _export_current_backend_domain --no-print-directory )"; \
+		rc=$$?; [ $$rc -eq 0 ] || exit $$rc; \
+		eval "$$backend_export"; \
+		echo "[INFO] [Build iOS] Building..."; \
 		echo "[INFO] [Build Web] Building..."; \
 		flutter build web --target lib/main/main_prod.dart $(VERBOSE_FLAG) 2>&1 | tee logs/build_web.log; \
 	else \
