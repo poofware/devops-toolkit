@@ -43,7 +43,7 @@ build-web: logs
 	@if [ "$(ENV)" = "$(PROD_ENV)" ]; then \
 		echo "[WARN] [Run] Running ENV=dev-test, backend is not required, setting the domain to 'example.com'."; \
 		export CURRENT_BACKEND_DOMAIN="example.com"; \
-		@backend_export="$$( $(MAKE) _export_current_backend_domain --no-print-directory )"; \
+		backend_export="$$( $(MAKE) _export_current_backend_domain --no-print-directory )"; \
 		rc=$$?; [ $$rc -eq 0 ] || exit $$rc; \
 		eval "$$backend_export"; \
 		echo "[INFO] [Build iOS] Building..."; \
