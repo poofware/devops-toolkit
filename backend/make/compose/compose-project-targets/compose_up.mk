@@ -83,7 +83,7 @@ _up-app:
 
 _up-network:
 	@echo "[INFO] [Up-Network] Creating network '$(COMPOSE_NETWORK_NAME)'..."
-	@docker network create --ipv4 --subnet 172.31.0.0/16 --ipv6 --subnet fd00:db00::/64 $(COMPOSE_NETWORK_NAME) && \
+	@docker network create --ipv6 $(COMPOSE_NETWORK_NAME) && \
 		echo "[INFO] [Up-Network] Network '$(COMPOSE_NETWORK_NAME)' successfully created." || \
 		echo "[WARN] [Up-Network] 'docker network create $(COMPOSE_NETWORK_NAME)' failed (network most likely already exists). Ignoring..."
 	
