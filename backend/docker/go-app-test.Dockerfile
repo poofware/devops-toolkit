@@ -127,6 +127,7 @@ RUN apk update && apk add --no-cache curl jq openssl bash ca-certificates && upd
 
 ARG ENV
 ARG APP_URL_FROM_COMPOSE_NETWORK
+ARG APP_URL_FROM_ANYWHERE
 ARG HCP_ENCRYPTED_API_TOKEN
  
 RUN test -n "${ENV}" || ( \
@@ -135,6 +136,10 @@ RUN test -n "${ENV}" || ( \
 );
 RUN test -n "${APP_URL_FROM_COMPOSE_NETWORK}" || ( \
   echo "Error: APP_URL_FROM_COMPOSE_NETWORK is not set! Use --build-arg APP_URL_FROM_COMPOSE_NETWORK=xxx" && \
+  exit 1 \
+);
+RUN test -n "${APP_URL_FROM_ANYWHERE}" || ( \
+  echo "Error: APP_URL_FROM_ANYWHERE is not set! Use --build-arg APP_URL_FROM_ANYWHERE=xxx" && \
   exit 1 \
 );
 RUN test -n "${HCP_ENCRYPTED_API_TOKEN}" || ( \
@@ -151,6 +156,7 @@ RUN chmod +x integration_test_runner_cmd.sh;
 # Convert ARG to ENV for runtime use
 ENV ENV=${ENV}
 ENV APP_URL_FROM_COMPOSE_NETWORK=${APP_URL_FROM_COMPOSE_NETWORK}
+ENV APP_URL_FROM_ANYWHERE=${APP_URL_FROM_ANYWHERE}
 ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}
 
 CMD ./integration_test_runner_cmd.sh;
