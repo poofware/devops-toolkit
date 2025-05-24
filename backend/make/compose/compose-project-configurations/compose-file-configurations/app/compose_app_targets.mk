@@ -179,10 +179,10 @@ else ifneq (,$(filter $(ENV),$(STAGING_ENV) $(STAGING_TEST_ENV)))
 	  fi; \
 	  if [ -n "$(COMPOSE_PROFILE_MIGRATE_SERVICES)" ]; then \
 		  echo "[INFO] [Down] Wiping the migrated isolated schema from the database..."; \
-		  $(MAKE) _up-migrate --no-print-directory MIGRATE_MODE=backward COMPOSE_PROFILE_MIGRATE_SERVICES="$(COMPOSE_PROFILE_MIGRATE_SERVICES)"; \
+		  $(MAKE) migrate --no-print-directory MIGRATE_MODE=backward COMPOSE_PROFILE_MIGRATE_SERVICES="$(COMPOSE_PROFILE_MIGRATE_SERVICES)"; \
 		  echo "[INFO] [Down] Done. Isolated schema wiped from the database."; \
 	  fi
-  _up-migrate:: _export_fly_api_token _fly_wireguard_up
+  migrate:: _export_fly_api_token _fly_wireguard_up
 
   ifndef INCLUDED_COMPOSE_PROJECT_TARGETS
     include devops-toolkit/backend/make/compose/compose-project-targets/compose_project_targets.mk
@@ -193,7 +193,7 @@ else ifneq (,$(filter $(ENV),$(STAGING_ENV) $(STAGING_TEST_ENV)))
   ci:: _fly_wireguard_down
   clean:: _fly_wireguard_down
   down:: _fly_wireguard_down
-  _up-migrate:: _fly_wireguard_down
+  migrate:: _fly_wireguard_down
 
   # OVERRIDE default _up-app target to use fly.io instead of docker-compose
   _up-app:

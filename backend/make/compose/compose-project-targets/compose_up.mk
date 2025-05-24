@@ -4,7 +4,7 @@
 
 SHELL := /bin/bash
 
-.PHONY: up _up-db _up-migrate _up-app-pre _up-app-post-check 
+.PHONY: up _up-db migrate _up-app-pre _up-app-post-check 
 
 # Check that the current working directory is the root of a project by verifying that the root Makefile exists.
 ifeq ($(wildcard Makefile),)
@@ -38,7 +38,8 @@ _up-db:
 			echo "[WARN] [Up-DB] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_DB) up -d' failed (most likely already running). Ignoring..."; \
 	fi
 
-_up-migrate:: _up-network
+## Starts any migration services found matching the 'migrate' profile (MIGRATE_MODE=backward|forward to specify the migration mode, backward for reversing migrations, forward for running migrations, ENV determines the behavior of the target)
+migrate:: _up-network
 	@if [ -z "$(COMPOSE_PROFILE_MIGRATE_SERVICES)" ]; then \
 		echo "[WARN] [Up-Migrate] No services found matching the '$(COMPOSE_PROFILE_MIGRATE)' profile. Skipping..."; \
 	else \
@@ -97,7 +98,7 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
 	@$(MAKE) _up-db --no-print-directory
 endif
 
-	@$(MAKE) _up-migrate --no-print-directory
+	@$(MAKE) migrate --no-print-directory
 
 	@$(MAKE) _up-app-pre --no-print-directory
 
