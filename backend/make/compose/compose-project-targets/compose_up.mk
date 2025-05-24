@@ -38,7 +38,7 @@ _up-db:
 			echo "[WARN] [Up-DB] '$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_DB) up -d' failed (most likely already running). Ignoring..."; \
 	fi
 
-_up-migrate:
+_up-migrate:: _up-network
 	@if [ -z "$(COMPOSE_PROFILE_MIGRATE_SERVICES)" ]; then \
 		echo "[WARN] [Up-Migrate] No services found matching the '$(COMPOSE_PROFILE_MIGRATE)' profile. Skipping..."; \
 	else \

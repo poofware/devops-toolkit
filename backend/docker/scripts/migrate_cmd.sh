@@ -201,6 +201,47 @@ case "${MIGRATE_MODE}" in
 esac
 
 ###############################################################################
+# Guaranteed isolated-schema teardown for non-prod backward migrations
+###############################################################################
+if [[ "${DROP_ISOLATED_AFTER}" == true ]]; then
+  cleanup_isolated() {
+    # Preserve tern’s exit status so CI can still fail on real errors
+    exit_code=$?
+
+    echo "[INFO] → Cleaning up isolated schema '${ISOLATED_SCHEMA}'"
+
+    # 1. Shoot any connections that still hold locks
+    psql "${DB_URL}" -v ON_ERROR_STOP=0 -q <<SQL || true
+SELECT pg_terminate_backend(pid)
+FROM   pg_stat_activity
+WHERE ( usename = '${MIGRATION_USER}'
+        OR query   ~* '\\y${ISOLATED_SCHEMA}\\y' )
+  AND pid <> pg_backend_pid();
+SQL
+
+    # 2. Revoke & drop objects owned by the migration role (outside the schema)
+    psql "${DB_URL}" -v ON_ERROR_STOP=0 -q \
+         -c "DROP OWNED BY \"${MIGRATION_USER}\" CASCADE;" || true
+
+    # 3. Drop schema and role with tight time-outs to avoid hanging
+    PGOPTIONS='-c lock_timeout=5s -c statement_timeout=30s' \
+      psql "${DB_URL}" -v ON_ERROR_STOP=0 -q \
+           -c "DROP SCHEMA IF EXISTS \"${ISOLATED_SCHEMA}\" CASCADE;" || true
+
+    PGOPTIONS='-c lock_timeout=5s -c statement_timeout=30s' \
+      psql "${DB_URL}" -v ON_ERROR_STOP=0 -q \
+           -c "DROP ROLE IF EXISTS \"${MIGRATION_USER}\";" || true
+
+    echo "[INFO] ✓ Isolated schema and role dropped."
+
+    exit "${exit_code}"
+  }
+
+  # Invoke cleanup on *any* exit path (success, error, or interrupt)
+  trap cleanup_isolated EXIT
+fi
+
+###############################################################################
 # 7. Run Tern migrations
 ###############################################################################
 echo "[INFO] Running migrations with Tern…"
@@ -222,18 +263,3 @@ else
        --conn-string "${EFFECTIVE_DB_URL}" \
        "${EXTRA_TERN_ARGS[@]}"
 fi
-
-###############################################################################
-# 8. Post-migration cleanup (non-prod backward, isolated schema)
-###############################################################################
-if [[ "${DROP_ISOLATED_AFTER}" == true ]]; then
-  echo "[INFO] Dropping isolated schema and role '${ISOLATED_SCHEMA}'…"
-  psql "${DB_URL}" -v ON_ERROR_STOP=1 \
-       -c "DROP SCHEMA IF EXISTS \"${ISOLATED_SCHEMA}\" CASCADE;"
-  psql "${DB_URL}" -v ON_ERROR_STOP=1 \
-       -c "DROP ROLE IF EXISTS \"${MIGRATION_USER}\";"
-  echo "[INFO] Isolated schema and role dropped."
-fi
-
-echo "[INFO] Migrations complete."
-
