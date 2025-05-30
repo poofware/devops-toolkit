@@ -18,6 +18,19 @@ ifndef INCLUDED_FLUTTER_APP_CONFIGURATION
   include devops-toolkit/frontend/make/utils/flutter_app_configuration.mk
 endif
 
+_DETECT_CHROME = $(firstword \
+    $(foreach bin,google-chrome chromium-browser chromium,\
+        $(shell command -v $(bin) 2>/dev/null)))
+CHROME_EXECUTABLE = $(if $(_DETECT_CHROME),$(_DETECT_CHROME),\
+  $(error [ERROR] google-chrome / chromium not found on PATH))
+
+_DETECT_DRIVER = $(shell command -v chromedriver 2>/dev/null)
+CHROMEDRIVER_EXECUTABLE = $(if $(_DETECT_DRIVER),$(_DETECT_DRIVER),\
+  $(error [ERROR] chromedriver not found on PATH))
+
+export CHROME_EXECUTABLE
+export CHROMEDRIVER_EXECUTABLE
+
 # --------------------------------
 # Targets
 # --------------------------------
@@ -26,9 +39,37 @@ ifndef INCLUDED_FLUTTER_APP_TARGETS
   include devops-toolkit/frontend/make/utils/flutter_app_targets.mk
 endif
 
-# Run API integration tests (non-UI logic tests) for Web
-integration-test-web:
-	@$(MAKE) _integration-test --no-print-directory PLATFORM=web
+integration-test-web: AUTO_LAUNCH_BACKEND ?= 1
+integration-test-web: logs
+	@case "$(ENV)" in \
+	  $(DEV_TEST_ENV)|$(STAGING_TEST_ENV)) \
+		$(call run_command_with_backend, \
+		  echo "[INFO] [Integration Test] Running API tests on Web for ENV=$(ENV)..."; \
+		  backend_export="$$( $(MAKE) _export_current_backend_domain --no-print-directory )"; \
+		  rc=$$?; [ $$rc -eq 0 ] || exit $$rc; \
+		  eval "$$backend_export"; \
+		  set -eo pipefail; \
+	      $(CHROMEDRIVER_EXECUTABLE) --port=4444 --verbose > logs/chromedriver_$(ENV).log 2>&1 & \
+	      CD_PID=$$!; \
+	      echo "[INFO] Chromedriver started => PID=$$CD_PID => port=4444"; \
+		  trap 'echo "[CLEANUP] Killing Chromedriver $$CD_PID"; \
+			kill -9 $$CD_PID 2>/dev/null || true' EXIT INT TERM; \
+		  flutter drive \
+			--driver=integration_test/driver.dart \
+			--target=integration_test/api/api_test.dart \
+			-d chrome \
+			--browser-name=chrome \
+			--driver-port=4444 \
+			--dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
+			--dart-define=ENV=$(ENV) \
+			--dart-define=LOG_LEVEL=$(LOG_LEVEL) \
+			  $(VERBOSE_FLAG) 2>&1 \
+			| tee logs/integration_test_web_$(ENV).log \
+		); \
+		;; \
+	  *) \
+		echo "Invalid ENV: $(ENV). Choose from [$(DEV_TEST_ENV)|$(STAGING_TEST_ENV)]."; exit 1;; \
+	esac
 
 # Run end-to-end (UI) tests for Web
 e2e-test-web:
