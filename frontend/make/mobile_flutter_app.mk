@@ -62,8 +62,10 @@ run-android: _android_app_configuration
 build-android: logs _android_app_configuration
 	@echo "[INFO] [Build Android] Building for ENV=$(ENV)..."
 	@echo "[INFO] [Build Android] Setting up environment..."
-	@echo "[WARN] [Run] Running ENV=dev-test, backend is not required, setting the domain to 'example.com'."; \
-	export CURRENT_BACKEND_DOMAIN="example.com"; \
+	@if [ "$(ENV)" = "$(DEV_TEST_ENV)" ]; then \
+		echo "[WARN] [Build Android] Running ENV=dev-test, backend is not required, setting the domain to 'example.com'."; \
+		export CURRENT_BACKEND_DOMAIN="example.com"; \
+	fi;	\
 	backend_export="$$( $(MAKE) _export_current_backend_domain --no-print-directory )"; \
 	rc=$$?; [ $$rc -eq 0 ] || exit $$rc; \
 	eval "$$backend_export"; \
@@ -78,8 +80,10 @@ build-android: logs _android_app_configuration
 build-ios: logs _ios_app_configuration
 	@echo "[INFO] [Build iOS] Building for ENV=$(ENV)..."
 	@echo "[INFO] [Build iOS] Setting up environment..."
-	@echo "[WARN] [Run] Running ENV=dev-test, backend is not required, setting the domain to 'example.com'."; \
-	export CURRENT_BACKEND_DOMAIN="example.com"; \
+	@if [ "$(ENV)" = "$(DEV_TEST_ENV)" ]; then \
+		echo "[WARN] [Build iOS] Running ENV=dev-test, backend is not required, setting the domain to 'example.com'."; \
+		export CURRENT_BACKEND_DOMAIN="example.com"; \
+	fi;	\
 	backend_export="$$( $(MAKE) _export_current_backend_domain --no-print-directory )"; \
 	rc=$$?; [ $$rc -eq 0 ] || exit $$rc; \
 	eval "$$backend_export"; \

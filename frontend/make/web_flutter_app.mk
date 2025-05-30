@@ -14,6 +14,11 @@ SHELL := /bin/bash
 # Internal Variable Declaration
 # --------------------------------
 
+ifneq ($(origin FLUTTER_BASE_HREF), file)
+  $(error FLUTTER_BASE_HREF is either not set or set as a runtime/ci environment variable, should be hardcoded in the root Makefile. \
+	Example: FLUTTER_BASE_HREF="/pm/")
+endif
+
 ifndef INCLUDED_FLUTTER_APP_CONFIGURATION
   include devops-toolkit/frontend/make/utils/flutter_app_configuration.mk
 endif
@@ -81,19 +86,11 @@ run-web:
 
 ## Build command for Web (production, release mode)
 build-web: logs
-	@if [ "$(ENV)" = "$(PROD_ENV)" ]; then \
-		echo "[WARN] [Run] Running ENV=dev-test, backend is not required, setting the domain to 'example.com'."; \
-		export CURRENT_BACKEND_DOMAIN="example.com"; \
-		backend_export="$$( $(MAKE) _export_current_backend_domain --no-print-directory )"; \
-		rc=$$?; [ $$rc -eq 0 ] || exit $$rc; \
-		eval "$$backend_export"; \
-		echo "[INFO] [Build iOS] Building..."; \
-		echo "[INFO] [Build Web] Building..."; \
-		flutter build web --target lib/main/main_prod.dart $(VERBOSE_FLAG) 2>&1 | tee logs/build_web.log; \
-	else \
-		echo "[ERROR] [Build Web] Skipping Web build for ENV=$(ENV). Only ENV=$(PROD_ENV) is allowed."; \
-		exit 1; \
-	fi
+	@echo "[INFO] [Build Web] Building for ENV=$(ENV)..."
+	@flutter build web --release --target lib/main/main_$(ENV).dart $(VERBOSE_FLAG) \
+		--base-href $(FLUTTER_BASE_HREF) 2>&1 | tee logs/build_web.log
+	@echo "[INFO] [Build Web] Build complete. Check logs/build_web.log for details."
+
 
 ## CI Web pipeline: Starts backend, runs both integration and e2e tests, and then shuts down backend
 ci-web::

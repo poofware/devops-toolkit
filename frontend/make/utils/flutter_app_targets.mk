@@ -141,11 +141,6 @@ _run:
 	    echo "[ERROR] [Run] Invalid ENV: $(ENV). Choose from [$(DEV_ENV)|$(DEV_TEST_ENV)|$(STAGING_ENV)|$(PROD_ENV)]."; exit 1;; \
 	esac
 
-## Flutter clean, removes build artifacts and logs
-clean:
-	@flutter clean
-	@rm -rf logs/*
-
 help::
 	@echo "--------------------------------------------------"
 	@echo "[INFO] Flutter App Configuration:"
