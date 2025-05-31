@@ -23,18 +23,11 @@ ifndef INCLUDED_FLUTTER_APP_CONFIGURATION
   include devops-toolkit/frontend/make/utils/flutter_app_configuration.mk
 endif
 
-_DETECT_CHROME = $(firstword \
-    $(foreach bin,google-chrome chromium-browser chromium,\
-        $(shell command -v $(bin) 2>/dev/null)))
-CHROME_EXECUTABLE = $(if $(_DETECT_CHROME),$(_DETECT_CHROME),\
-  $(error [ERROR] google-chrome / chromium not found on PATH))
-
 _DETECT_DRIVER = $(shell command -v chromedriver 2>/dev/null)
-CHROMEDRIVER_EXECUTABLE = $(if $(_DETECT_DRIVER),$(_DETECT_DRIVER),\
+CHROMEDRIVER_BINARY = $(if $(_DETECT_DRIVER),$(_DETECT_DRIVER),\
   $(error [ERROR] chromedriver not found on PATH))
 
-export CHROME_EXECUTABLE
-export CHROMEDRIVER_EXECUTABLE
+export CHROMEDRIVER_BINARY
 
 # --------------------------------
 # Targets
@@ -54,7 +47,7 @@ integration-test-web: logs
 		  rc=$$?; [ $$rc -eq 0 ] || exit $$rc; \
 		  eval "$$backend_export"; \
 		  set -eo pipefail; \
-	      $(CHROMEDRIVER_EXECUTABLE) --port=4444 --verbose > logs/chromedriver_$(ENV).log 2>&1 & \
+	      $(CHROMEDRIVER_BINARY) --port=4444 --verbose > logs/chromedriver_$(ENV).log 2>&1 & \
 	      CD_PID=$$!; \
 	      echo "[INFO] Chromedriver started => PID=$$CD_PID => port=4444"; \
 		  trap 'echo "[CLEANUP] Killing Chromedriver $$CD_PID"; \
