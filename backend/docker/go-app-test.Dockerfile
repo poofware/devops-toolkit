@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.4
+
 ARG GO_VERSION=1.24
 ARG INTEGRATION_TEST_RUNNER_BASE_IMAGE=alpine:latest
 
@@ -21,8 +23,19 @@ RUN mkdir -p /root/.ssh && ssh-keyscan github.com >> /root/.ssh/known_hosts;
 COPY go.mod go.sum ./
 COPY vendor/ ./vendor/
 
-# Use BuildKit SSH mount to fetch private modules
-RUN --mount=type=ssh if [ -z "$(ls vendor)" ]; then go mod download && rm -rf vendor; fi;
+# This is the key preparation step.
+# If vendor/ is empty, we download modules to the cache AND remove the empty
+# vendor/ directory. This prevents Go from failing on an inconsistent state.
+# If vendor/ is populated, we do nothing, preparing for a vendor-based build.
+RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
+    --mount=type=ssh \
+    if [ -z "$(ls -A vendor 2>/dev/null)" ]; then \
+      echo "Vendor directory is empty, populating module cache and removing vendor dir..." ; \
+      go mod download; \
+      rm -rf vendor; \
+    else \
+      echo "Vendor directory is populated, skipping module download." ; \
+    fi;
 
 #######################################
 # Stage 2: Builder Config Validator
@@ -94,7 +107,9 @@ COPY internal/ ./internal/
 # Compile the integration test binary (from test/integration/)
 # Transform ENV by replacing dashes (-) with underscores (_) to ensure valid Go 1.24 build tags,
 # as dashes are not allowed in tag names per stricter parsing (alphanumeric and underscores only).
-RUN set -euxo pipefail; \
+RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
+    --mount=type=cache,id=go-build-integration-test,target=/root/.cache/go-build \
+    set -euxo pipefail; \
     ENV_TRANSFORMED=$(echo "${ENV}" | tr '-' '_') && \
     go test -c -tags "${ENV_TRANSFORMED},integration" \
       -ldflags "\
@@ -116,7 +131,9 @@ FROM base AS unit-test-builder
 COPY internal/ ./internal/
 
 # Compile the unit test binary (from internal/)
-RUN go test -c -o /unit_test ./internal/...;
+RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
+    --mount=type=cache,id=go-build-unit-test,target=/root/.cache/go-build \
+    go test -c -o /unit_test ./internal/...;
 
 #######################################
 # Stage 5: Integration Test Runner

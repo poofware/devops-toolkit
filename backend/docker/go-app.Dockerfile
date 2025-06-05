@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.4
+
 ARG GO_VERSION=1.24
 
 #######################################
@@ -20,8 +22,19 @@ RUN mkdir -p /root/.ssh && ssh-keyscan github.com >> /root/.ssh/known_hosts;
 COPY go.mod go.sum ./
 COPY vendor/ ./vendor/
 
-# Use BuildKit SSH mount to fetch private modules
-RUN --mount=type=ssh if [ -z "$(ls vendor)" ]; then go mod download && rm -rf vendor; fi;
+# This is the key preparation step.
+# If vendor/ is empty, we download modules to the cache AND remove the empty
+# vendor/ directory. This prevents Go from failing on an inconsistent state.
+# If vendor/ is populated, we do nothing, preparing for a vendor-based build.
+RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
+    --mount=type=ssh \
+    if [ -z "$(ls -A vendor 2>/dev/null)" ]; then \
+      echo "Vendor directory is empty, populating module cache and removing vendor dir..." ; \
+      go mod download; \
+      rm -rf vendor; \
+    else \
+      echo "Vendor directory is populated, skipping module download." ; \
+    fi;
 
 #######################################
 # Stage 2: Builder Config Validator
@@ -82,9 +95,12 @@ RUN test -n "${UNIQUE_RUNNER_ID}" || ( \
 COPY internal/ ./internal/
 COPY cmd/ ./cmd/
 
-# Compile the app binary
-# Transform ENV by replacing dashes (-) with underscores (_) to ensure valid Go 1.24 build tags
-RUN go build \
+# A single, clean build command. Go's implicit logic will automatically
+# use the vendor directory if it exists and is non-empty, otherwise it will
+# use the module cache (since we removed the empty vendor directory in the base stage).
+RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
+    --mount=type=cache,id=go-build-app,target=/root/.cache/go-build \
+    go build \
       -ldflags "\
         -X 'github.com/poofware/${APP_NAME}/internal/config.AppName=${APP_NAME}' \
         -X 'github.com/poofware/${APP_NAME}/internal/config.UniqueRunNumber=${UNIQUE_RUN_NUMBER}' \
