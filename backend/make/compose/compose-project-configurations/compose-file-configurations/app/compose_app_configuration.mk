@@ -72,7 +72,10 @@ ENABLE_NGROK_FOR_DEV ?= 0
 
 ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
 
+  # If the app is a gateway, than always override a previously set APP_URL_FROM_COMPOSE_NETWORK
   ifndef APP_URL_FROM_COMPOSE_NETWORK
+    export APP_URL_FROM_COMPOSE_NETWORK := http://$(APP_NAME):$(APP_PORT)
+  else ifeq ($(APP_IS_GATEWAY),1)
     export APP_URL_FROM_COMPOSE_NETWORK := http://$(APP_NAME):$(APP_PORT)
   endif
 
