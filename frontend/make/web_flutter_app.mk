@@ -58,6 +58,7 @@ integration-test-web: logs
 			-d chrome \
 			--browser-name=chrome \
 			--driver-port=4444 \
+			--keep-app-running \
 			--dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
 			--dart-define=ENV=$(ENV) \
 			--dart-define=LOG_LEVEL=$(LOG_LEVEL) \
