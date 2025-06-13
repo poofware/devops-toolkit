@@ -30,8 +30,6 @@ IFS=$'\n\t'
 ###############################################################################
 : "${HCP_ENCRYPTED_API_TOKEN:?HCP_ENCRYPTED_API_TOKEN env var is required}"
 : "${APP_URL_FROM_COMPOSE_NETWORK:?APP_URL_FROM_COMPOSE_NETWORK env var is required}"
-: "${STRIPE_WEBHOOK_CONNECTED_EVENTS:?STRIPE_WEBHOOK_CONNECTED_EVENTS env var is required (comma-separated list of events)}"
-: "${STRIPE_WEBHOOK_PLATFORM_EVENTS:?STRIPE_WEBHOOK_PLATFORM_EVENTS env var is required (comma-separated list of events)}"
 : "${STRIPE_WEBHOOK_ROUTE:?STRIPE_WEBHOOK_ROUTE env var is required}"
 : "${HCP_APP_NAME_FOR_STRIPE_SECRET:?HCP_APP_NAME_FOR_STRIPE_SECRET env var is required}"
 : "${HCP_APP_NAME_FOR_ENABLE_LISTENER:?HCP_APP_NAME_FOR_ENABLE_LISTENER env var is required}"

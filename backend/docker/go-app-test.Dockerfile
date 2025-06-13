@@ -143,12 +143,17 @@ FROM ${INTEGRATION_TEST_RUNNER_BASE_IMAGE} AS integration-test-runner
 RUN apk update && apk add --no-cache curl jq openssl bash ca-certificates && update-ca-certificates;
 
 ARG ENV
+ARG APP_PORT
 ARG APP_URL_FROM_COMPOSE_NETWORK
 ARG APP_URL_FROM_ANYWHERE
 ARG HCP_ENCRYPTED_API_TOKEN
  
 RUN test -n "${ENV}" || ( \
   echo "Error: ENV is not set! Use --build-arg ENV=xxx" && \
+  exit 1 \
+);
+RUN test -n "${APP_PORT}" || ( \
+  echo "Error: APP_PORT is not set! Use --build-arg APP_PORT=xxx" && \
   exit 1 \
 );
 RUN test -n "${APP_URL_FROM_COMPOSE_NETWORK}" || ( \
@@ -172,6 +177,7 @@ RUN chmod +x integration_test_runner_cmd.sh;
 
 # Convert ARG to ENV for runtime use
 ENV ENV=${ENV}
+ENV APP_PORT=${APP_PORT}
 ENV APP_URL_FROM_COMPOSE_NETWORK=${APP_URL_FROM_COMPOSE_NETWORK}
 ENV APP_URL_FROM_ANYWHERE=${APP_URL_FROM_ANYWHERE}
 ENV HCP_ENCRYPTED_API_TOKEN=${HCP_ENCRYPTED_API_TOKEN}

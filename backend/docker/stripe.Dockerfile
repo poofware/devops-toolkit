@@ -113,14 +113,6 @@ ARG STRIPE_WEBHOOK_PLATFORM_EVENTS
 ARG STRIPE_WEBHOOK_ROUTE
 ARG APP_URL_FROM_COMPOSE_NETWORK
 
-RUN test -n "${STRIPE_WEBHOOK_CONNECTED_EVENTS}" || ( \
-  echo "Error: STRIPE_WEBHOOK_CONNECTED_EVENTS is not set! Use --build-arg STRIPE_WEBHOOK_CONNECTED_EVENTS=xxx" && \
-  exit 1 \
-);
-RUN test -n "${STRIPE_WEBHOOK_PLATFORM_EVENTS}" || ( \
-  echo "Error: STRIPE_WEBHOOK_PLATFORM_EVENTS is not set! Use --build-arg STRIPE_WEBHOOK_PLATFORM_EVENTS=xxx" && \
-  exit 1 \
-);
 RUN test -n "${STRIPE_WEBHOOK_ROUTE}" || ( \
   echo "Error: STRIPE_WEBHOOK_ROUTE is not set! Use --build-arg STRIPE_WEBHOOK_ROUTE=xxx" && \
   exit 1 \
