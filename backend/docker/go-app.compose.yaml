@@ -22,6 +22,7 @@ x-build-args: &build-args
   UNIQUE_RUN_NUMBER: ${UNIQUE_RUN_NUMBER?Docker Compose Config Error! UNIQUE_RUN_NUMBER is not set!}
   UNIQUE_RUNNER_ID: ${UNIQUE_RUNNER_ID?Docker Compose Config Error! UNIQUE_RUNNER_ID is not set!}
   GO_VERSION: ${GO_VERSION?Docker Compose Config Error! GO_VERSION is not set!}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
 
 services:
   # ----------------------
@@ -35,7 +36,6 @@ services:
       <<: *build-network
       args:
         <<: *build-args
-        LOG_LEVEL: ${LOG_LEVEL:-info}
     image: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}
     container_name: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}_instance
     ports:

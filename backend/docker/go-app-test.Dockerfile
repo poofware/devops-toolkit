@@ -143,6 +143,7 @@ FROM ${INTEGRATION_TEST_RUNNER_BASE_IMAGE} AS integration-test-runner
 RUN apk update && apk add --no-cache curl jq openssl bash ca-certificates && update-ca-certificates;
 
 ARG ENV
+ARG LOG_LEVEL
 ARG APP_PORT
 ARG APP_URL_FROM_COMPOSE_NETWORK
 ARG APP_URL_FROM_ANYWHERE
@@ -150,6 +151,10 @@ ARG HCP_ENCRYPTED_API_TOKEN
  
 RUN test -n "${ENV}" || ( \
   echo "Error: ENV is not set! Use --build-arg ENV=xxx" && \
+  exit 1 \
+);
+RUN test -n "${LOG_LEVEL}" || ( \
+  echo "Error: LOG_LEVEL is not set! Use --build-arg LOG_LEVEL=xxx" && \
   exit 1 \
 );
 RUN test -n "${APP_PORT}" || ( \
@@ -177,6 +182,7 @@ RUN chmod +x integration_test_runner_cmd.sh;
 
 # Convert ARG to ENV for runtime use
 ENV ENV=${ENV}
+ENV LOG_LEVEL=${LOG_LEVEL}
 ENV APP_PORT=${APP_PORT}
 ENV APP_URL_FROM_COMPOSE_NETWORK=${APP_URL_FROM_COMPOSE_NETWORK}
 ENV APP_URL_FROM_ANYWHERE=${APP_URL_FROM_ANYWHERE}
@@ -189,7 +195,16 @@ CMD ./integration_test_runner_cmd.sh;
 #######################################
 FROM alpine:latest AS unit-test-runner
 
+ARG LOG_LEVEL
+
+RUN test -n "${LOG_LEVEL}" || ( \
+  echo "Error: LOG_LEVEL is not set! Use --build-arg LOG_LEVEL=xxx" && \
+  exit 1 \
+);
+
 WORKDIR /root/
 COPY --from=unit-test-builder /unit_test ./unit_test
+
+ENV LOG_LEVEL=${LOG_LEVEL}
 
 CMD ./unit_test -test.v;
