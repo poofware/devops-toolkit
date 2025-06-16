@@ -33,7 +33,7 @@ cleanup() {
   if [ -n "$ACCOUNT_ID" ]; then
     echo "[INFO] Deleting connected account ID: $ACCOUNT_ID"
     stripe accounts delete "$ACCOUNT_ID" \
-      --api-key "$STRIPE_SECRET_KEY" || true
+      --api-key "$STRIPE_SECRET_KEY" -c || true
   fi
 }
 trap cleanup EXIT
