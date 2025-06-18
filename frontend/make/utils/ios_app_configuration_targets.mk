@@ -10,11 +10,11 @@ SHELL := /bin/bash
 # Targets
 # ------------------------------
 
-ifndef INCLUDED_GMAPS_CONFIGURATION_TARGETS
-  include devops-toolkit/frontend/make/utils/gmaps_configuration_targets.mk
+ifndef INCLUDED_GCP_CONFIGURATION_TARGETS
+  include devops-toolkit/frontend/make/utils/gcp_configuration_targets.mk
 endif
 
-_ios_app_configuration: _gmaps_configuration
+_ios_app_configuration: _ios_gcp_configuration
 	@echo "[INFO] [Android App Configuration] All required Android environment variables have been exported."
 
 
