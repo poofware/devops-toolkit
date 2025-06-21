@@ -59,9 +59,9 @@ _deps-%::
 					dep_path=$$(echo $$dep | cut -d: -f2); \
 					dep_port=$$(echo $$dep | cut -d: -f3); \
 					echo "[INFO] [Deps-$*] [$$dep_path] Running 'make $*' in background..."; \
-					env -i HOME="$(HOME)" TERM="$(TERM)" PATH="$(PATH)" MAKEFLAGS="$(MAKEFLAGS)" MAKELEVEL="$$(($(MAKELEVEL) + 1))" \
-					$(foreach var,$(DEPS_PASSTHROUGH_VARS),$(var)="$($(var))") \
-						$(MAKE) -C $$dep_path $* APP_PORT=$$dep_port; \
+					setsid env -i HOME="$(HOME)" TERM="$(TERM)" PATH="$(PATH)" MAKEFLAGS="$(MAKEFLAGS)" MAKELEVEL="$$(($(MAKELEVEL) + 1))" \
+					    $(foreach var,$(DEPS_PASSTHROUGH_VARS),$(var)="$($(var))") \
+					        $(MAKE) -C $$dep_path $* APP_PORT=$$dep_port </dev/null; \
 				) & \
 				pids="$$pids $$!"; \
 			done; \
