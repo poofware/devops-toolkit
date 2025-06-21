@@ -85,6 +85,7 @@ _integration-test: logs
 		  eval "$$backend_export"; \
 		  set -eo pipefail; \
 	      flutter test integration_test/api --dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
+		  --dart-define=GCP_SDK_KEY=$(GCP_SDK_KEY) \
 		  --dart-define=ENV=$(ENV) --dart-define=LOG_LEVEL=$(LOG_LEVEL) $(VERBOSE_FLAG) 2>&1 | tee logs/integration_test_$(PLATFORM)_$(ENV).log \
 	    ); \
 	    ;; \
@@ -104,6 +105,7 @@ _e2e-test: logs
 		  eval "$$backend_export"; \
 		  set -eo pipefail; \
 	      flutter test integration_test/e2e --dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
+		  --define=GCP_SDK_KEY=$(GCP_SDK_KEY) \
 		  --dart-define=ENV=$(ENV) --dart-define=LOG_LEVEL=$(LOG_LEVEL) $(VERBOSE_FLAG) 2>&1 | tee logs/e2e_test_$(PLATFORM)_$(ENV).log \
 	    ); \
 	    ;; \
@@ -120,6 +122,7 @@ _run-env: logs
 		eval "$$backend_export"; \
 		set -eo pipefail; \
 		flutter run --target lib/main/main_$(ENV).dart --dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
+		--dart-define=GCP_SDK_KEY=$(GCP_SDK_KEY) \
 		--dart-define=LOG_LEVEL=$(LOG_LEVEL) $(VERBOSE_FLAG) 2>&1 | tee logs/run_$(PLATFORM)_$(ENV).log);
 
 # Run the app in a specific environment (ENV=dev|dev-test|staging|prod) with respective auto backend behavior

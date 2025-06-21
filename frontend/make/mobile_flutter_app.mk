@@ -36,27 +36,27 @@ endif
 
 # Run API integration tests (non-UI logic tests) for iOS
 integration-test-ios: _ios_app_configuration
-	@$(MAKE) _integration-test --no-print-directory PLATFORM=ios
+	@$(MAKE) _integration-test --no-print-directory PLATFORM=ios GCP_SDK_KEY=$(GCP_IOS_SDK_KEY)
 
 # Run API integration tests (non-UI logic tests) for Android
 integration-test-android: _android_app_configuration
-	@$(MAKE) _integration-test --no-print-directory PLATFORM=android
+	@$(MAKE) _integration-test --no-print-directory PLATFORM=android GCP_SDK_KEY=$(GCP_ANDROID_SDK_KEY)
 
 # Run end-to-end (UI) tests for iOS
 e2e-test-ios: _ios_app_configuration
-	@$(MAKE) _e2e-test --no-print-directory PLATFORM=ios
+	@$(MAKE) _e2e-test --no-print-directory PLATFORM=ios GCP_SDK_KEY=$(GCP_IOS_SDK_KEY)
 
 # Run end-to-end (UI) tests for Android
 e2e-test-android: _android_app_configuration
-	@$(MAKE) _e2e-test --no-print-directory PLATFORM=android
+	@$(MAKE) _e2e-test --no-print-directory PLATFORM=android GCP_SDK_KEY=$(GCP_ANDROID_SDK_KEY)
 
 ## Run the app in a specific environment (ENV=dev|dev-test|staging|prod) for ios
 run-ios: _ios_app_configuration
-	@$(MAKE) _run --no-print-directory PLATFORM=ios
+	@$(MAKE) _run --no-print-directory PLATFORM=ios GCP_SDK_KEY=$(GCP_IOS_SDK_KEY)
 
 ## Run the app in a specific environment (ENV=dev|dev-test|staging|prod) for android
 run-android: _android_app_configuration
-	@$(MAKE) _run --no-print-directory PLATFORM=android
+	@$(MAKE) _run --no-print-directory PLATFORM=android GCP_SDK_KEY=$(GCP_ANDROID_SDK_KEY)
 
 ## Build command for Android
 build-android: logs _android_app_configuration
@@ -73,6 +73,7 @@ build-android: logs _android_app_configuration
 	set -eo pipefail; \
 	flutter build appbundle --release \
 		--target lib/main/main_$(ENV).dart --dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
+		--dart-define=GCP_SDK_KEY=$(GCP_ANDROID_SDK_KEY) \
 		$(VERBOSE_FLAG) 2>&1 | tee logs/build_android.log; \
 	echo "[INFO] [Build Android] Build complete. Check logs/build_android.log for details."
 
@@ -91,6 +92,7 @@ build-ios: logs _ios_app_configuration
 	set -eo pipefail; \
 	flutter build ipa --release --no-codesign \
 		--target lib/main/main_$(ENV).dart --dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
+		--dart-define=GCP_SDK_KEY=$(GCP_IOS_SDK_KEY) \
 		$(VERBOSE_FLAG) 2>&1 | tee logs/build_ios.log; \
 	echo "[INFO] [Build iOS] Build complete. Check logs/build_ios.log for details."
 
