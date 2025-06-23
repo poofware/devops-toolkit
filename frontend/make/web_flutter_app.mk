@@ -81,10 +81,9 @@ run-web:
 ## Build command for Web (production, release mode)
 build-web: logs
 	@echo "[INFO] [Build Web] Building for ENV=$(ENV)..."
-	@flutter build web --release --target lib/main/main_$(ENV).dart $(VERBOSE_FLAG) \
+	@flutter build web --wasm --release --target lib/main/main_$(ENV).dart $(VERBOSE_FLAG) \
 		--base-href $(FLUTTER_BASE_HREF) 2>&1 | tee logs/build_web.log
 	@echo "[INFO] [Build Web] Build complete. Check logs/build_web.log for details."
-
 
 ## CI Web pipeline: Starts backend, runs both integration and e2e tests, and then shuts down backend
 ci-web::

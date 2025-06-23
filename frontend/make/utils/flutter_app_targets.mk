@@ -114,14 +114,19 @@ _e2e-test: logs
 	esac
 
 # Run the app in a specific environment (ENV=dev|dev-test|staging|prod)
+# Run the app in a specific environment (ENV=dev|dev-test|staging|prod)
 _run-env: logs
-	@echo "[INFO] Running Flutter app for ENV=$(ENV)"
+	@echo "[INFO] Running Flutter app for ENV=$(ENV) on PLATFORM=$(PLATFORM)"
 	@$(call run_command_with_backend, \
 		backend_export="$$( $(MAKE) _export_current_backend_domain --no-print-directory )"; \
 		rc=$$?; [ $$rc -eq 0 ] || exit $$rc; \
 		eval "$$backend_export"; \
 		set -eo pipefail; \
-		flutter run --target lib/main/main_$(ENV).dart --dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
+		web_flags=""; \
+		if [ "$(PLATFORM)" = "web" ]; then \
+			web_flags="-d chrome --wasm"; \
+		fi; \
+		flutter run $$web_flags --target lib/main/main_$(ENV).dart --dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
 		--dart-define=GCP_SDK_KEY=$(GCP_SDK_KEY) \
 		--dart-define=LOG_LEVEL=$(LOG_LEVEL) $(VERBOSE_FLAG) 2>&1 | tee logs/run_$(PLATFORM)_$(ENV).log);
 
