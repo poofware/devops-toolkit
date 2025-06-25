@@ -68,7 +68,9 @@ else ifneq (,$(filter $(ENV),$(DEV_ENV)))
 	[ $$rc -eq 0 ] || exit $$rc; \
 	echo "export CURRENT_BACKEND_DOMAIN=\"$$domain\""
 else ifneq (,$(filter $(ENV),$(STAGING_ENV)))
-	# Staging not supported yet – nothing to export
+	@domain="$$( $(_backend_domain_cmd) )"; rc=$$?; \
+	[ $$rc -eq 0 ] || exit $$rc; \
+	echo "export CURRENT_BACKEND_DOMAIN=\"$$domain\""
 else ifneq (,$(filter $(ENV),$(PROD_ENV)))
 	@echo 'export CURRENT_BACKEND_DOMAIN="thepoofapp.com"'
 endif
