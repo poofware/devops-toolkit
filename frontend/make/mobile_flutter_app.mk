@@ -90,7 +90,7 @@ build-ios: logs _ios_app_configuration
 	eval "$$backend_export"; \
 	echo "[INFO] [Build iOS] Building..."; \
 	set -eo pipefail; \
-	flutter build ipa --release --no-codesign \
+	flutter build ipa --release \
 		--target lib/main/main_$(ENV).dart --dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
 		--dart-define=GCP_SDK_KEY=$(GCP_IOS_SDK_KEY) \
 		$(VERBOSE_FLAG) 2>&1 | tee logs/build_ios.log; \
