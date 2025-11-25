@@ -281,7 +281,8 @@ _up:
 	fi; \
 	echo "[INFO] [Up App] Deploying $(APP_NAME) to Vercel (remote build)..."; \
 	DEPLOY_URL=$$(VERCEL_ORG_ID=$(VERCEL_ORG_ID) VERCEL_PROJECT_ID=$(VERCEL_PROJECT_ID) VERCEL_PROJECT_NAME=$(VERCEL_PROJECT_NAME) \
-		vercel deploy --prod --token $(VERCEL_TOKEN) --yes --cwd $(CURDIR) | grep -Eo 'https://[^ ]+' | tail -n1); \
+		vercel deploy --prod --token $(VERCEL_TOKEN) --yes --force --cwd $(CURDIR) \
+		| grep -Eo 'https://[^ ]+' | tail -n1); \
 	if [ -z "$$DEPLOY_URL" ]; then \
 		echo "[ERROR] [Up App] Failed to capture Vercel deploy URL."; \
 		exit 1; \
