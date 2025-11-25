@@ -265,9 +265,14 @@ migrate:: _export_vercel_token _export_vercel_project_vars
 
 # Override app up target to deploy via Vercel CLI
 _up-app:
-	@export LOG_LEVEL=; \
+	@set -euo pipefail; \
+	export LOG_LEVEL=; \
 	if ! command -v vercel >/dev/null 2>&1; then \
 		echo "[ERROR] [Up App] vercel CLI not found. Install with 'npm i -g vercel'."; \
+		exit 1; \
+	fi; \
+	if [ -z "$(strip $(VERCEL_TOKEN))" ]; then \
+		echo "[ERROR] [Up App] VERCEL_TOKEN is required but not set."; \
 		exit 1; \
 	fi; \
 	echo "[INFO] [Up App] Building app $(APP_NAME) for Vercel..."; \
