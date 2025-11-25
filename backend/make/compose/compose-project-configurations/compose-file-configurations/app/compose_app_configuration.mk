@@ -185,19 +185,6 @@ else
         Example: VERCEL_PROJECT_NAME=mazle)
     endif
 
-    ifndef VERCEL_PROD_URL
-      $(warning VERCEL_PROD_URL is not set. Defaulting to https://$(VERCEL_PROJECT_NAME).vercel.app)
-      VERCEL_PROD_URL := https://$(VERCEL_PROJECT_NAME).vercel.app
-    endif
-
-    ifndef APP_URL_FROM_COMPOSE_NETWORK
-      export APP_URL_FROM_COMPOSE_NETWORK := $(VERCEL_PROD_URL)
-    endif
-  
-    ifndef APP_URL_FROM_ANYWHERE
-      export APP_URL_FROM_ANYWHERE := $(VERCEL_PROD_URL)
-    endif
-
   endif
 
 endif

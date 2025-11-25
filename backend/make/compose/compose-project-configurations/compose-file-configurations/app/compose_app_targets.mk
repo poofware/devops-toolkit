@@ -263,8 +263,12 @@ clean:: _export_vercel_token _export_vercel_project_vars
 down:: _export_vercel_token _export_vercel_project_vars
 migrate:: _export_vercel_token _export_vercel_project_vars
 
+ifndef INCLUDED_COMPOSE_PROJECT_TARGETS
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose-project-targets/compose_project_targets.mk
+endif
+
 # Override app up target to deploy via Vercel CLI
-_up-app:
+_up:
 	@set -euo pipefail; \
 	export LOG_LEVEL=; \
 	if ! command -v vercel >/dev/null 2>&1; then \
@@ -275,13 +279,15 @@ _up-app:
 		echo "[ERROR] [Up App] VERCEL_TOKEN is required but not set."; \
 		exit 1; \
 	fi; \
-	echo "[INFO] [Up App] Building app $(APP_NAME) for Vercel..."; \
-	VERCEL_ORG_ID=$(VERCEL_ORG_ID) VERCEL_PROJECT_ID=$(VERCEL_PROJECT_ID) VERCEL_PROJECT_NAME=$(VERCEL_PROJECT_NAME) \
-		vercel build --prod --token $(VERCEL_TOKEN) --yes --cwd $(CURDIR); \
-	echo "[INFO] [Up App] Deploying prebuilt output for $(APP_NAME) to Vercel..."; \
-	VERCEL_ORG_ID=$(VERCEL_ORG_ID) VERCEL_PROJECT_ID=$(VERCEL_PROJECT_ID) VERCEL_PROJECT_NAME=$(VERCEL_PROJECT_NAME) \
-		vercel deploy --prebuilt --prod --token $(VERCEL_TOKEN) --yes --cwd $(CURDIR); \
-	echo "[INFO] [Up App] Done. App $(APP_NAME) available at $(APP_URL_FROM_ANYWHERE)."
+	echo "[INFO] [Up App] Deploying $(APP_NAME) to Vercel (remote build)..."; \
+	DEPLOY_URL=$$(VERCEL_ORG_ID=$(VERCEL_ORG_ID) VERCEL_PROJECT_ID=$(VERCEL_PROJECT_ID) VERCEL_PROJECT_NAME=$(VERCEL_PROJECT_NAME) \
+		vercel deploy --prod --token $(VERCEL_TOKEN) --yes --cwd $(CURDIR) | grep -Eo 'https://[^ ]+' | tail -n1); \
+	if [ -z "$$DEPLOY_URL" ]; then \
+		echo "[ERROR] [Up App] Failed to capture Vercel deploy URL."; \
+		exit 1; \
+	fi; \
+	echo "$$DEPLOY_URL" > .last_vercel_deploy_url; \
+	echo "[INFO] [Up App] Done. App $(APP_NAME) available at $$DEPLOY_URL."
 
 ## Override down to avoid destructive remote removal (manage from Vercel)
 down::
