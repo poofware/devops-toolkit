@@ -41,6 +41,9 @@ integration-test:: _export-target-platform
 up-app-post-check:: _export-target-platform
 help:: _export-target-platform
 migrate:: _export-target-platform
+down:: _export-target-platform
+clean:: _export-target-platform
+ci:: _export-target-platform
 
 ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
 
@@ -103,6 +106,16 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
   # This ensures that gateway app targets run first, causing the dependency apps to reuse the same exported network configurations.
 
 else
+
+  DEPLOY_TARGET_FOR_ENV := fly
+
+  ifneq (,$(filter $(ENV),$(STAGING_ENV) $(STAGING_TEST_ENV)))
+    DEPLOY_TARGET_FOR_ENV := $(STAGING_DEPLOY_TARGET)
+  else ifneq (,$(filter $(ENV),$(PROD_ENV)))
+    DEPLOY_TARGET_FOR_ENV := $(PROD_DEPLOY_TARGET)
+  endif
+
+  ifeq ($(DEPLOY_TARGET_FOR_ENV),fly)
   
   _export_fly_api_token:
   ifndef FLY_API_TOKEN
@@ -219,6 +232,62 @@ else
 	  echo "[INFO] [Up App] Starting app $(FLY_APP_NAME) on fly.io..."; \
 	  fly deploy -a $(FLY_APP_NAME) -c $(FLY_TOML_PATH) --image $(APP_NAME) --local-only --ha=false --yes; \
 	  echo "[INFO] [Up App] Done. App $(FLY_APP_NAME) started."
+
+  else ifeq ($(DEPLOY_TARGET_FOR_ENV),vercel)
+
+_export_vercel_token:
+ifndef VERCEL_TOKEN
+	$(eval export BWS_PROJECT_NAME := shared-$(ENV))
+	$(eval export VERCEL_TOKEN := $(shell $(DEVOPS_TOOLKIT_PATH)/shared/scripts/fetch_bws_secret.sh VERCEL_TOKEN | jq -r '.VERCEL_TOKEN // empty'))
+	$(if $(VERCEL_TOKEN),,$(error Failed to fetch BWS secret 'VERCEL_TOKEN'))
+	@echo "[INFO] [Export Vercel Token] Vercel token set."
+endif
+
+_export_vercel_project_vars:
+ifndef VERCEL_ORG_ID
+	$(eval export BWS_PROJECT_NAME := shared-$(ENV))
+	$(eval export VERCEL_ORG_ID := $(shell $(DEVOPS_TOOLKIT_PATH)/shared/scripts/fetch_bws_secret.sh VERCEL_ORG_ID | jq -r '.VERCEL_ORG_ID // empty'))
+endif
+ifndef VERCEL_PROJECT_ID
+	$(eval export BWS_PROJECT_NAME := shared-$(ENV))
+	$(eval export VERCEL_PROJECT_ID := $(shell $(DEVOPS_TOOLKIT_PATH)/shared/scripts/fetch_bws_secret.sh VERCEL_PROJECT_ID | jq -r '.VERCEL_PROJECT_ID // empty'))
+endif
+
+_assert_vercel_project:
+	@if [ ! -f ".vercel/project.json" ]; then \
+		if [ -z "$(strip $(VERCEL_ORG_ID))" ] || [ -z "$(strip $(VERCEL_PROJECT_ID))" ]; then \
+			echo "[ERROR] [Vercel Project] VERCEL_ORG_ID and VERCEL_PROJECT_ID must be set when .vercel/project.json is absent."; \
+			exit 1; \
+		fi; \
+	fi
+
+integration-test:: _export_vercel_token _export_vercel_project_vars
+up:: _export_vercel_token _export_vercel_project_vars _assert_vercel_project
+ci:: _export_vercel_token _export_vercel_project_vars _assert_vercel_project
+clean:: _export_vercel_token _export_vercel_project_vars
+down:: _export_vercel_token _export_vercel_project_vars
+migrate:: _export_vercel_token _export_vercel_project_vars
+
+# Override app up target to deploy via Vercel CLI
+_up-app:
+	@export LOG_LEVEL=; \
+	if ! command -v vercel >/dev/null 2>&1; then \
+		echo "[ERROR] [Up App] vercel CLI not found. Install with 'npm i -g vercel'."; \
+		exit 1; \
+	fi; \
+	echo "[INFO] [Up App] Building app $(APP_NAME) for Vercel..."; \
+	VERCEL_ORG_ID=$(VERCEL_ORG_ID) VERCEL_PROJECT_ID=$(VERCEL_PROJECT_ID) VERCEL_PROJECT_NAME=$(VERCEL_PROJECT_NAME) \
+		vercel build --prod --token $(VERCEL_TOKEN) --yes --cwd $(CURDIR); \
+	echo "[INFO] [Up App] Deploying prebuilt output for $(APP_NAME) to Vercel..."; \
+	VERCEL_ORG_ID=$(VERCEL_ORG_ID) VERCEL_PROJECT_ID=$(VERCEL_PROJECT_ID) VERCEL_PROJECT_NAME=$(VERCEL_PROJECT_NAME) \
+		vercel deploy --prebuilt --prod --token $(VERCEL_TOKEN) --yes --cwd $(CURDIR); \
+	echo "[INFO] [Up App] Done. App $(APP_NAME) available at $(APP_URL_FROM_ANYWHERE)."
+
+## Override down to avoid destructive remote removal (manage from Vercel)
+down::
+	@echo "[INFO] [Down] Vercel deploy target selected – skipping remote teardown. Manage removal from the Vercel dashboard if needed."
+
+  endif
 endif
 
 ## Prints the domain that you can use to access the app from anywhere with https

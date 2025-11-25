@@ -61,6 +61,12 @@ ifdef LOG_LEVEL
 endif
 
 
+# Deploy target selection
+ALLOWED_DEPLOY_TARGETS := fly vercel
+STAGING_DEPLOY_TARGET ?= fly
+PROD_DEPLOY_TARGET ?= fly
+
+
 # ------------------------------
 # Internal Variable Declaration
 # ------------------------------
@@ -109,53 +115,89 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
 
 else
 
-  ifndef INCLUDED_FLY_CONSTANTS
-    include $(DEVOPS_TOOLKIT_PATH)/backend/make/utils/fly_constants.mk
-  endif
-
-  DEPS_PASSTHROUGH_VARS += FLY_API_TOKEN
-  DEPS_PASSTHROUGH_VARS += FLY_WIREGUARD_UP
+  DEPLOY_TARGET_FOR_ENV := fly
 
   ifneq (,$(filter $(ENV),$(STAGING_ENV) $(STAGING_TEST_ENV)))
-
-    ifndef STAGING_FLY_TOML_PATH
-      $(error STAGING_FLY_TOML_PATH is not set. Please define it in your local Makefile or runtime/ci environment. \
-        Example: STAGING_FLY_TOML_PATH=staging.fly.toml)
-    endif
-
-    FLY_TOML_PATH := $(STAGING_FLY_TOML_PATH)
-    FLY_ORG_NAME := $(FLY_STAGING_ORG_NAME)
-    FLY_APP_NAME := $(subst _,-,$(APP_NAME)-$(UNIQUE_RUNNER_ID)-$(UNIQUE_RUN_NUMBER))
-    FLY_URL := https://$(FLY_APP_NAME).fly.dev
-    FLY_WIREGUARD_PEER_NAME := $(subst _,-,$(FLY_STAGING_ORG_NAME)-$(UNIQUE_RUNNER_ID)-$(UNIQUE_RUN_NUMBER))
-
-    ifndef APP_URL_FROM_COMPOSE_NETWORK
-      export APP_URL_FROM_COMPOSE_NETWORK := $(FLY_URL)
-    endif
-  
-    ifndef APP_URL_FROM_ANYWHERE
-      export APP_URL_FROM_ANYWHERE := $(FLY_URL)
-    endif
+    DEPLOY_TARGET_FOR_ENV := $(STAGING_DEPLOY_TARGET)
   else ifneq (,$(filter $(ENV),$(PROD_ENV)))
+    DEPLOY_TARGET_FOR_ENV := $(PROD_DEPLOY_TARGET)
+  endif
 
-    ifndef PROD_FLY_TOML_PATH
-      $(error PROD_FLY_TOML_PATH is not set. Please define it in your local Makefile or runtime/ci environment. \
-        Example: PROD_FLY_TOML_PATH=fly.toml)
+  ifeq (,$(filter $(DEPLOY_TARGET_FOR_ENV),$(ALLOWED_DEPLOY_TARGETS)))
+    $(error DEPLOY_TARGET_FOR_ENV is set to an invalid value. Allowed values are: $(ALLOWED_DEPLOY_TARGETS))
+  endif
+
+  ifeq ($(DEPLOY_TARGET_FOR_ENV),fly)
+
+    ifndef INCLUDED_FLY_CONSTANTS
+      include $(DEVOPS_TOOLKIT_PATH)/backend/make/utils/fly_constants.mk
     endif
 
-    FLY_TOML_PATH := $(PROD_FLY_TOML_PATH)
-    FLY_ORG_NAME := $(FLY_PROD_ORG_NAME)
-    FLY_APP_NAME := $(subst _,-,$(APP_NAME)-$(UNIQUE_RUN_NUMBER))
-    FLY_URL := https://$(FLY_APP_NAME).fly.dev
-    FLY_WIREGUARD_PEER_NAME := $(subst _,-,$(FLY_ORG_NAME)-$(UNIQUE_RUNNER_ID)-$(UNIQUE_RUN_NUMBER))
+    DEPS_PASSTHROUGH_VARS += FLY_API_TOKEN
+    DEPS_PASSTHROUGH_VARS += FLY_WIREGUARD_UP
+
+    ifneq (,$(filter $(ENV),$(STAGING_ENV) $(STAGING_TEST_ENV)))
+
+      ifndef STAGING_FLY_TOML_PATH
+        $(error STAGING_FLY_TOML_PATH is not set. Please define it in your local Makefile or runtime/ci environment. \
+          Example: STAGING_FLY_TOML_PATH=staging.fly.toml)
+      endif
+
+      FLY_TOML_PATH := $(STAGING_FLY_TOML_PATH)
+      FLY_ORG_NAME := $(FLY_STAGING_ORG_NAME)
+      FLY_APP_NAME := $(subst _,-,$(APP_NAME)-$(UNIQUE_RUNNER_ID)-$(UNIQUE_RUN_NUMBER))
+      FLY_URL := https://$(FLY_APP_NAME).fly.dev
+      FLY_WIREGUARD_PEER_NAME := $(subst _,-,$(FLY_STAGING_ORG_NAME)-$(UNIQUE_RUNNER_ID)-$(UNIQUE_RUN_NUMBER))
+
+      ifndef APP_URL_FROM_COMPOSE_NETWORK
+        export APP_URL_FROM_COMPOSE_NETWORK := $(FLY_URL)
+      endif
+    
+      ifndef APP_URL_FROM_ANYWHERE
+        export APP_URL_FROM_ANYWHERE := $(FLY_URL)
+      endif
+    else ifneq (,$(filter $(ENV),$(PROD_ENV)))
+
+      ifndef PROD_FLY_TOML_PATH
+        $(error PROD_FLY_TOML_PATH is not set. Please define it in your local Makefile or runtime/ci environment. \
+          Example: PROD_FLY_TOML_PATH=fly.toml)
+      endif
+
+      FLY_TOML_PATH := $(PROD_FLY_TOML_PATH)
+      FLY_ORG_NAME := $(FLY_PROD_ORG_NAME)
+      FLY_APP_NAME := $(subst _,-,$(APP_NAME)-$(UNIQUE_RUN_NUMBER))
+      FLY_URL := https://$(FLY_APP_NAME).fly.dev
+      FLY_WIREGUARD_PEER_NAME := $(subst _,-,$(FLY_ORG_NAME)-$(UNIQUE_RUNNER_ID)-$(UNIQUE_RUN_NUMBER))
+
+      ifndef APP_URL_FROM_COMPOSE_NETWORK
+        export APP_URL_FROM_COMPOSE_NETWORK := https://thepoofapp.com
+      endif
+    
+      ifndef APP_URL_FROM_ANYWHERE
+        export APP_URL_FROM_ANYWHERE := https://thepoofapp.com
+      endif
+    endif
+
+  else ifeq ($(DEPLOY_TARGET_FOR_ENV),vercel)
+
+    ifndef VERCEL_PROJECT_NAME
+      $(error VERCEL_PROJECT_NAME is not set. Please define it in your local Makefile or runtime/ci environment. \
+        Example: VERCEL_PROJECT_NAME=mazle)
+    endif
+
+    ifndef VERCEL_PROD_URL
+      $(warning VERCEL_PROD_URL is not set. Defaulting to https://$(VERCEL_PROJECT_NAME).vercel.app)
+      VERCEL_PROD_URL := https://$(VERCEL_PROJECT_NAME).vercel.app
+    endif
 
     ifndef APP_URL_FROM_COMPOSE_NETWORK
-      export APP_URL_FROM_COMPOSE_NETWORK := https://thepoofapp.com
+      export APP_URL_FROM_COMPOSE_NETWORK := $(VERCEL_PROD_URL)
     endif
   
     ifndef APP_URL_FROM_ANYWHERE
-      export APP_URL_FROM_ANYWHERE := https://thepoofapp.com
+      export APP_URL_FROM_ANYWHERE := $(VERCEL_PROD_URL)
     endif
+
   endif
 
 endif
