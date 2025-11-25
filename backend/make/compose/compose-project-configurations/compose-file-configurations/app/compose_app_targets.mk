@@ -237,20 +237,15 @@ else
 
 _export_vercel_token:
 ifndef VERCEL_TOKEN
-	$(eval export BWS_PROJECT_NAME := shared-$(ENV))
-	$(eval export VERCEL_TOKEN := $(shell $(DEVOPS_TOOLKIT_PATH)/shared/scripts/fetch_bws_secret.sh VERCEL_TOKEN | jq -r '.VERCEL_TOKEN // empty'))
-	$(if $(VERCEL_TOKEN),,$(error Failed to fetch BWS secret 'VERCEL_TOKEN'))
-	@echo "[INFO] [Export Vercel Token] Vercel token set."
+	$(error [Export Vercel Token] VERCEL_TOKEN is required for Vercel deploys. Export VERCEL_TOKEN in your environment or via your secret manager.)
 endif
 
 _export_vercel_project_vars:
 ifndef VERCEL_ORG_ID
-	$(eval export BWS_PROJECT_NAME := shared-$(ENV))
-	$(eval export VERCEL_ORG_ID := $(shell $(DEVOPS_TOOLKIT_PATH)/shared/scripts/fetch_bws_secret.sh VERCEL_ORG_ID | jq -r '.VERCEL_ORG_ID // empty'))
+	@echo "[INFO] [Export Vercel Project Vars] VERCEL_ORG_ID not set; relying on .vercel/project.json if present."
 endif
 ifndef VERCEL_PROJECT_ID
-	$(eval export BWS_PROJECT_NAME := shared-$(ENV))
-	$(eval export VERCEL_PROJECT_ID := $(shell $(DEVOPS_TOOLKIT_PATH)/shared/scripts/fetch_bws_secret.sh VERCEL_PROJECT_ID | jq -r '.VERCEL_PROJECT_ID // empty'))
+	@echo "[INFO] [Export Vercel Project Vars] VERCEL_PROJECT_ID not set; relying on .vercel/project.json if present."
 endif
 
 _assert_vercel_project:
