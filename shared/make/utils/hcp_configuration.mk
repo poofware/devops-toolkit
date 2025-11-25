@@ -6,7 +6,9 @@
 
 SHELL := /bin/bash
 
-INCLUDED_HCP_CONFIGURATION := 1
+ifndef INCLUDED_TOOLKIT_BOOTSTRAP
+  $(error [toolkit] bootstrap.mk not included before $(lastword $(MAKEFILE_LIST)))
+endif
 
 
 # --------------------------------
@@ -41,9 +43,9 @@ endif
 
 # To force a static assignment operation with '?=' behavior, we wrap the ':=' assignment in an ifndef check
 ifndef HCP_ENCRYPTED_API_TOKEN
-  export HCP_ENCRYPTED_API_TOKEN := $(shell devops-toolkit/shared/scripts/fetch_hcp_api_token.sh encrypted)
+  export HCP_ENCRYPTED_API_TOKEN := $(shell $(DEVOPS_TOOLKIT_PATH)/shared/scripts/fetch_hcp_api_token.sh encrypted)
   $(if $(HCP_ENCRYPTED_API_TOKEN),,$(error Failed to fetch HCP encrypted API token))
-  export HCP_API_TOKEN := $(shell devops-toolkit/shared/scripts/fetch_hcp_api_token.sh)
+  export HCP_API_TOKEN := $(shell $(DEVOPS_TOOLKIT_PATH)/shared/scripts/fetch_hcp_api_token.sh)
   $(if $(HCP_API_TOKEN),,$(error Failed to fetch HCP API token))
 endif
 
@@ -51,3 +53,6 @@ endif
 export HCP_ORG_ID := a4c32123-5c1c-45cd-ad4e-9fe42a30d664
 # Backend
 export HCP_PROJECT_ID := d413f61e-00f1-4ddf-afaf-bf8b9c04957e
+
+
+INCLUDED_HCP_CONFIGURATION := 1

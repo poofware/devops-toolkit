@@ -11,15 +11,18 @@ ifeq ($(wildcard Makefile),)
   $(error Error: Makefile not found. Please ensure you are in the root directory of your project.)
 endif
 
+ifndef INCLUDED_TOOLKIT_BOOTSTRAP
+  $(error [toolkit] bootstrap.mk not included before $(lastword $(MAKEFILE_LIST)))
+endif
 
 ifndef INCLUDED_COMPOSE_UP
-  include devops-toolkit/backend/make/go-app/go_app_up.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/go-app/go_app_up.mk
 endif
 ifndef INCLUDED_COMPOSE_TEST
-  include devops-toolkit/backend/make/go-app/go_app_test.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/go-app/go_app_test.mk
 endif
 ifndef INCLUDED_COMPOSE_DOWN
-  include devops-toolkit/backend/make/go-app/go_app_down.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/go-app/go_app_down.mk
 endif
 
 

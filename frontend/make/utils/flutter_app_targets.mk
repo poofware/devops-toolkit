@@ -13,9 +13,13 @@ ifeq ($(wildcard pubspec.yaml),)
   $(error Error: pubspec.yaml not found. Please ensure you are in the root directory of your Flutter app.)
 endif
 
+ifndef INCLUDED_TOOLKIT_BOOTSTRAP
+  $(error [toolkit] bootstrap.mk not included before $(lastword $(MAKEFILE_LIST)))
+endif
+
 ifndef INCLUDED_FLUTTER_APP_CONFIGURATION
   $(error [ERROR] [Flutter App Targets] The Flutter App Configuration must be included before any Flutter App Targets. \
-	Include devops-toolkit/frontend/make/utils/flutter_app_configuration.mk in your root Makefile.)
+	Include $$(DEVOPS_TOOLKIT_PATH)/frontend/make/utils/flutter_app_configuration.mk in your root Makefile.)
 endif
 
 
@@ -24,7 +28,7 @@ endif
 # --------------------------------
 
 ifndef INCLUDED_HELP
-  include devops-toolkit/shared/make/help.mk
+  include $(DEVOPS_TOOLKIT_PATH)/shared/make/help.mk
 endif
 
 logs:
@@ -63,16 +67,10 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV)))
 		[ $$rc -eq 0 ] || exit $$rc; \
 		echo "export CURRENT_BACKEND_DOMAIN=\"$$domain\""; \
 	fi
-else ifneq (,$(filter $(ENV),$(DEV_ENV)))
+else
 	@domain="$$( $(_backend_domain_cmd) )"; rc=$$?; \
 	[ $$rc -eq 0 ] || exit $$rc; \
 	echo "export CURRENT_BACKEND_DOMAIN=\"$$domain\""
-else ifneq (,$(filter $(ENV),$(STAGING_ENV)))
-	@domain="$$( $(_backend_domain_cmd) )"; rc=$$?; \
-	[ $$rc -eq 0 ] || exit $$rc; \
-	echo "export CURRENT_BACKEND_DOMAIN=\"$$domain\""
-else ifneq (,$(filter $(ENV),$(PROD_ENV)))
-	@echo 'export CURRENT_BACKEND_DOMAIN="thepoofapp.com"'
 endif
 
 # Run API integration tests (non-UI logic tests)
@@ -126,7 +124,7 @@ _run-env: logs
 		set -eo pipefail; \
 		web_flags=""; \
 		if [ "$(PLATFORM)" = "web" ]; then \
-			web_flags="-d chrome --wasm"; \
+			web_flags="-d chrome"; \
 		fi; \
 		flutter run $$web_flags --target lib/main/main_$(ENV).dart --dart-define=CURRENT_BACKEND_DOMAIN=$$CURRENT_BACKEND_DOMAIN \
 		--dart-define=GCP_SDK_KEY=$(GCP_SDK_KEY) \

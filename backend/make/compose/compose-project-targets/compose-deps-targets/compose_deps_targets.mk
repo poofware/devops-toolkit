@@ -11,6 +11,10 @@ ifeq ($(wildcard Makefile),)
   $(error Error: Makefile not found. Please ensure you are in the root directory of your project.)
 endif
 
+ifndef INCLUDED_TOOLKIT_BOOTSTRAP
+  $(error [toolkit] bootstrap.mk not included before $(lastword $(MAKEFILE_LIST)))
+endif
+
 ifndef INCLUDED_COMPOSE_APP_CONFIGURATION
   $(error [ERROR] [Compose Deps Targets] The Compose App Configuration must be included before any Compose Deps Targets.)
 endif
@@ -102,16 +106,16 @@ _deps-%::
 	fi
 
 ifndef INCLUDED_COMPOSE_DEPS_CLEAN
-  include devops-toolkit/backend/make/compose/compose-project-targets/compose-deps-targets/compose_deps_clean.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose-project-targets/compose-deps-targets/compose_deps_clean.mk
 endif
 ifndef INCLUDED_COMPOSE_DEPS_BUILD
-  include devops-toolkit/backend/make/compose/compose-project-targets/compose-deps-targets/compose_deps_build.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose-project-targets/compose-deps-targets/compose_deps_build.mk
 endif
 ifndef INCLUDED_COMPOSE_DEPS_UP
-  include devops-toolkit/backend/make/compose/compose-project-targets/compose-deps-targets/compose_deps_up.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose-project-targets/compose-deps-targets/compose_deps_up.mk
 endif
 ifndef INCLUDED_COMPOSE_DEPS_DOWN
-  include devops-toolkit/backend/make/compose/compose-project-targets/compose-deps-targets/compose_deps_down.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose-project-targets/compose-deps-targets/compose_deps_down.mk
 endif
 
 

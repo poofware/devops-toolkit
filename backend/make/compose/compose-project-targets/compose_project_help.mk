@@ -9,8 +9,12 @@ ifeq ($(wildcard Makefile),)
   $(error Error: Makefile not found. Please ensure you are in the root directory of your project.)
 endif
 
+ifndef INCLUDED_TOOLKIT_BOOTSTRAP
+  $(error [toolkit] bootstrap.mk not included before $(lastword $(MAKEFILE_LIST)))
+endif
+
 ifndef INCLUDED_HELP
-  include devops-toolkit/shared/make/help.mk
+  include $(DEVOPS_TOOLKIT_PATH)/shared/make/help.mk
 endif
 
 help::
@@ -24,9 +28,7 @@ help::
 	@echo "WITH_DEPS: $(WITH_DEPS)"
 	@echo "DEPS: $(DEPS)"
 	@echo "COMPOSE_FILE: $(COMPOSE_FILE)"
-	@echo "HCP_CLIENT_ID": xxxxxxxx
-	@echo "HCP_CLIENT_SECRET": xxxxxxxx
-	@echo "HCP_TOKEN_ENC_KEY": xxxxxxxx
+	@echo "BWS_ACCESS_TOKEN": xxxxxxxx
 	@echo "--------------------------------------------------"
 	@echo
 	@echo "--------------------------------------------------"
@@ -40,7 +42,7 @@ help::
 	@echo "$(COMPOSE_PROFILE_APP_INTEGRATION_TEST) : $(COMPOSE_PROFILE_APP_INTEGRATION_TEST_SERVICES)"
 	@echo "$(COMPOSE_PROFILE_APP_UNIT_TEST)        : $(COMPOSE_PROFILE_APP_UNIT_TEST_SERVICES)"
 	@echo "--------------------------------------------------"
-	@echo "[INFO] For information on available profiles, reference devops-toolkit/README.md"
+	@echo "[INFO] For information on available profiles, reference $(DEVOPS_TOOLKIT_PATH)/README.md"
 	@echo
 
 

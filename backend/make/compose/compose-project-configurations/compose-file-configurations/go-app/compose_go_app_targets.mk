@@ -11,6 +11,10 @@ ifeq ($(wildcard go.mod),)
   $(error Error: go.mod not found. Please ensure you are in the root directory of your Go service.)
 endif
 
+ifndef INCLUDED_TOOLKIT_BOOTSTRAP
+  $(error [toolkit] bootstrap.mk not included before $(lastword $(MAKEFILE_LIST)))
+endif
+
 ifndef INCLUDED_COMPOSE_GO_APP_CONFIGURATION
   $(error [ERROR] [Compose Go App Targets] The Compose Go App Configuration must be included before any Compose Go App Targets.)
 endif
@@ -26,16 +30,11 @@ endif
 # --------------------------------
 
 ifndef INCLUDED_GO_APP_UPDATE
-  include devops-toolkit/backend/make/utils/go_app_update.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/utils/go_app_update.mk
 endif
-ifndef INCLUDED_VENDOR
-  include devops-toolkit/backend/make/utils/vendor.mk
-endif
-
-build:: vendor
 
 ifndef INCLUDED_COMPOSE_APP_TARGETS
-  include devops-toolkit/backend/make/compose/compose-project-configurations/compose-file-configurations/app/compose_app_targets.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose-project-configurations/compose-file-configurations/app/compose_app_targets.mk
 endif
 
 help::

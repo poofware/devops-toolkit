@@ -9,6 +9,10 @@ ifeq ($(wildcard Makefile),)
   $(error Error: Makefile not found. Please ensure you are in the root directory of your project.)
 endif
 
+ifndef INCLUDED_TOOLKIT_BOOTSTRAP
+  $(error [toolkit] bootstrap.mk not included before $(lastword $(MAKEFILE_LIST)))
+endif
+
 
 # --------------------------------
 # External Variable Validation
@@ -44,7 +48,7 @@ ifneq ($(origin COMPOSE_FILE), file)
   $(error COMPOSE_FILE is either not set or set as a runtime/ci environment variable, should be hardcoded in the root Makefile. \
 	Should be a colon-separated list of additional compose files to include in the docker compose command. \
 	Define it empty if no additional compose files are needed. \
-	Example: COMPOSE_FILE="devops-toolkit/backend/docker/additional.compose.yaml:./override.compose.yaml" or COMPOSE_FILE="")
+	Example: COMPOSE_FILE="$(DEVOPS_TOOLKIT_PATH)/backend/docker/additional.compose.yaml:./override.compose.yaml" or COMPOSE_FILE="")
 endif
 
 ifneq ($(origin DEPS), file)
@@ -100,23 +104,18 @@ ifeq ($(PRINT_INFO),1)
 endif
 
 DEPS_PASSTHROUGH_VARS += COMPOSE_NETWORK_NAME
-DEPS_PASSTHROUGH_VARS += HCP_TOKEN_ENC_KEY
-DEPS_PASSTHROUGH_VARS += HCP_ENCRYPTED_API_TOKEN
+DEPS_PASSTHROUGH_VARS += BWS_ACCESS_TOKEN
 DEPS_PASSTHROUGH_VARS += ENV
 DEPS_PASSTHROUGH_VARS += UNIQUE_RUNNER_ID
 DEPS_PASSTHROUGH_VARS += UNIQUE_RUN_NUMBER
 DEPS_PASSTHROUGH_VARS += PRINT_INFO
 
 ifndef INCLUDED_ENV_CONFIGURATION
-  include devops-toolkit/shared/make/utils/env_configuration.mk
-endif
-
-ifndef INCLUDED_HCP_CONFIGURATION
-  include devops-toolkit/shared/make/utils/hcp_configuration.mk
+  include $(DEVOPS_TOOLKIT_PATH)/shared/make/utils/env_configuration.mk
 endif
 
 ifndef INCLUDED_LAUNCHDARKLY_CONSTANTS
-  include devops-toolkit/backend/make/utils/launchdarkly_constants.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/utils/launchdarkly_constants.mk
 endif
 
 UNFORMATTED_COMPOSE_FILE := $(COMPOSE_FILE)
@@ -151,7 +150,7 @@ export COMPOSE_CMD := docker compose \
   -p $(COMPOSE_PROJECT_NAME)
 
 ifndef INCLUDE_COMPOSE_SERVICE_UTILS
-  include devops-toolkit/backend/make/compose/utils/compose_service_utils.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/utils/compose_service_utils.mk
 endif
 
 COMPOSE_PROFILE_BASE_APP_SERVICES = $(call get_profile_services,$(COMPOSE_PROFILE_BASE_APP))

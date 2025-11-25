@@ -5,13 +5,17 @@ SHELL := /bin/bash
 
 .PHONY: _ios_app_configuration
 
+ifndef INCLUDED_TOOLKIT_BOOTSTRAP
+  $(error [toolkit] bootstrap.mk not included before $(lastword $(MAKEFILE_LIST)))
+endif
+
 
 # ------------------------------
 # Targets
 # ------------------------------
 
 ifndef INCLUDED_GCP_CONFIGURATION_TARGETS
-  include devops-toolkit/frontend/make/utils/gcp_configuration_targets.mk
+  include $(DEVOPS_TOOLKIT_PATH)/frontend/make/utils/gcp_configuration_targets.mk
 endif
 
 _ios_app_configuration: _ios_gcp_configuration

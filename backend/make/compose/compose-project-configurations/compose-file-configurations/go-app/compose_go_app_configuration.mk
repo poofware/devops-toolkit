@@ -9,9 +9,13 @@ ifeq ($(wildcard go.mod),)
   $(error Error: go.mod not found. Please ensure you are in the root directory of your Go service.)
 endif
 
+ifndef INCLUDED_TOOLKIT_BOOTSTRAP
+  $(error [toolkit] bootstrap.mk not included before $(lastword $(MAKEFILE_LIST)))
+endif
+
 ifndef INCLUDED_COMPOSE_PROJECT_CONFIGURATION
   $(error [ERROR] [Compose Go App Configuration] The Compose Project Configuration must be included before any compose file configuration. \
-	Include devops-toolkit/backend/make/compose/compose_project_configuration.mk in your root Makefile.)
+	Include $$(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose_project_configuration.mk in your root Makefile.)
 endif
 
 ifdef INCLUDED_COMPOSE_APP_CONFIGURATION
@@ -41,7 +45,7 @@ export GO_VERSION := 1.24
 export PACKAGES
 
 ifndef INCLUDED_COMPOSE_APP_CONFIGURATION
-  include devops-toolkit/backend/make/compose/compose-project-configurations/compose-file-configurations/app/compose_app_configuration.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose-project-configurations/compose-file-configurations/app/compose_app_configuration.mk
 endif
 
 

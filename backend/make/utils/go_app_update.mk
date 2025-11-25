@@ -6,6 +6,10 @@ SHELL := /bin/bash
 
 .PHONY: update
 
+ifndef INCLUDED_TOOLKIT_BOOTSTRAP
+  $(error [toolkit] bootstrap.mk not included before $(lastword $(MAKEFILE_LIST)))
+endif
+
 # Check that the current working directory is the root of a Go app by verifying that go.mod exists.
 ifeq ($(wildcard go.mod),)
   $(error Error: go.mod not found. Please ensure you are in the root directory of your Go app.)
@@ -15,10 +19,7 @@ INCLUDED_GO_APP_UPDATE := 1
 
 
 ifndef INCLUDED_ENSURE_GO
-  include devops-toolkit/backend/make/utils/ensure_go.mk
-endif
-ifndef INCLUDED_VENDOR
-  include devops-toolkit/backend/make/utils/vendor.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/utils/ensure_go.mk
 endif
 
 
@@ -34,10 +35,7 @@ update: _ensure-go
 		exit 1; \
 	fi
 
-	@devops-toolkit/backend/scripts/update_go_packages.sh
-
-	@echo "[INFO] [Update] Calling vendor target to update vendor directory if enabled..."
-	@$(MAKE) vendor --no-print-directory
+	@$(DEVOPS_TOOLKIT_PATH)/backend/scripts/update_go_packages.sh
 
 	@echo "[INFO] [Update] Done."
 

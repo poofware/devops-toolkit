@@ -11,6 +11,10 @@ ifeq ($(wildcard Makefile),)
   $(error Error: Makefile not found. Please ensure you are in the root directory of your project.)
 endif
 
+ifndef INCLUDED_TOOLKIT_BOOTSTRAP
+  $(error [toolkit] bootstrap.mk not included before $(lastword $(MAKEFILE_LIST)))
+endif
+
 ifndef INCLUDED_COMPOSE_APP_CONFIGURATION
   $(error [ERROR] [Compose App Configuration] The Compose App Configuration must be included before any Compose Project Targets.)
 endif
@@ -21,7 +25,7 @@ endif
 # --------------------------
 
 ifndef INCLUDED_COMPOSE_DEPS_DOWN
-  include devops-toolkit/backend/make/compose/compose_project_targets/compose_deps_targets/compose_deps_down.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose_project_targets/compose_deps_targets/compose_deps_down.mk
 endif
 
 _down-network:

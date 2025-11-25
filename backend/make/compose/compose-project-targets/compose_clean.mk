@@ -6,6 +6,10 @@ SHELL := /bin/bash
 
 .PHONY: clean
 
+ifndef INCLUDED_TOOLKIT_BOOTSTRAP
+  $(error [toolkit] bootstrap.mk not included before $(lastword $(MAKEFILE_LIST)))
+endif
+
 # Check that the current working directory is the root of a project by verifying that the root Makefile exists.
 ifeq ($(wildcard Makefile),)
   $(error Error: Makefile not found. Please ensure you are in the root directory of your project.)
@@ -21,11 +25,11 @@ endif
 # --------------------------
 
 ifndef INCLUDED_COMPOSE_DOWN
-  include devops-toolkit/backend/make/compose/compose_project_targets/compose_down.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose_project_targets/compose_down.mk
 endif
 
 ifndef INCLUDED_COMPOSE_DEPS_CLEAN
-  include devops-toolkit/backend/make/compose/compose_project_targets/compose_deps_targets/compose_deps_clean.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose_project_targets/compose_deps_targets/compose_deps_clean.mk
 endif
 
 ## Cleans everything (containers, images, volumes) (WITH_DEPS=1 to 'clean' dependency projects as well)

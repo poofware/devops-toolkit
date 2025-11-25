@@ -9,6 +9,9 @@ ifeq ($(wildcard pubspec.yaml),)
   $(error Error: pubspec.yaml not found. Please ensure you are in the root directory of your Flutter app.)
 endif
 
+ifndef INCLUDED_TOOLKIT_BOOTSTRAP
+  $(error [toolkit] bootstrap.mk not included before $(lastword $(MAKEFILE_LIST)))
+endif
 
 # ------------------------------
 # External Variable Validation
@@ -32,12 +35,12 @@ endif
 # ------------------------------ 
 
 ifndef INCLUDED_ENV_CONFIGURATION
-  include devops-toolkit/shared/make/utils/env_configuration.mk
+  include $(DEVOPS_TOOLKIT_PATH)/shared/make/utils/env_configuration.mk
 endif
 
 LOG_LEVEL ?= info
 
-export HCP_APP_NAME := $(APP_NAME)
+export BWS_PROJECT_NAME := $(APP_NAME)
 
 VERBOSE ?= 0
 VERBOSE_FLAG := $(if $(filter 1,$(VERBOSE)),--verbose,)

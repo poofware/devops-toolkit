@@ -4,11 +4,15 @@
 
 SHELL := /bin/bash
 
-.PHONY: up _up-db migrate _unlocked_migrate _up-app-pre _up-app-post-check
+.PHONY: up _up-db migrate _unlocked_migrate _up-app-pre up-app-post-check
 
 # Check that the current working directory is the root of a project by verifying that the root Makefile exists.
 ifeq ($(wildcard Makefile),)
   $(error Error: Makefile not found. Please ensure you are in the root directory of your project.)
+endif
+
+ifndef INCLUDED_TOOLKIT_BOOTSTRAP
+  $(error [toolkit] bootstrap.mk not included before $(lastword $(MAKEFILE_LIST)))
 endif
 
 ifndef INCLUDED_COMPOSE_APP_CONFIGURATION
@@ -30,11 +34,11 @@ MIGRATION_LOCK_FILE ?= /tmp/meta-service-migrations.lock
 # --------------------------
 
 ifndef INCLUDED_COMPOSE_BUILD
-  include devops-toolkit/backend/make/compose/compose_project_targets/compose_build.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose_project_targets/compose_build.mk
 endif
 
 ifndef INCLUDED_COMPOSE_DEPS_UP
-  include devops-toolkit/backend/make/compose/compose_project_targets/compose_deps_targets/compose_deps_up.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose_project_targets/compose_deps_targets/compose_deps_up.mk
 endif
 
 _up-db:
@@ -80,7 +84,7 @@ _up-app-pre:
 		echo "[INFO] [Up-App-Pre] Done. Any '$(COMPOSE_PROFILE_APP_PRE)' services found are up and running."; \
 	fi
 
-_up-app-post-check:
+up-app-post-check::
 	@if [ -z "$(COMPOSE_PROFILE_APP_POST_CHECK_SERVICES)" ]; then \
 		echo "[WARN] [Up-App-Post-Check] No services found matching the '$(COMPOSE_PROFILE_APP_POST_CHECK)' profile. Skipping..."; \
 	else \
@@ -131,7 +135,7 @@ endif
 	@if [ "$(EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK)" -eq 1 ]; then \
 	  echo "[INFO] [Up] Skipping app post-check... EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK is set to 1"; \
 	else \
-	  $(MAKE) _up-app-post-check --no-print-directory; \
+	  $(MAKE) up-app-post-check --no-print-directory; \
 	fi
 
 ## Starts services for all compose profiles in order (EXCLUDE_COMPOSE_PROFILE_APP=1 to exclude profile 'app' from 'up' - EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK=1 to exclude profile 'app_post_check' from 'up' - WITH_DEPS=1 to 'up' dependency projects as well)
