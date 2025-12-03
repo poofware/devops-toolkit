@@ -62,7 +62,7 @@ endif
 
 
 # Deploy target selection
-ALLOWED_DEPLOY_TARGETS := fly vercel
+ALLOWED_DEPLOY_TARGETS := fly vercel shuttle
 STAGING_DEPLOY_TARGET ?= fly
 PROD_DEPLOY_TARGET ?= fly
 
@@ -183,6 +183,22 @@ else
     ifndef VERCEL_PROJECT_NAME
       $(error VERCEL_PROJECT_NAME is not set. Please define it in your local Makefile or runtime/ci environment. \
         Example: VERCEL_PROJECT_NAME=mazle)
+    endif
+
+  else ifeq ($(DEPLOY_TARGET_FOR_ENV),shuttle)
+
+    ifndef INCLUDED_SHUTTLE_CONSTANTS
+      include $(DEVOPS_TOOLKIT_PATH)/backend/make/utils/shuttle_constants.mk
+    endif
+
+    DEPS_PASSTHROUGH_VARS += SHUTTLE_API_KEY
+
+    ifndef APP_URL_FROM_COMPOSE_NETWORK
+      export APP_URL_FROM_COMPOSE_NETWORK := $(SHUTTLE_URL)
+    endif
+
+    ifndef APP_URL_FROM_ANYWHERE
+      export APP_URL_FROM_ANYWHERE := $(SHUTTLE_URL)
     endif
 
   endif

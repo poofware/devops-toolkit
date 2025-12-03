@@ -36,12 +36,13 @@ _down-network:
 
 ## Shuts down all containers (WITH_DEPS=1 to 'down' dependency projects as well)
 down::
-	@echo "[INFO] [Down] Removing containers & volumes, keeping images..."
-	@$(COMPOSE_CMD) down -v --remove-orphans
+	@echo "[INFO] [Down] Stopping containers, keeping volumes & images..."
+	@$(COMPOSE_CMD) down --remove-orphans
 
 	@$(MAKE) _down-network --no-print-directory
 
-	@echo "[INFO] [Down] Done. Containers and volumes removed, images kept."
+	@echo "[INFO] [Down] Done. Containers stopped, volumes & images kept."
+	@echo "[INFO] [Down] Use 'make clean' to remove volumes and images."
 
 
 INCLUDED_COMPOSE_DOWN := 1

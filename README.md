@@ -383,7 +383,128 @@ Through the profile-based approach, you can finely tune which containers or task
 
 ---
 
-## 10. Conclusion
+## 10. Setting Up a **Rust App** + Docker Compose Project
+
+The toolkit also supports Rust-based microservices with optional deployment to Shuttle.rs.
+
+### 10.1 Example: Root Makefile for a Rust Service
+
+```makefile
+# -------------------------
+# Root Makefile for "my-rust-service"
+# -------------------------
+
+SHELL := /bin/bash
+
+# Connect devops-toolkit
+REPO_ROOT := $(shell git -C $(CURDIR) rev-parse --show-toplevel)
+ifndef INCLUDED_TOOLKIT_BOOTSTRAP
+  include $(REPO_ROOT)/devops-toolkit/bootstrap.mk
+endif
+
+ENV ?= dev-test
+COMPOSE_PROJECT_NAME := my-rust-service
+COMPOSE_NETWORK_NAME ?= my_network
+
+COMPOSE_FILE := $(DEVOPS_TOOLKIT_PATH)/backend/docker/rust-app.compose.yaml
+
+WITH_DEPS := 0
+DEPS := ""
+
+ifndef INCLUDED_COMPOSE_PROJECT_CONFIGURATION
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose-project-configurations/compose_project_configuration.mk
+endif
+
+export APP_NAME := $(COMPOSE_PROJECT_NAME)
+override APP_PORT := 8080
+
+# Rust-specific configuration
+RUST_BINARY_NAME := my-rust-service
+
+# Deploy target selection (prod/staging use Shuttle)
+PROD_DEPLOY_TARGET := shuttle
+STAGING_DEPLOY_TARGET := shuttle
+SHUTTLE_PROJECT_NAME := my-rust-service
+
+ifndef INCLUDED_COMPOSE_RUST_APP_CONFIGURATION
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose-project-configurations/compose-file-configurations/rust-app/compose_rust_app_configuration.mk
+endif
+
+ifndef INCLUDED_COMPOSE_RUST_APP_TARGETS
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose-project-configurations/compose-file-configurations/rust-app/compose_rust_app_targets.mk
+endif
+
+ifndef INCLUDED_COMPOSE_PROJECT_TARGETS
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose-project-targets/compose_project_targets.mk
+endif
+```
+
+### 10.2 Shuttle.rs Deployment
+
+For production/staging deployments, you can use Shuttle.rs. Create a `Shuttle.toml` in your project root:
+
+```toml
+name = "my-rust-service"
+
+[build]
+features = ["shuttle"]
+```
+
+And update your `Cargo.toml` to support shuttle:
+
+```toml
+[dependencies]
+shuttle-axum = { version = "0.49", optional = true }
+shuttle-runtime = { version = "0.49", optional = true }
+
+[features]
+default = []
+shuttle = ["shuttle-axum", "shuttle-runtime"]
+```
+
+Then modify your `main.rs` to support both standalone and Shuttle modes:
+
+```rust
+// Shuttle entry point
+#[cfg(feature = "shuttle")]
+#[shuttle_runtime::main]
+async fn shuttle_main() -> shuttle_axum::ShuttleAxum {
+    Ok(build_router().into())
+}
+
+// Standalone entry point
+#[cfg(not(feature = "shuttle"))]
+#[tokio::main]
+async fn main() {
+    // ... your regular axum server code
+}
+```
+
+### 10.3 Rust-Specific Make Targets
+
+- **`make cargo-build`** – Build the Rust binary locally
+- **`make cargo-check`** – Run cargo check
+- **`make cargo-test`** – Run cargo tests
+- **`make cargo-fmt`** – Format code with rustfmt
+- **`make cargo-clippy`** – Run clippy lints
+- **`make run`** – Run the server locally (without Docker)
+- **`make up ENV=prod`** – Deploy to Shuttle.rs
+
+### 10.4 Deploy Targets
+
+The toolkit supports three deploy targets:
+
+| Target | Use Case |
+|--------|----------|
+| `fly` | Fly.io deployment (default for Go apps) |
+| `vercel` | Vercel deployment (for Next.js/frontend apps) |
+| `shuttle` | Shuttle.rs deployment (for Rust apps) |
+
+Set `PROD_DEPLOY_TARGET` and `STAGING_DEPLOY_TARGET` in your Makefile to choose the appropriate target.
+
+---
+
+## 11. Conclusion
 
 **The DevOps Toolkit** streamlines multi-stage Docker Compose usage, especially for Go-based applications. With a minimal root `Makefile`, you gain consistent commands like `make up`, `make down`, `make build`, `make test`, `make ci`, etc.—complete with flexible **profile-based** logic and optional **dependency chaining**.
 

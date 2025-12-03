@@ -263,12 +263,8 @@ clean:: _export_vercel_token _export_vercel_project_vars
 down:: _export_vercel_token _export_vercel_project_vars
 migrate:: _export_vercel_token _export_vercel_project_vars
 
-ifndef INCLUDED_COMPOSE_PROJECT_TARGETS
-  include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose-project-targets/compose_project_targets.mk
-endif
-
-# Override app up target to deploy via Vercel CLI
-_up:
+# Override _up-app to deploy via Vercel CLI
+_up-app:
 	@set -euo pipefail; \
 	export LOG_LEVEL=; \
 	if ! command -v vercel >/dev/null 2>&1; then \
@@ -294,7 +290,48 @@ _up:
 down::
 	@echo "[INFO] [Down] Vercel deploy target selected – skipping remote teardown. Manage removal from the Vercel dashboard if needed."
 
+  else ifeq ($(DEPLOY_TARGET_FOR_ENV),shuttle)
+
+_export_shuttle_api_key:
+ifndef SHUTTLE_API_KEY
+	@echo "[WARN] [Export Shuttle API Key] SHUTTLE_API_KEY not set; using cargo shuttle login credentials if available."
+endif
+
+_assert_shuttle_project:
+	@if [ ! -f "Shuttle.toml" ]; then \
+		echo "[ERROR] [Shuttle Project] Shuttle.toml not found in project root."; \
+		exit 1; \
+	fi
+
+integration-test:: _export_shuttle_api_key
+up:: _export_shuttle_api_key _assert_shuttle_project
+ci:: _export_shuttle_api_key _assert_shuttle_project
+clean:: _export_shuttle_api_key
+down:: _export_shuttle_api_key
+
+# Override _up-app to deploy via Shuttle CLI
+_up-app:
+	@set -euo pipefail; \
+	export LOG_LEVEL=; \
+	if ! command -v cargo-shuttle >/dev/null 2>&1; then \
+		echo "[ERROR] [Up App] cargo-shuttle CLI not found. Install with 'cargo install cargo-shuttle'."; \
+		exit 1; \
+	fi; \
+	echo "[INFO] [Up App] Deploying $(APP_NAME) to Shuttle..."; \
+	cargo shuttle deploy --name $(SHUTTLE_PROJECT_NAME) --allow-dirty; \
+	echo "[INFO] [Up App] Done. App $(APP_NAME) available at $(SHUTTLE_URL)."
+
+## Override down to avoid destructive remote removal (manage from Shuttle)
+down::
+	@echo "[INFO] [Down] Shuttle deploy target selected – skipping remote teardown. Manage removal from the Shuttle dashboard if needed."
+
   endif
+
+  # Include compose project targets for all production deploy targets
+  ifndef INCLUDED_COMPOSE_PROJECT_TARGETS
+    include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose-project-targets/compose_project_targets.mk
+  endif
+
 endif
 
 ## Prints the domain that you can use to access the app from anywhere with https
@@ -302,6 +339,7 @@ print-public-app-domain::
 	@$(DEVOPS_TOOLKIT_PATH)/backend/scripts/health_check.sh
 	@echo $$APP_URL_FROM_ANYWHERE | sed -e 's~^https://~~'
 
+# Include compose project targets for dev environments (if not already included)
 ifndef INCLUDED_COMPOSE_PROJECT_TARGETS
   include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose-project-targets/compose_project_targets.mk
 endif
