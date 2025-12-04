@@ -5,7 +5,7 @@ ARG RUST_VERSION=1.83
 # ────────────────────────────────  Chef (for cargo-chef caching) ────────────────────────────────
 FROM rust:${RUST_VERSION}-slim-bookworm AS chef
 # Pin cargo-chef to version compatible with Rust 1.83 (avoids edition2024 dependency issues)
-RUN cargo install cargo-chef --version 0.1.68
+RUN cargo install cargo-chef --version 0.1.67 --locked
 WORKDIR /app
 
 # ────────────────────────────────  Planner ────────────────────────────────

@@ -139,8 +139,13 @@ else
     ifneq (,$(filter $(ENV),$(STAGING_ENV) $(STAGING_TEST_ENV)))
 
       ifndef STAGING_FLY_TOML_PATH
-        $(error STAGING_FLY_TOML_PATH is not set. Please define it in your local Makefile or runtime/ci environment. \
-          Example: STAGING_FLY_TOML_PATH=staging.fly.toml)
+        $(error STAGING_FLY_TOML_PATH is not set. Please define it in your local Makefile. \
+          Example: STAGING_FLY_TOML_PATH := deploy/staging.fly.toml)
+      endif
+
+      ifndef FLY_STAGING_ORG_NAME
+        $(error FLY_STAGING_ORG_NAME is not set. Please define it in your local Makefile. \
+          Example: FLY_STAGING_ORG_NAME := my-org-staging)
       endif
 
       FLY_TOML_PATH := $(STAGING_FLY_TOML_PATH)
@@ -159,8 +164,13 @@ else
     else ifneq (,$(filter $(ENV),$(PROD_ENV)))
 
       ifndef PROD_FLY_TOML_PATH
-        $(error PROD_FLY_TOML_PATH is not set. Please define it in your local Makefile or runtime/ci environment. \
-          Example: PROD_FLY_TOML_PATH=fly.toml)
+        $(error PROD_FLY_TOML_PATH is not set. Please define it in your local Makefile. \
+          Example: PROD_FLY_TOML_PATH := deploy/fly.toml)
+      endif
+
+      ifndef FLY_PROD_ORG_NAME
+        $(error FLY_PROD_ORG_NAME is not set. Please define it in your local Makefile. \
+          Example: FLY_PROD_ORG_NAME := my-org)
       endif
 
       FLY_TOML_PATH := $(PROD_FLY_TOML_PATH)
@@ -170,11 +180,11 @@ else
       FLY_WIREGUARD_PEER_NAME := $(subst _,-,$(FLY_ORG_NAME)-$(UNIQUE_RUNNER_ID)-$(UNIQUE_RUN_NUMBER))
 
       ifndef APP_URL_FROM_COMPOSE_NETWORK
-        export APP_URL_FROM_COMPOSE_NETWORK := https://thepoofapp.com
+        export APP_URL_FROM_COMPOSE_NETWORK := $(FLY_URL)
       endif
     
       ifndef APP_URL_FROM_ANYWHERE
-        export APP_URL_FROM_ANYWHERE := https://thepoofapp.com
+        export APP_URL_FROM_ANYWHERE := $(FLY_URL)
       endif
     endif
 

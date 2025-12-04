@@ -116,16 +116,23 @@ else
   endif
 
   ifeq ($(DEPLOY_TARGET_FOR_ENV),fly)
+
+  # SKIP_FLY_WIREGUARD: Set to 1 for standalone services that don't need internal networking
+  # (e.g., stateless APIs without database connections)
+  SKIP_FLY_WIREGUARD ?= 0
   
   _export_fly_api_token:
   ifndef FLY_API_TOKEN
+    ifdef BWS_ACCESS_TOKEN
 	  $(eval export BWS_PROJECT_NAME := shared-$(ENV))
 	  $(eval export FLY_API_TOKEN := $(shell $(DEVOPS_TOOLKIT_PATH)/shared/scripts/fetch_bws_secret.sh FLY_API_TOKEN | jq -r '.FLY_API_TOKEN // empty'))
-	  $(if $(FLY_API_TOKEN),,$(error Failed to fetch BWS secret 'FLY_API_TOKEN'))
-	  @echo "[INFO] [Export Fly Api Token] Fly API token set."
+	  $(if $(FLY_API_TOKEN),@echo "[INFO] [Export Fly Api Token] Fly API token fetched from BWS.",)
+    endif
+	  $(if $(FLY_API_TOKEN),,$(error FLY_API_TOKEN is required for Fly.io deploys. Export FLY_API_TOKEN in your environment or set BWS_ACCESS_TOKEN to fetch from Bitwarden Secrets.))
   endif
 
-  ## Wireguard up target
+  ifeq ($(SKIP_FLY_WIREGUARD),0)
+  ## Wireguard up target (for services needing internal networking)
   fly_wireguard_up:
   ifndef FLY_WIREGUARD_UP
 	  $(eval export FLY_WIREGUARD_UP := 1)
@@ -207,6 +214,28 @@ else
   clean:: fly_wireguard_down
   down:: fly_wireguard_down
   migrate:: fly_wireguard_down
+
+  else
+  # SKIP_FLY_WIREGUARD=1: No WireGuard needed, just token export
+  integration-test:: _export_fly_api_token
+  up:: _export_fly_api_token
+  ci:: _export_fly_api_token
+  clean:: _export_fly_api_token
+  down:: _export_fly_api_token
+	  @export LOG_LEVEL=; \
+	  if [ "$(EXCLUDE_COMPOSE_PROFILE_APP)" -eq 1 ]; then \
+		  echo "[INFO] [Down] Skipping fly app destruction... EXCLUDE_COMPOSE_PROFILE_APP is set to 1"; \
+	  else \
+		  echo "[INFO] [Down] Destroying app $(FLY_APP_NAME) on fly.io..."; \
+		  fly app destroy $(FLY_APP_NAME) --yes; \
+		  echo "[INFO] [Down] Done. App $(FLY_APP_NAME) destroyed."; \
+	  fi
+  migrate:: _export_fly_api_token
+
+  ifndef INCLUDED_COMPOSE_PROJECT_TARGETS
+    include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose-project-targets/compose_project_targets.mk
+  endif
+  endif
 
   # OVERRIDE default _up-app target to use fly.io instead of docker-compose
   _up-app:

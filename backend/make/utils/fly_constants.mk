@@ -1,14 +1,10 @@
 # ---------------------------------------
-# Constants and Variables for Fly.io configuration
-#
-# Some of these variables are not sensitive, and hence, are constants made available for Poof backend services.
+# Fly.io Configuration
 # ---------------------------------------
 
 SHELL := /bin/bash
 
-
-FLY_STAGING_ORG_NAME := poof-staging
-FLY_PROD_ORG_NAME := poof-969
+# WireGuard configuration
 FLY_WIREGUARD_CONF_FILE := ./fly.conf
 FLY_WIREGUARD_PEER_REGION := iad
 
