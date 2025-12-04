@@ -2,40 +2,69 @@
 
 ARG RUST_VERSION=1.83
 
-# ────────────────────────────────  Chef (for cargo-chef caching) ────────────────────────────────
-FROM rust:${RUST_VERSION}-slim-bookworm AS chef
-# Pin cargo-chef to version compatible with Rust 1.83 (avoids edition2024 dependency issues)
+#######################################
+# Stage 1: Base with cargo-chef
+#######################################
+FROM rust:${RUST_VERSION}-slim-bookworm AS base
+
+# Tooling needed for cargo and TLS-enabled builds
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config \
+    libssl-dev \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Pin cargo-chef to a version compatible with Rust 1.83 (avoids edition2024 deps)
 RUN cargo install cargo-chef --version 0.1.67 --locked
+
 WORKDIR /app
 
-# ────────────────────────────────  Planner ────────────────────────────────
-# OPTIMIZATION: Only copy dependency files, not source code
-# This layer only invalidates when Cargo.toml/Cargo.lock change
-FROM chef AS planner
+#######################################
+# Stage 2: Planner (dependency graph)
+#######################################
+FROM base AS planner
+
 COPY Cargo.toml Cargo.lock ./
+
 # Create dummy source files so cargo-chef can analyze dependencies
 RUN mkdir -p src && \
     echo "fn main() {}" > src/main.rs && \
     echo "// dummy lib" > src/lib.rs
+
 RUN cargo chef prepare --recipe-path recipe.json
 
-# ────────────────────────────────  Builder ────────────────────────────────
-FROM chef AS builder
+#######################################
+# Stage 3: App Builder (compile app)
+#######################################
+FROM base AS app-builder
 
 ARG RUST_BUILD_PROFILE=release
 ARG RUST_BINARY_NAME
+ARG APP_NAME
+ARG APP_PORT=8080
+ARG APP_URL_FROM_ANYWHERE
+ARG LOG_LEVEL=info
+ARG ENV=dev
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    pkg-config \
-    libssl-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Validate required args early
+RUN test -n "${RUST_BINARY_NAME}" || ( \
+  echo "Error: RUST_BINARY_NAME is not set! Use --build-arg RUST_BINARY_NAME=xxx" && \
+  exit 1 \
+);
+RUN test -n "${APP_NAME}" || ( \
+  echo "Error: APP_NAME is not set! Use --build-arg APP_NAME=xxx" && \
+  exit 1 \
+);
+RUN test -n "${APP_URL_FROM_ANYWHERE}" || ( \
+  echo "Error: APP_URL_FROM_ANYWHERE is not set! Use --build-arg APP_URL_FROM_ANYWHERE=xxx" && \
+  exit 1 \
+);
 
-# Copy dependency files and recipe
 COPY Cargo.toml Cargo.lock ./
 COPY --from=planner /app/recipe.json recipe.json
 
-# Build dependencies - this layer only rebuilds when Cargo.toml/Cargo.lock change
+# Build dependency graph (cacheable when Cargo.toml/Cargo.lock unchanged)
 RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
     --mount=type=cache,id=rust-target,target=/app/target \
     cargo chef cook --${RUST_BUILD_PROFILE} --recipe-path recipe.json
@@ -43,89 +72,84 @@ RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
 # Copy ONLY source code - this layer only rebuilds when src/ changes
 COPY src/ src/
 
-# Build application - deps are cached, only rebuilds app code
+# Build application with cached deps, then place binary at repo root
 RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
     --mount=type=cache,id=rust-target,target=/app/target \
     cargo build --${RUST_BUILD_PROFILE} && \
     cp /app/target/${RUST_BUILD_PROFILE}/${RUST_BINARY_NAME} /${RUST_BINARY_NAME}
 
-# ────────────────────────────────  Development (with hot-reload) ────────────────────────────────
-FROM rust:${RUST_VERSION}-slim-bookworm AS dev
-
-ARG APP_NAME
-ARG APP_PORT=8080
-ARG RUST_BINARY_NAME
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    pkg-config \
-    libssl-dev \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install cargo-watch for hot reloading
-# Use --locked to respect the crate's Cargo.lock and avoid pulling newer incompatible deps
-RUN cargo install cargo-watch --version 8.4.1 --locked
-
-WORKDIR /app
-COPY . .
-
-ENV PORT=${APP_PORT}
-EXPOSE ${APP_PORT}
-
-# Default command for development with hot-reload
-CMD ["cargo", "watch", "-x", "run"]
-
-# ────────────────────────────────  Runtime (production) ────────────────────────────────
-FROM debian:bookworm-slim AS runner
-
-ARG APP_NAME
-ARG APP_PORT=8080
-ARG RUST_BINARY_NAME
-ARG RUST_BUILD_PROFILE=release
-
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    libssl3 \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-
-# Copy the built binary (from root, where we copied it out of the cache mount)
-COPY --from=builder /${RUST_BINARY_NAME} /app/app
-
-ENV PORT=${APP_PORT}
-EXPOSE ${APP_PORT}
-
-# Run the binary
-ENTRYPOINT ["/app/app"]
-
-# ────────────────────────────────  Health Check ────────────────────────────────
-FROM debian:bookworm-slim AS health-check
+######################################
+# Stage 4: Health Check Runner
+######################################
+FROM debian:bookworm-slim AS health-check-runner
 
 ARG APP_URL_FROM_ANYWHERE
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
+    bash \
     && rm -rf /var/lib/apt/lists/*
+
+RUN test -n "${APP_URL_FROM_ANYWHERE}" || ( \
+  echo "Error: APP_URL_FROM_ANYWHERE is not set! Use --build-arg APP_URL_FROM_ANYWHERE=xxx" && \
+  exit 1 \
+);
 
 ENV APP_URL_FROM_ANYWHERE=${APP_URL_FROM_ANYWHERE}
 
-# Health check script
-RUN echo '#!/bin/bash\n\
-set -e\n\
-echo "Checking health at ${APP_URL_FROM_ANYWHERE}/health..."\n\
-for i in {1..30}; do\n\
-  if curl -sf "${APP_URL_FROM_ANYWHERE}/health" > /dev/null 2>&1; then\n\
-    echo "Health check passed!"\n\
-    exit 0\n\
-  fi\n\
-  echo "Attempt $i failed, retrying in 2s..."\n\
-  sleep 2\n\
-done\n\
-echo "Health check failed after 30 attempts"\n\
-exit 1' > /health-check.sh && chmod +x /health-check.sh
+WORKDIR /root/
+COPY --from=devops-toolkit backend/scripts/health_check.sh health_check.sh
 
-CMD ["/health-check.sh"]
+CMD ./health_check.sh
+
+#######################################
+# Stage 5: Minimal Final App Image
+#######################################
+FROM debian:bookworm-slim AS app-runner
+
+ARG APP_NAME
+ARG APP_PORT=8080
+ARG APP_URL_FROM_ANYWHERE
+ARG LOG_LEVEL=info
+ARG ENV=dev
+ARG RUST_BINARY_NAME
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libssl3 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Validate runtime build args
+RUN test -n "${RUST_BINARY_NAME}" || ( \
+  echo "Error: RUST_BINARY_NAME is not set! Use --build-arg RUST_BINARY_NAME=xxx" && \
+  exit 1 \
+);
+RUN test -n "${APP_NAME}" || ( \
+  echo "Error: APP_NAME is not set! Use --build-arg APP_NAME=xxx" && \
+  exit 1 \
+);
+RUN test -n "${APP_URL_FROM_ANYWHERE}" || ( \
+  echo "Error: APP_URL_FROM_ANYWHERE is not set! Use --build-arg APP_URL_FROM_ANYWHERE=xxx" && \
+  exit 1 \
+);
+
+WORKDIR /app
+
+# Copy the built binary from the builder stage
+COPY --from=app-builder /${RUST_BINARY_NAME} /app/${RUST_BINARY_NAME}
+
+EXPOSE ${APP_PORT}
+
+# Convert ARGs to ENV for runtime use (mirrors Go app pattern)
+ENV APP_NAME=${APP_NAME}
+ENV APP_PORT=${APP_PORT}
+ENV APP_URL_FROM_ANYWHERE=${APP_URL_FROM_ANYWHERE}
+ENV LOG_LEVEL=${LOG_LEVEL}
+ENV ENV=${ENV}
+ENV PORT=${APP_PORT}
+ENV RUST_BINARY_NAME=${RUST_BINARY_NAME}
+
+# Shell form to mirror Go app and allow env expansion
+CMD ./${RUST_BINARY_NAME}

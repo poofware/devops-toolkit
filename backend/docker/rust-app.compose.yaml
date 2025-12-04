@@ -12,6 +12,7 @@ x-build-args: &build-args
   APP_NAME: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}
   APP_PORT: ${APP_PORT:-8080}
   ENV: ${ENV?Docker Compose Config Error! ENV is not set!}
+  APP_URL_FROM_ANYWHERE: ${APP_URL_FROM_ANYWHERE:-}
   RUST_BINARY_NAME: ${RUST_BINARY_NAME?Docker Compose Config Error! RUST_BINARY_NAME is not set!}
   RUST_VERSION: ${RUST_VERSION:-1.83}
   RUST_BUILD_PROFILE: ${RUST_BUILD_PROFILE:-release}
@@ -28,7 +29,7 @@ services:
       additional_contexts:
         devops-toolkit: ${DEVOPS_TOOLKIT_PATH?Docker Compose Config Error! DEVOPS_TOOLKIT_PATH is not set!}
       dockerfile: ${DEVOPS_TOOLKIT_PATH?Docker Compose Config Error! DEVOPS_TOOLKIT_PATH is not set!}/backend/docker/rust-app.Dockerfile
-      target: dev
+      target: app-runner
       <<: *build-network
       args:
         <<: *build-args
@@ -41,19 +42,8 @@ services:
         - ${TARGET_PLATFORM:?Docker Compose Config Error! TARGET_PLATFORM is not set!}
     image: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}
     container_name: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}_instance
-    environment:
-      - ENV=${ENV}
-      - PORT=${APP_PORT:-8080}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
-      - RUST_LOG=${LOG_LEVEL:-info}
-      - RUST_BACKTRACE=1
     ports:
       - "${APP_HOST_PORT:-8080}:${APP_PORT:-8080}"
-    command: ["cargo", "watch", "-x", "run"]
-    volumes:
-      - .:/app
-      - rust-target:/app/target
-      - rust-cargo-registry:/usr/local/cargo/registry
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:${APP_PORT:-8080}/health"]
       interval: 5s
@@ -75,7 +65,7 @@ services:
       additional_contexts:
         devops-toolkit: ${DEVOPS_TOOLKIT_PATH?Docker Compose Config Error! DEVOPS_TOOLKIT_PATH is not set!}
       dockerfile: ${DEVOPS_TOOLKIT_PATH?Docker Compose Config Error! DEVOPS_TOOLKIT_PATH is not set!}/backend/docker/rust-app.Dockerfile
-      target: health-check
+      target: health-check-runner
       <<: *build-network
       args:
         APP_URL_FROM_ANYWHERE: ${APP_URL_FROM_ANYWHERE:-}
@@ -87,11 +77,6 @@ services:
     profiles:
       - unassigned
     <<: *networks
-
-# Rust build cache volumes - preserved across `make down`, removed by `make clean`
-volumes:
-  rust-target:
-  rust-cargo-registry:
 
 networks:
   app_network:
