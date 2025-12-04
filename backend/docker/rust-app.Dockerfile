@@ -9,8 +9,14 @@ RUN cargo install cargo-chef --version 0.1.67 --locked
 WORKDIR /app
 
 # ────────────────────────────────  Planner ────────────────────────────────
+# OPTIMIZATION: Only copy dependency files, not source code
+# This layer only invalidates when Cargo.toml/Cargo.lock change
 FROM chef AS planner
-COPY . .
+COPY Cargo.toml Cargo.lock ./
+# Create dummy source files so cargo-chef can analyze dependencies
+RUN mkdir -p src && \
+    echo "fn main() {}" > src/main.rs && \
+    echo "// dummy lib" > src/lib.rs
 RUN cargo chef prepare --recipe-path recipe.json
 
 # ────────────────────────────────  Builder ────────────────────────────────
