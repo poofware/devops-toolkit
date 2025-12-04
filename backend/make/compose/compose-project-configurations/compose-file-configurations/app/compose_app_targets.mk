@@ -264,6 +264,13 @@ else
 
   else ifeq ($(DEPLOY_TARGET_FOR_ENV),vercel)
 
+# Include backend domain utils if BACKEND_GATEWAY_PATH is set (for resolving backend URL)
+ifdef BACKEND_GATEWAY_PATH
+  ifndef INCLUDED_BACKEND_DOMAIN_UTILS
+    include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/utils/backend_domain_utils.mk
+  endif
+endif
+
 _export_vercel_token:
 ifndef VERCEL_TOKEN
 	$(error [Export Vercel Token] VERCEL_TOKEN is required for Vercel deploys. Export VERCEL_TOKEN in your environment or via your secret manager.)
@@ -302,6 +309,8 @@ _up:
 	@$(MAKE) _up-app --no-print-directory
 
 # Override _up-app to deploy via Vercel CLI
+# Note: If FRONTEND_BACKEND_ENV_VAR is set (e.g., NEXT_PUBLIC_GENERATOR_URL),
+# the backend URL is resolved via _backend_domain_cmd (health check visible on stderr)
 _up-app:
 	@set -euo pipefail; \
 	export LOG_LEVEL=; \
@@ -313,9 +322,22 @@ _up-app:
 		echo "[ERROR] [Up App] VERCEL_TOKEN is required but not set."; \
 		exit 1; \
 	fi; \
+	BUILD_ENV_FLAGS=""; \
+	if [ -n "$(FRONTEND_BACKEND_ENV_VAR)" ] && [ -n "$(BACKEND_GATEWAY_PATH)" ]; then \
+		echo "[INFO] [Up App] Resolving backend URL (with health check)..."; \
+		BACKEND_DOMAIN="$$( $(_backend_domain_cmd) )"; rc=$$?; \
+		[ $$rc -eq 0 ] || exit $$rc; \
+		if [ -n "$$BACKEND_DOMAIN" ]; then \
+			export $(FRONTEND_BACKEND_ENV_VAR)="https://$$BACKEND_DOMAIN"; \
+			BUILD_ENV_FLAGS="--build-env $(FRONTEND_BACKEND_ENV_VAR)=https://$$BACKEND_DOMAIN"; \
+			echo "[INFO] [Up App] $(FRONTEND_BACKEND_ENV_VAR)=https://$$BACKEND_DOMAIN"; \
+		else \
+			echo "[WARN] [Up App] Could not resolve backend URL, deploying without it"; \
+		fi; \
+	fi; \
 	echo "[INFO] [Up App] Deploying $(APP_NAME) to Vercel (remote build)..."; \
 	DEPLOY_URL=$$(VERCEL_ORG_ID=$(VERCEL_ORG_ID) VERCEL_PROJECT_ID=$(VERCEL_PROJECT_ID) VERCEL_PROJECT_NAME=$(VERCEL_PROJECT_NAME) \
-		vercel deploy --prod --token $(VERCEL_TOKEN) --yes --force --cwd $(CURDIR) \
+		vercel deploy --prod --token $(VERCEL_TOKEN) --yes --force --cwd $(CURDIR) $$BUILD_ENV_FLAGS \
 		| /usr/bin/grep -Eo 'https://[^ ]+' | tail -n1); \
 	if [ -z "$$DEPLOY_URL" ]; then \
 		echo "[ERROR] [Up App] Failed to capture Vercel deploy URL."; \

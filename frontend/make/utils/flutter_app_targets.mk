@@ -1,12 +1,11 @@
 # --------------------------------
-# Flutter App Configuration
+# Flutter App Targets
 # --------------------------------
 
 SHELL := /bin/bash
 
-.PHONY: help check up-backend down-backend clean-backend logs \
-	_run-env _run _integration-test _e2e-test clean \
-	_export_current_backend_domain
+.PHONY: help check \
+	_run-env _run _integration-test _e2e-test clean
 
 # Check that the current working directory is the root of a Flutter app by verifying that pubspec.yaml exists.
 ifeq ($(wildcard pubspec.yaml),)
@@ -22,6 +21,13 @@ ifndef INCLUDED_FLUTTER_APP_CONFIGURATION
 	Include $$(DEVOPS_TOOLKIT_PATH)/frontend/make/utils/flutter_app_configuration.mk in your root Makefile.)
 endif
 
+# --------------------------------
+# Include shared backend utilities
+# --------------------------------
+
+ifndef INCLUDED_FRONTEND_BACKEND_UTILS
+  include $(DEVOPS_TOOLKIT_PATH)/frontend/make/utils/frontend_backend_utils.mk
+endif
 
 # --------------------------------
 # Targets
@@ -31,47 +37,9 @@ ifndef INCLUDED_HELP
   include $(DEVOPS_TOOLKIT_PATH)/shared/make/help.mk
 endif
 
-logs:
-	@mkdir -p logs
-
 ## Run flutter doctor
 check:
 	@flutter doctor
-
-## Up the backend
-up-backend:
-	@echo "[INFO] [Up Backend] Starting backend for ENV=$(ENV)..."
-	@$(MAKE) -C $(BACKEND_GATEWAY_PATH) up PRINT_INFO=0
-
-## Down the backend
-down-backend:
-	@echo "[INFO] [Down Backend] Stopping backend for ENV=$(ENV)..."
-	@$(MAKE) -C $(BACKEND_GATEWAY_PATH) down PRINT_INFO=0
-
-## Clean the backend
-clean-backend:
-	@echo "[INFO] [Clean Backend] Cleaning backend for ENV=$(ENV)..."
-	@$(MAKE) -C $(BACKEND_GATEWAY_PATH) clean PRINT_INFO=0
-
-# --------------------------------
-# Export the current backend domain based on the environment
-# --------------------------------
-_backend_domain_cmd = $(MAKE) -C $(BACKEND_GATEWAY_PATH) \
-                      --no-print-directory PRINT_INFO=0 print-public-app-domain
-
-_export_current_backend_domain:
-	@echo "[INFO] [Export Backend Domain] Exporting backend domain for ENV=$(ENV)..." >&2
-ifneq (,$(filter $(ENV),$(DEV_TEST_ENV)))
-	@if [ -z "$$CURRENT_BACKEND_DOMAIN" ]; then \
-		domain="$$( $(_backend_domain_cmd) )"; rc=$$?; \
-		[ $$rc -eq 0 ] || exit $$rc; \
-		echo "export CURRENT_BACKEND_DOMAIN=\"$$domain\""; \
-	fi
-else
-	@domain="$$( $(_backend_domain_cmd) )"; rc=$$?; \
-	[ $$rc -eq 0 ] || exit $$rc; \
-	echo "export CURRENT_BACKEND_DOMAIN=\"$$domain\""
-endif
 
 # Run API integration tests (non-UI logic tests)
 _integration-test: AUTO_LAUNCH_BACKEND ?= 1
@@ -114,7 +82,6 @@ _e2e-test: logs
 	esac
 
 # Run the app in a specific environment (ENV=dev|dev-test|staging|prod)
-# Run the app in a specific environment (ENV=dev|dev-test|staging|prod)
 _run-env: logs
 	@echo "[INFO] Running Flutter app for ENV=$(ENV) on PLATFORM=$(PLATFORM)"
 	@$(call run_command_with_backend, \
@@ -148,6 +115,10 @@ _run:
 	  *) \
 	    echo "[ERROR] [Run] Invalid ENV: $(ENV). Choose from [$(DEV_ENV)|$(DEV_TEST_ENV)|$(STAGING_ENV)|$(PROD_ENV)]."; exit 1;; \
 	esac
+
+# --------------------------------
+# Help
+# --------------------------------
 
 help::
 	@echo "--------------------------------------------------"
