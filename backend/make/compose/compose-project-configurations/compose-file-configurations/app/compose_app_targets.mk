@@ -263,6 +263,15 @@ clean:: _export_vercel_token _export_vercel_project_vars
 down:: _export_vercel_token _export_vercel_project_vars
 migrate:: _export_vercel_token _export_vercel_project_vars
 
+  ifndef INCLUDED_COMPOSE_PROJECT_TARGETS
+    include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose-project-targets/compose_project_targets.mk
+  endif
+
+# Override _up entirely - Vercel builds remotely, no compose needed
+_up:
+	@echo "[INFO] [Up] Deploying to Vercel (skipping compose build/network/migrate)..."
+	@$(MAKE) _up-app --no-print-directory
+
 # Override _up-app to deploy via Vercel CLI
 _up-app:
 	@set -euo pipefail; \
@@ -278,7 +287,7 @@ _up-app:
 	echo "[INFO] [Up App] Deploying $(APP_NAME) to Vercel (remote build)..."; \
 	DEPLOY_URL=$$(VERCEL_ORG_ID=$(VERCEL_ORG_ID) VERCEL_PROJECT_ID=$(VERCEL_PROJECT_ID) VERCEL_PROJECT_NAME=$(VERCEL_PROJECT_NAME) \
 		vercel deploy --prod --token $(VERCEL_TOKEN) --yes --force --cwd $(CURDIR) \
-		| grep -Eo 'https://[^ ]+' | tail -n1); \
+		| /usr/bin/grep -Eo 'https://[^ ]+' | tail -n1); \
 	if [ -z "$$DEPLOY_URL" ]; then \
 		echo "[ERROR] [Up App] Failed to capture Vercel deploy URL."; \
 		exit 1; \
@@ -309,6 +318,15 @@ ci:: _export_shuttle_api_key _assert_shuttle_project
 clean:: _export_shuttle_api_key
 down:: _export_shuttle_api_key
 
+  ifndef INCLUDED_COMPOSE_PROJECT_TARGETS
+    include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose-project-targets/compose_project_targets.mk
+  endif
+
+# Override _up entirely - Shuttle builds Rust directly, no compose needed
+_up:
+	@echo "[INFO] [Up] Deploying to Shuttle (skipping compose build/network/migrate)..."
+	@$(MAKE) _up-app --no-print-directory
+
 # Override _up-app to deploy via Shuttle CLI
 _up-app:
 	@set -euo pipefail; \
@@ -319,25 +337,40 @@ _up-app:
 	fi; \
 	echo "[INFO] [Up App] Deploying $(APP_NAME) to Shuttle..."; \
 	cargo shuttle deploy --name $(SHUTTLE_PROJECT_NAME) --allow-dirty; \
-	echo "[INFO] [Up App] Done. App $(APP_NAME) available at $(SHUTTLE_URL)."
+	DEPLOY_URL=$$(cargo shuttle project status --name $(SHUTTLE_PROJECT_NAME) 2>/dev/null | /usr/bin/grep -oE 'https://[a-zA-Z0-9_-]+\.shuttle\.app' | head -1); \
+	if [ -n "$$DEPLOY_URL" ]; then \
+		echo "[INFO] [Up App] Done. App $(APP_NAME) available at $$DEPLOY_URL"; \
+	else \
+		echo "[INFO] [Up App] Done. App $(APP_NAME) deployed to Shuttle."; \
+	fi
 
 ## Override down to avoid destructive remote removal (manage from Shuttle)
 down::
 	@echo "[INFO] [Down] Shuttle deploy target selected – skipping remote teardown. Manage removal from the Shuttle dashboard if needed."
 
-  endif
+CUSTOM_PRINT_PUBLIC_APP_DOMAIN := 1
 
-  # Include compose project targets for all production deploy targets
-  ifndef INCLUDED_COMPOSE_PROJECT_TARGETS
-    include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose-project-targets/compose_project_targets.mk
+## Override print-public-app-domain to get URL from Shuttle project status
+print-public-app-domain::
+	@DEPLOY_URL=$$(cargo shuttle project status --name $(SHUTTLE_PROJECT_NAME) 2>/dev/null | /usr/bin/grep -oE 'https://[a-zA-Z0-9_-]+\.shuttle\.app' | head -1); \
+	if [ -n "$$DEPLOY_URL" ]; then \
+		echo "$$DEPLOY_URL" | sed -e 's~^https://~~'; \
+	else \
+		echo "[ERROR] [Print Public App Domain] Could not determine Shuttle URL. Deploy first or check 'cargo shuttle project status'." >&2; \
+		exit 1; \
+	fi
+
   endif
 
 endif
 
 ## Prints the domain that you can use to access the app from anywhere with https
+## (Only define default if not already defined by deploy target like Shuttle)
+ifndef CUSTOM_PRINT_PUBLIC_APP_DOMAIN
 print-public-app-domain::
 	@$(DEVOPS_TOOLKIT_PATH)/backend/scripts/health_check.sh
 	@echo $$APP_URL_FROM_ANYWHERE | sed -e 's~^https://~~'
+endif
 
 # Include compose project targets for dev environments (if not already included)
 ifndef INCLUDED_COMPOSE_PROJECT_TARGETS
