@@ -28,15 +28,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=planner /app/recipe.json recipe.json
 
 # Build dependencies - this is the caching layer
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/app/target \
+RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
+    --mount=type=cache,id=rust-target,target=/app/target \
     cargo chef cook --${RUST_BUILD_PROFILE} --recipe-path recipe.json
 
 # Build application
 COPY . .
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/app/target \
-    cargo build --${RUST_BUILD_PROFILE}
+RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
+    --mount=type=cache,id=rust-target,target=/app/target \
+    cargo build --${RUST_BUILD_PROFILE} && \
+    cp /app/target/${RUST_BUILD_PROFILE}/${RUST_BINARY_NAME} /${RUST_BINARY_NAME}
 
 # ────────────────────────────────  Development (with hot-reload) ────────────────────────────────
 FROM rust:${RUST_VERSION}-slim-bookworm AS dev
@@ -81,8 +82,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Copy the built binary
-COPY --from=builder /app/target/${RUST_BUILD_PROFILE}/${RUST_BINARY_NAME} /app/app
+# Copy the built binary (from root, where we copied it out of the cache mount)
+COPY --from=builder /${RUST_BINARY_NAME} /app/app
 
 ENV PORT=${APP_PORT}
 EXPOSE ${APP_PORT}
