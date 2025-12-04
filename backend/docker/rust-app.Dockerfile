@@ -31,15 +31,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy dependency files and recipe
+COPY Cargo.toml Cargo.lock ./
 COPY --from=planner /app/recipe.json recipe.json
 
-# Build dependencies - this is the caching layer
+# Build dependencies - this layer only rebuilds when Cargo.toml/Cargo.lock change
 RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
     --mount=type=cache,id=rust-target,target=/app/target \
     cargo chef cook --${RUST_BUILD_PROFILE} --recipe-path recipe.json
 
-# Build application
-COPY . .
+# Copy ONLY source code - this layer only rebuilds when src/ changes
+COPY src/ src/
+
+# Build application - deps are cached, only rebuilds app code
 RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
     --mount=type=cache,id=rust-target,target=/app/target \
     cargo build --${RUST_BUILD_PROFILE} && \

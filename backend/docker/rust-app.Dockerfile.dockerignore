@@ -21,6 +21,13 @@ tmp/
 
 # Documentation (not needed in container)
 README.md
+*.md
+
+# Build/deploy configs (not needed for compilation)
+Makefile
+*.compose.yaml
+deploy/
+*.sh
 
 # IDE
 .vscode/
