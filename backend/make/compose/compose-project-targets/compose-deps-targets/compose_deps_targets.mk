@@ -84,6 +84,7 @@ _deps-%::
 				exit 1; \
 			fi; \
 			echo "[INFO] [Deps-$*] All dependency tasks completed successfully."; \
+			echo "[INFO] [Deps-$*] Returning to $(APP_NAME)..."; \
 		else \
 			echo "[INFO] [Deps-$*] Sequential execution enabled (default). Set PARA_DEPS=1 to run in parallel."; \
 			for dep in $(DEPS); do \

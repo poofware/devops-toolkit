@@ -62,10 +62,11 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
 
     _export_backend_url_dev:
     ifdef NEXTJS_BACKEND_ENV_VAR
+	    @echo "[INFO] [$(APP_NAME)] Resolving backend URL from $(BACKEND_GATEWAY_PATH)..."
 	    $(eval RAW_URL := $(shell $(_backend_domain_cmd)))
 	    $(eval FULL_URL := $(if $(findstring http,$(RAW_URL)),$(RAW_URL),https://$(RAW_URL)))
 	    $(eval export $(NEXTJS_BACKEND_ENV_VAR) := $(FULL_URL))
-	    @echo "[INFO] [Export Backend URL] $(NEXTJS_BACKEND_ENV_VAR)=$(FULL_URL)"
+	    @echo "[INFO] [$(APP_NAME)] Backend URL: $(NEXTJS_BACKEND_ENV_VAR)=$(FULL_URL)"
     endif
 
     up:: _export_backend_url_dev
@@ -74,10 +75,9 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
   ifeq ($(ENABLE_NGROK_FOR_DEV),1)
     _export_ngrok_url_as_app_url:
     ifndef APP_URL_FROM_ANYWHERE
-		@echo "[INFO] [Export Ngrok URL] Exporting ngrok URL as App Url From Anywhere..." >&2
 		$(eval NGROK_HOST_PORT := $(shell $(COMPOSE_CMD) port ngrok $(NGROK_PORT) | cut -d ':' -f 2))
 		$(eval export APP_URL_FROM_ANYWHERE := $(shell $(DEVOPS_TOOLKIT_PATH)/backend/scripts/get_ngrok_url.sh $(NGROK_HOST_PORT)))
-		@echo "[INFO] [Export Ngrok URL] Done. App Url From Anywhere is set to: $(APP_URL_FROM_ANYWHERE)" >&2
+		@echo "[INFO] [$(APP_NAME)] Ngrok URL: $(APP_URL_FROM_ANYWHERE)" >&2
     endif
 
     _up-ngrok: 
@@ -109,9 +109,8 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
   ifneq ($(ENABLE_NGROK_FOR_DEV),1)
     _export_lan_url_as_app_url:
     ifndef APP_URL_FROM_ANYWHERE
-		@echo "[INFO] [Export LAN URL] Exporting LAN URL as App Url From Anywhere..." >&2
 		$(eval export APP_URL_FROM_ANYWHERE = http://$(shell $(DEVOPS_TOOLKIT_PATH)/backend/scripts/get_lan_ip.sh):$(APP_HOST_PORT))
-		@echo "[INFO] [Export LAN URL] Done. App Url From Anywhere is set to: $(APP_URL_FROM_ANYWHERE)" >&2
+		@echo "[INFO] [$(APP_NAME)] LAN URL: $(APP_URL_FROM_ANYWHERE)" >&2
     endif
 
     build:: _export_lan_url_as_app_url

@@ -4,7 +4,7 @@
 
 SHELL := /bin/bash
 
-.PHONY: build
+.PHONY: build _build-pre-sync
 
 # Check that the current working directory is the root of a project by verifying that the root Makefile exists.
 ifeq ($(wildcard Makefile),)
@@ -46,8 +46,21 @@ ifndef INCLUDED_COMPOSE_DEPS_BUILD
   include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose_project_targets/compose-deps-targets/compose_deps_build.mk
 endif
 
+_build-pre-sync:
+	@if [ -z "$(COMPOSE_PROFILE_BUILD_PRE_SYNC_SERVICES)" ]; then \
+		echo "[INFO] [Build-Pre-Sync] No services found matching the '$(COMPOSE_PROFILE_BUILD_PRE_SYNC)' profile. Skipping..."; \
+	else \
+		echo "[INFO] [Build-Pre-Sync] Running pre-build services found matching the '$(COMPOSE_PROFILE_BUILD_PRE_SYNC)' profile..."; \
+		echo "[INFO] [Build-Pre-Sync] Found services: $(COMPOSE_PROFILE_BUILD_PRE_SYNC_SERVICES)"; \
+		$(COMPOSE_CMD) --profile $(COMPOSE_PROFILE_BUILD_PRE_SYNC) up --build --force-recreate; \
+		echo "[INFO] [Build-Pre-Sync] Done. Any '$(COMPOSE_PROFILE_BUILD_PRE_SYNC)' services found were run."; \
+		$(MAKE) _check-failed-services --no-print-directory PROFILE_TO_CHECK=$(COMPOSE_PROFILE_BUILD_PRE_SYNC) SERVICES_TO_CHECK="$(COMPOSE_PROFILE_BUILD_PRE_SYNC_SERVICES)"; \
+	fi
+
 ## Builds services for all specified services (COMPOSE_BUILD_SERVICES must be set to a list of services to build - COMPOSE_BUILD_BASE_SERVICES for building base images is optional)
 build::
+	@$(MAKE) _build-pre-sync --no-print-directory
+
 	@echo "[INFO] [Build] ENV=$(ENV)"
 
 ifeq ($(filter $(ENV),$(STAGING_ENV) $(STAGING_TEST_ENV) $(PROD_ENV)),)
