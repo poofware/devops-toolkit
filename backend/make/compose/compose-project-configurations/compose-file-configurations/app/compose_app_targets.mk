@@ -268,8 +268,8 @@ else
 	  	| jq -e '.[].Name | select(.=="BWS_ACCESS_TOKEN")' >/dev/null; \
 	  then \
 		  echo "[INFO] [Up App] Secret BWS_ACCESS_TOKEN not found – setting it…"; \
-		  fly secrets set BWS_ACCESS_TOKEN=$(BWS_ACCESS_TOKEN) --app $(FLY_APP_NAME); \
-		  echo "[INFO] [Up App] Secret BWS_ACCESS_TOKEN set."; \
+		  fly secrets set BWS_ACCESS_TOKEN=$(BWS_ACCESS_TOKEN) --app $(FLY_APP_NAME) --stage; \
+		  echo "[INFO] [Up App] Secret BWS_ACCESS_TOKEN staged (will deploy with next fly deploy)."; \
 	  else \
 		  echo "[INFO] [Up App] Secret BWS_ACCESS_TOKEN already present – skipping."; \
 	  fi; \
