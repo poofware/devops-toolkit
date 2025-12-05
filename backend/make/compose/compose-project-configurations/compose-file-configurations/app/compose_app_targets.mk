@@ -54,6 +54,23 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
     include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose-project-targets/compose-deps-targets/compose_deps_targets.mk
   endif
 
+  # For Dev environment: Resolve backend URL if dependencies are present
+  ifdef BACKEND_GATEWAY_PATH
+    ifndef INCLUDED_BACKEND_DOMAIN_UTILS
+      include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/utils/backend_domain_utils.mk
+    endif
+
+    _export_backend_url_dev:
+    ifdef NEXTJS_BACKEND_ENV_VAR
+	    $(eval RAW_URL := $(shell $(_backend_domain_cmd)))
+	    $(eval FULL_URL := $(if $(findstring http,$(RAW_URL)),$(RAW_URL),https://$(RAW_URL)))
+	    $(eval export $(NEXTJS_BACKEND_ENV_VAR) := $(FULL_URL))
+	    @echo "[INFO] [Export Backend URL] $(NEXTJS_BACKEND_ENV_VAR)=$(FULL_URL)"
+    endif
+
+    up:: _export_backend_url_dev
+  endif
+
   ifeq ($(ENABLE_NGROK_FOR_DEV),1)
     _export_ngrok_url_as_app_url:
     ifndef APP_URL_FROM_ANYWHERE
@@ -309,7 +326,7 @@ _up:
 	@$(MAKE) _up-app --no-print-directory
 
 # Override _up-app to deploy via Vercel CLI
-# Note: If FRONTEND_BACKEND_ENV_VAR is set (e.g., NEXT_PUBLIC_GENERATOR_URL),
+# Note: If NEXTJS_BACKEND_ENV_VAR is set (e.g., NEXT_PUBLIC_GENERATOR_URL),
 # the backend URL is resolved via _backend_domain_cmd (health check visible on stderr)
 _up-app:
 	@set -euo pipefail; \
@@ -323,14 +340,14 @@ _up-app:
 		exit 1; \
 	fi; \
 	BUILD_ENV_FLAGS=""; \
-	if [ -n "$(FRONTEND_BACKEND_ENV_VAR)" ] && [ -n "$(BACKEND_GATEWAY_PATH)" ]; then \
+	if [ -n "$(NEXTJS_BACKEND_ENV_VAR)" ] && [ -n "$(BACKEND_GATEWAY_PATH)" ]; then \
 		echo "[INFO] [Up App] Resolving backend URL (with health check)..."; \
 		BACKEND_DOMAIN="$$( $(_backend_domain_cmd) )"; rc=$$?; \
 		[ $$rc -eq 0 ] || exit $$rc; \
 		if [ -n "$$BACKEND_DOMAIN" ]; then \
-			export $(FRONTEND_BACKEND_ENV_VAR)="https://$$BACKEND_DOMAIN"; \
-			BUILD_ENV_FLAGS="--build-env $(FRONTEND_BACKEND_ENV_VAR)=https://$$BACKEND_DOMAIN"; \
-			echo "[INFO] [Up App] $(FRONTEND_BACKEND_ENV_VAR)=https://$$BACKEND_DOMAIN"; \
+			export $(NEXTJS_BACKEND_ENV_VAR)="https://$$BACKEND_DOMAIN"; \
+			BUILD_ENV_FLAGS="--build-env $(NEXTJS_BACKEND_ENV_VAR)=https://$$BACKEND_DOMAIN"; \
+			echo "[INFO] [Up App] $(NEXTJS_BACKEND_ENV_VAR)=https://$$BACKEND_DOMAIN"; \
 		else \
 			echo "[WARN] [Up App] Could not resolve backend URL, deploying without it"; \
 		fi; \

@@ -24,9 +24,10 @@ endif
 # Include shared backend utilities
 # --------------------------------
 # Map Next.js specific variable to the generic one used by the shared utils
-ifdef NEXTJS_BACKEND_ENV_VAR
-  FRONTEND_BACKEND_ENV_VAR := $(NEXTJS_BACKEND_ENV_VAR)
-endif
+# (Removed mapping per request - utilizing NEXTJS_BACKEND_ENV_VAR directly in compose_app_targets.mk)
+# ifdef NEXTJS_BACKEND_ENV_VAR
+#   FRONTEND_BACKEND_ENV_VAR := $(NEXTJS_BACKEND_ENV_VAR)
+# endif
 
 ifndef INCLUDED_FRONTEND_BACKEND_UTILS
   include $(DEVOPS_TOOLKIT_PATH)/frontend/make/utils/frontend_backend_utils.mk
