@@ -22,13 +22,13 @@ Read on to learn how to harness these tools and build consistent workflows for y
 
 Docker Compose supports [profiles](https://docs.docker.com/compose/profiles/) to conditionally include or exclude services. This DevOps Toolkit extends that concept by:
 
-- Defining multiple Compose profiles (e.g., `db`, `migrate`, `build_pre_sync`, `app`, `app_pre`, `app_post_check`, `app_integration_test`, etc.).
+- Defining multiple Compose profiles (e.g., `db`, `migrate`, `build_pre_sync`, `app`, `app_pre_async`, `app_post_check`, `app_integration_test`, etc.).
 - Providing Make targets that **spin up** these profiles in a specific order.  
   For example:
   - **`db`** profile for a local Postgres container.  
   - **`migrate`** profile for a migration container.  
   - **`build_pre_sync`** profile for blocking pre-build tasks (e.g., WASM compilation) that must complete before the main build.  
-  - **`app_pre`** profile for long-running tasks **before** the main application (e.g., a Stripe listener).  
+  - **`app_pre_async`** profile for long-running tasks **before** the main application (e.g., a Stripe listener).  
   - **`app`** profile for the main application container.  
   - **`app_post_check`** profile for tasks **after** the main app is running (e.g., health checks).  
 
@@ -46,7 +46,7 @@ Compose supports combining multiple files via `COMPOSE_FILE` (colon-separated) s
 
 - Keep a base Compose file in your toolkit (e.g., `go-app.compose.yaml`), where services might be labeled with `profiles: [unassigned]`.
 - Add an environment- or project-specific override in your own `override.compose.yaml` that **re-assigns** these services to active profiles like `db`, `app`, `migrate`, etc.
-- Use `make up` to start only those services assigned to the relevant profiles (e.g., `app`, `db`, `migrate`, `build_pre_sync`, `app_pre`, `app_post_check`).
+- Use `make up` to start only those services assigned to the relevant profiles (e.g., `app`, `db`, `migrate`, `build_pre_sync`, `app_pre_async`, `app_post_check`).
 
 ### 1.4 Makefile Inclusions
 
@@ -147,7 +147,7 @@ services:
 
   stripe-listener:
     profiles:
-      - app_pre
+      - app_pre_async
 ```
 
 Now, `make up` will see `db` is in the `db` profile, etc., and spin them up in the right order.
@@ -159,7 +159,7 @@ From your shell in the project root:
 - **`make build`**  
   Builds Docker images for any services whose profiles (or no profile) you’ve assigned to the build sequence.
 - **`make up`**  
-  Starts containers in an order: `build_pre_sync → db → migrate → app_pre → app → app_post_check`. Only those services that are actually assigned these profiles will come up. Note: `build_pre_sync` runs during the build phase.
+  Starts containers in an order: `build_pre_sync → db → migrate → app_pre_async → app → app_post_check`. Only those services that are actually assigned these profiles will come up. Note: `build_pre_sync` runs during the build phase.
 - **`make integration-test`**  
   (If you set up an integration-test profile) runs that ephemeral test container.
 - **`make down`**  
@@ -274,19 +274,19 @@ services:
 
   stripe-listener:
     profiles:
-      - app_pre
+      - app_pre_async
 
   stripe-webhook-check:
     profiles:
       - app_post_check
 ```
 
-Notice in the base `go-app.compose.yaml` these services might have been defined with `profiles: [unassigned]`. Now in `override.compose.yaml`, we **reassign** them to `app`, `db`, `app_pre`, etc. This ensures they actually come up when you run `make up`.
+Notice in the base `go-app.compose.yaml` these services might have been defined with `profiles: [unassigned]`. Now in `override.compose.yaml`, we **reassign** them to `app`, `db`, `app_pre_async`, etc. This ensures they actually come up when you run `make up`.
 
 ### 4.3 Common Make Targets
 
 - **`make up`**  
-  *In order*, it will run `build_pre_sync` (during build), then bring up `db → migrate → app_pre → app → app_post_check`.  
+  *In order*, it will run `build_pre_sync` (during build), then bring up `db → migrate → app_pre_async → app → app_post_check`.  
   Only those services assigned to these profiles will actually start.
 - **`make integration-test`**  
   Spins up the `app_integration_test` profile, which typically runs ephemeral integration tests, then tears down.
@@ -297,7 +297,7 @@ Notice in the base `go-app.compose.yaml` these services might have been defined 
 
 ## 5. Activating or Excluding Profiles
 
-By default, the internal `make up` logic looks for these profiles in a specific order: `build_pre_sync` (during build phase) → `db → migrate → app_pre → app → app_post_check`. Services that remain on `unassigned` are **ignored** (they will never start).
+By default, the internal `make up` logic looks for these profiles in a specific order: `build_pre_sync` (during build phase) → `db → migrate → app_pre_async → app → app_post_check`. Services that remain on `unassigned` are **ignored** (they will never start).
 
 You can also **exclude** certain phases, using environment variables:
 
@@ -308,7 +308,7 @@ Example:
 ```bash
 EXCLUDE_COMPOSE_PROFILE_APP=1 make up
 ```
-This starts only `db` and `migrate` and `app_pre`, skipping the main application container.
+This starts only `db` and `migrate` and `app_pre_async`, skipping the main application container.
 
 ---
 
@@ -374,7 +374,7 @@ Here’s the typical flow when using the DevOps Toolkit in your local dev enviro
    export UNIQUE_RUNNER_ID="my-username"
    ```
 2. **`make build`** – Build Docker images for your service (and any dependency projects if `WITH_DEPS=1`).
-3. **`make up`** – Start the environment in a layered approach: `build_pre_sync` (build phase) → `db → migrate → app_pre → app → app_post_check`.  
+3. **`make up`** – Start the environment in a layered approach: `build_pre_sync` (build phase) → `db → migrate → app_pre_async → app → app_post_check`.  
    (All of these assume you **overrode** the `unassigned` profile for each relevant service to something active!)
 4. **(Optional) `make integration-test`** – Run an ephemeral container that tests your service’s integration logic.
 5. **`make down`** – Stop all containers for this project.
