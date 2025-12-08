@@ -321,6 +321,7 @@ migrate:: _export_vercel_token _export_vercel_project_vars
 
 # Override _up entirely - Vercel builds remotely, no compose needed
 _up:
+	@$(MAKE) _build-pre-sync --no-print-directory
 	@echo "[INFO] [Up] Deploying to Vercel (skipping compose build/network/migrate)..."
 	@$(MAKE) _up-app --no-print-directory
 
