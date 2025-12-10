@@ -363,7 +363,7 @@ _up-app:
 	echo "$$DEPLOY_URL" > .last_vercel_deploy_url; \
 	echo "[INFO] [Up App] Done. App $(APP_NAME) available at $$DEPLOY_URL."
 
-## Override down to avoid destructive remote removal (manage from Vercel)
+# Override down to avoid destructive remote removal (manage from Vercel)
 down::
 	@echo "[INFO] [Down] Vercel deploy target selected – skipping remote teardown. Manage removal from the Vercel dashboard if needed."
 
@@ -412,13 +412,13 @@ _up-app:
 		echo "[INFO] [Up App] Done. App $(APP_NAME) deployed to Shuttle."; \
 	fi
 
-## Override down to avoid destructive remote removal (manage from Shuttle)
+# Override down to avoid destructive remote removal (manage from Shuttle)
 down::
 	@echo "[INFO] [Down] Shuttle deploy target selected – skipping remote teardown. Manage removal from the Shuttle dashboard if needed."
 
 CUSTOM_PRINT_PUBLIC_APP_DOMAIN := 1
 
-## Override print-public-app-domain to get URL from Shuttle project status
+# Override print-public-app-domain to get URL from Shuttle project status
 print-public-app-domain::
 	@DEPLOY_URL=$$(cargo shuttle project status --name $(SHUTTLE_PROJECT_NAME) 2>/dev/null | /usr/bin/grep -oE 'https://[a-zA-Z0-9_-]+\.shuttle\.app' | head -1); \
 	if [ -n "$$DEPLOY_URL" ]; then \

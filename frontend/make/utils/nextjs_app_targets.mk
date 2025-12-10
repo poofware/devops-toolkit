@@ -47,17 +47,23 @@ endif
 
 help::
 	@echo "--------------------------------------------------"
-	@echo "[INFO] Next.js App Configuration:"
+	@echo "[INFO] Frontend Runtime Configuration:"
 	@echo "--------------------------------------------------"
 	@echo "ENV: $(ENV)"
-	@echo "AUTO_LAUNCH_BACKEND: $(AUTO_LAUNCH_BACKEND)"
-	@echo "VERBOSE: $(VERBOSE)"
+	@echo "WITH_DEPS: $(WITH_DEPS)"
+	@echo "FRONTEND_RELEASE_MODE: $(FRONTEND_RELEASE_MODE)"
+	@echo "FRONTEND_NODE_ENV: $(FRONTEND_NODE_ENV)"
+	@echo "NEXT_PUBLIC_ENV: $(NEXT_PUBLIC_ENV)"
+	@echo "NEXT_PUBLIC_DEVTOOLS_ENABLED: $(NEXT_PUBLIC_DEVTOOLS_ENABLED)"
+	@echo "NEXT_PUBLIC_GENERATOR_URL: $(NEXT_PUBLIC_GENERATOR_URL)"
+	@echo "NEXT_PUBLIC_DEV_GENERATOR_URL: $(NEXT_PUBLIC_DEV_GENERATOR_URL)"
+	@echo "ENABLE_NGROK_FOR_DEV: $(ENABLE_NGROK_FOR_DEV)"
 	@echo "BACKEND_GATEWAY_PATH: $(BACKEND_GATEWAY_PATH)"
 	@echo
 	@echo "Backend Options:"
-	@echo "  make up                        - Use default AUTO_LAUNCH_BACKEND for ENV"
-	@echo "  make up AUTO_LAUNCH_BACKEND=1  - Force backend to auto-start"
-	@echo "  make up AUTO_LAUNCH_BACKEND=0  - Skip backend (use web workers fallback)"
+	@echo "  make up                        - Uses default backend policy for ENV"
+	@echo "  make up WITH_DEPS=1           - Force backend to auto-start"
+	@echo "  make up WITH_DEPS=0           - Skip backend (use WASM workers)"
 	@echo
 
 
