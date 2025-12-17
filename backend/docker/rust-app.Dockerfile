@@ -73,6 +73,8 @@ RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
 COPY src/ src/
 
 # Build application with cached deps, then place binary at repo root
+# RUSTFLAGS: target-cpu=native uses all CPU features available on build machine
+ENV RUSTFLAGS="-C target-cpu=native"
 RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
     --mount=type=cache,id=rust-target,target=/app/target \
     cargo build --${RUST_BUILD_PROFILE} && \
