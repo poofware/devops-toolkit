@@ -1,24 +1,44 @@
 #!/usr/bin/env bash
 #
-# Simple script to find the first available TCP port starting from 5000.
+# Script to find an available TCP port, with awareness of own container.
 # Usage:
-#   ./find_free_port.sh
+#   ./find_available_port.sh [START_PORT] [CONTAINER_NAME]
+# If CONTAINER_NAME is provided and owns a port, that port is considered available
+# (the container will be restarted and reclaim it).
 # Prints the port number to stdout and exits with 0.
 
 set -euo pipefail
 
-# Optionally allow overriding the starting port via env var or command line:
 START_PORT="${1:-8080}"
+CONTAINER_NAME="${2:-}"
 
 PORT="$START_PORT"
 
+# Check if a port is held by our own container
+is_own_container_port() {
+  local check_port="$1"
+  if [[ -z "$CONTAINER_NAME" ]]; then
+    return 1
+  fi
+  # Get container holding this port via docker
+  local holder
+  holder=$(docker ps --format '{{.Names}}' --filter "publish=$check_port" 2>/dev/null | head -1)
+  [[ "$holder" == "$CONTAINER_NAME" ]]
+}
+
 while true; do
-  # Check if we can open a TCP connection to localhost:$PORT using Bash's /dev/tcp feature
+  # Check if we can open a TCP connection to localhost:$PORT
   if (echo >/dev/tcp/127.0.0.1/"${PORT}") &>/dev/null; then
-    # If successful, port is in use -> increment and keep looking
+    # Port is in use - check if it's our own container
+    if is_own_container_port "$PORT"; then
+      # It's our container, we can reclaim this port
+      echo "$PORT"
+      exit 0
+    fi
+    # Someone else has it, increment and keep looking
     PORT=$((PORT + 1))
   else
-    # Otherwise, it's free. Print it and exit.
+    # Port is free
     echo "$PORT"
     exit 0
   fi

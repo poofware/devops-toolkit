@@ -99,7 +99,7 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
 	  $(eval export APP_HOST_PORT := $(shell \
 	    $(COMPOSE_CMD) port $(COMPOSE_PROFILE_APP_SERVICES) $(APP_PORT) 2>/dev/null \
 	    | cut -d ':' -f2 | grep -E '^[0-9]+$$' || \
-	    $(DEVOPS_TOOLKIT_PATH)/backend/scripts/find_available_port.sh 8080 \
+	    $(DEVOPS_TOOLKIT_PATH)/backend/scripts/find_available_port.sh 8080 $(APP_NAME)_instance \
 	  ))
   endif
 
