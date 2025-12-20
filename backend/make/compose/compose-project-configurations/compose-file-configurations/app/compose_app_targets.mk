@@ -275,7 +275,8 @@ else
 	  fi; \
 	  \
 	  echo "[INFO] [Up App] Starting app $(FLY_APP_NAME) on fly.io..."; \
-	  fly deploy -a $(FLY_APP_NAME) -c $(FLY_TOML_PATH) --image $(APP_NAME) --local-only --ha=false --yes; \
+	  fly deploy -a $(FLY_APP_NAME) -c $(FLY_TOML_PATH) --image $(APP_NAME) --local-only --ha=false --yes || \
+	  	{ echo "[ERROR] [Up App] fly deploy failed!"; exit 1; }; \
 	  echo "[INFO] [Up App] Done. App $(FLY_APP_NAME) started."
 
   else ifeq ($(DEPLOY_TARGET_FOR_ENV),vercel)
