@@ -14,6 +14,10 @@
 #     -> runs "docker build [ARGS...] --ssh default=$SSH_AUTH_SOCK ..."
 #
 # Also respects VERBOSE=1 to set --progress=plain vs. auto.
+#
+# Environment variables for caching (set in compose yaml via cache_from/cache_to):
+#   DOCKER_BUILD_CACHE_FROM - Cache source (e.g., type=gha,scope=myapp)
+#   DOCKER_BUILD_CACHE_TO   - Cache destination (e.g., type=gha,scope=myapp,mode=max)
 ###############################################################################
 
 set -euo pipefail
