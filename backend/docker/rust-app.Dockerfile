@@ -65,6 +65,8 @@ COPY Cargo.toml Cargo.lock ./
 COPY --from=planner /app/recipe.json recipe.json
 
 # Build dependency graph (cacheable when Cargo.toml/Cargo.lock unchanged)
+# RUSTFLAGS: Set before chef cook so deps are compiled with same flags as app build
+ENV RUSTFLAGS="-C target-cpu=native"
 RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
     --mount=type=cache,id=rust-target,target=/app/target \
     cargo chef cook --${RUST_BUILD_PROFILE} --recipe-path recipe.json
@@ -73,8 +75,6 @@ RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
 COPY src/ src/
 
 # Build application with cached deps, then place binary at repo root
-# RUSTFLAGS: target-cpu=native uses all CPU features available on build machine
-ENV RUSTFLAGS="-C target-cpu=native"
 RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
     --mount=type=cache,id=rust-target,target=/app/target \
     cargo build --${RUST_BUILD_PROFILE} && \
