@@ -37,9 +37,9 @@ services:
         <<: *build-labels
         com.docker.compose.service: rust-app
       cache_from:
-        - ${DOCKER_BUILD_CACHE_FROM:-type=inline}
+        - ${DOCKER_BUILD_CACHE_FROM:-}
       cache_to:
-        - ${DOCKER_BUILD_CACHE_TO:-type=inline}
+        - ${DOCKER_BUILD_CACHE_TO:-}
 
       # Have to do this until there is a better option to control this from the compose cli
       platforms:
