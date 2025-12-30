@@ -355,7 +355,7 @@ _up-app:
 	fi; \
 	echo "[INFO] [Up App] Deploying $(APP_NAME) to Vercel (remote build)..."; \
 	DEPLOY_URL=$$(VERCEL_ORG_ID=$(VERCEL_ORG_ID) VERCEL_PROJECT_ID=$(VERCEL_PROJECT_ID) VERCEL_PROJECT_NAME=$(VERCEL_PROJECT_NAME) \
-		vercel deploy --prod --token $(VERCEL_TOKEN) --yes --force --cwd $(CURDIR) $$BUILD_ENV_FLAGS \
+		vercel deploy --prod --token $(VERCEL_TOKEN) --yes --force --archive=tgz --cwd $(CURDIR) $$BUILD_ENV_FLAGS \
 		| /usr/bin/grep -Eo 'https://[^ ]+' | tail -n1); \
 	if [ -z "$$DEPLOY_URL" ]; then \
 		echo "[ERROR] [Up App] Failed to capture Vercel deploy URL."; \
