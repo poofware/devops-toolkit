@@ -49,6 +49,9 @@ export RUST_BINARY_NAME
 # Release profile (debug or release)
 export RUST_BUILD_PROFILE ?= release
 
+# Optimization flags (match Dockerfile)
+export RUSTFLAGS ?= -C target-cpu=native
+
 ifndef INCLUDED_COMPOSE_APP_CONFIGURATION
   include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose-project-configurations/compose-file-configurations/app/compose_app_configuration.mk
 endif

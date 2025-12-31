@@ -37,6 +37,7 @@ endif
 ## Build Rust binary locally (release mode)
 cargo-build:
 	@echo "[INFO] [Cargo Build] Building Rust binary in $(RUST_BUILD_PROFILE) mode..."
+	@echo "[INFO] [Cargo Build] Flags: $(RUSTFLAGS)"
 	@cargo build --$(RUST_BUILD_PROFILE)
 	@echo "[INFO] [Cargo Build] Done."
 
