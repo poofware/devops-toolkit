@@ -5,9 +5,9 @@
 #
 # Flow:
 #   0. Validate essential env vars
-#   2. Fetch DB_URL and LD_SDK_KEY              (via BWS)
-#   3. Ask LaunchDarkly for using_isolated_schema
-#   4. Build / ensure isolated schema & schema-named role
+#   2. Fetch DB_URL (via BWS)
+#   3. Optionally fetch LD_SDK_KEY + evaluate using_isolated_schema
+#   4. Build / ensure isolated schema & schema-named role (if enabled)
 #   5. Wait for DB readiness
 #   6. Act according to MIGRATE_MODE & ENV
 #   7. Run Tern migrations
@@ -38,24 +38,45 @@ IFS=$'\n\t'
 # MIGRATE_MODE is optional; defaults to "forward"
 MIGRATE_MODE="$(echo "${MIGRATE_MODE:-forward}" | tr '[:upper:]' '[:lower:]')"
 
+
 ###############################################################################
-# 2. Fetch DB_URL and LD_SDK_KEY secrets from BWS
+# 2. Fetch DB_URL secret from BWS
 ###############################################################################
 echo "[INFO] Fetching secrets from BWS…"
 
 DB_URL="$(./fetch_bws_secret.sh DB_URL | jq -r '.DB_URL // empty')"
-LD_SDK_KEY="$(./fetch_bws_secret.sh LD_SDK_KEY | jq -r '.LD_SDK_KEY // empty')"
 
 if [[ -z "${DB_URL}"    || "${DB_URL}"    == "null" ]]; then
   echo "[ERROR] Could not retrieve 'DB_URL' from BWS." >&2
   exit 1
 fi
-if [[ -z "${LD_SDK_KEY}" || "${LD_SDK_KEY}" == "null" ]]; then
-  echo "[ERROR] Could not retrieve 'LD_SDK_KEY' from BWS." >&2
-  exit 1
+echo "[INFO] DB_URL fetched."
+
+###############################################################################
+# 3. Optionally evaluate LaunchDarkly flag for isolated schema
+###############################################################################
+USE_ISOLATED_SCHEMA=false
+
+set +e
+LD_SDK_KEY_RAW="$(./fetch_bws_secret.sh LD_SDK_KEY 2>/dev/null)"
+FETCH_LD_STATUS=$?
+set -e
+
+if [[ $FETCH_LD_STATUS -eq 0 ]]; then
+  LD_SDK_KEY="$(echo "${LD_SDK_KEY_RAW}" | jq -r '.LD_SDK_KEY // empty')"
 fi
-export LD_SDK_KEY
-echo "[INFO] Secrets fetched."
+
+if [[ -z "${LD_SDK_KEY:-}" || "${LD_SDK_KEY}" == "null" ]]; then
+  echo "[WARN] LD_SDK_KEY not found; skipping LaunchDarkly and isolated schema."
+else
+  export LD_SDK_KEY
+  echo "[INFO] LD_SDK_KEY fetched."
+
+  echo "[INFO] Evaluating LaunchDarkly flag 'using_isolated_schema'…"
+  ISOLATED_FLAG="$(./fetch_launchdarkly_flag.sh using_isolated_schema \
+                   | jq -r '.using_isolated_schema' | tr '[:upper:]' '[:lower:]')"
+  [[ "${ISOLATED_FLAG}" == "true" ]] && USE_ISOLATED_SCHEMA=true
+fi
 
 ###############################################################################
 # Helper → extract password from postgres://user:pass@host/…
@@ -65,17 +86,6 @@ db_password() {
 }
 DB_PASSWORD="$(printf '%s\n' "${DB_URL}" | db_password)"
 MIGRATION_USER=""
-
-###############################################################################
-# 3. Evaluate LaunchDarkly flag
-###############################################################################
-echo "[INFO] Evaluating LaunchDarkly flag 'using_isolated_schema'…"
-ISOLATED_FLAG="$(./fetch_launchdarkly_flag.sh using_isolated_schema \
-                 | jq -r '.using_isolated_schema' | tr '[:upper:]' '[:lower:]')"
-
-
-USE_ISOLATED_SCHEMA=false
-[[ "${ISOLATED_FLAG}" == "true" ]] && USE_ISOLATED_SCHEMA=true
 
 ###############################################################################
 # 4. Wait for database readiness

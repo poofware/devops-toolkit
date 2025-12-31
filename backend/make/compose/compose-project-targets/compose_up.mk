@@ -53,6 +53,18 @@ _up-db:
 
 ## Starts any migration services found matching the 'migrate' profile (MIGRATE_MODE=backward|forward to specify the migration mode, backward for reversing migrations, forward for running migrations, ENV determines the behavior of the target)
 migrate:: _up-network
+	@if [ "$(ENV)" = "prod" ] && [ "$(ALLOW_PROD_MIGRATIONS)" != "1" ]; then \
+		if [ -t 0 ]; then \
+			read -r -p "[WARN] You are about to run PROD migrations. Proceed? (y/N) " confirm; \
+			if [ "$$confirm" != "y" ] && [ "$$confirm" != "Y" ]; then \
+				echo "[ERROR] Prod migrations aborted."; \
+				exit 1; \
+			fi; \
+		else \
+			echo "[ERROR] Prod migrations require confirmation. Set ALLOW_PROD_MIGRATIONS=1 to bypass." >&2; \
+			exit 1; \
+		fi; \
+	fi
 	@echo "[INFO] [Migrate] Acquiring lock for migrations: $(MIGRATION_LOCK_FILE)..."
 	@# Use flock to ensure only one process runs the migration at a time.
 	@# It will wait for the lock file to be released before proceeding.
@@ -144,4 +156,3 @@ up::
 
 
 INCLUDED_COMPOSE_UP := 1
-

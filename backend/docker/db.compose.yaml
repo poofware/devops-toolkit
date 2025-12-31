@@ -29,6 +29,32 @@ services:
       - unassigned
 
   # ----------------------
+  # 1b) Redis (local)
+  # ----------------------
+  redis:
+    image: redis:6.2-alpine
+    volumes:
+      - redis_data:/data
+    networks:
+      - db_network
+    profiles:
+      - unassigned
+
+  # ----------------------
+  # 1c) Redis REST Proxy (Upstash-compatible)
+  # ----------------------
+  redis-rest:
+    image: hiett/serverless-redis-http:latest
+    environment:
+      SRH_MODE: env
+      SRH_TOKEN: ${REDIS_REST_TOKEN:-upstash}
+      SRH_CONNECTION_STRING: redis://redis:6379
+    networks:
+      - db_network
+    profiles:
+      - unassigned
+
+  # ----------------------
   # 2) Database Migration Service
   # ----------------------
   migrate:
@@ -61,6 +87,8 @@ services:
 volumes:
   db_data:
     name: ${COMPOSE_DB_NAME?Docker Compose Config Error! COMPOSE_DB_NAME is not set!}_data
+  redis_data:
+    name: ${COMPOSE_DB_NAME?Docker Compose Config Error! COMPOSE_DB_NAME is not set!}_redis_data
 
 networks:
   db_network:

@@ -320,11 +320,39 @@ migrate:: _export_vercel_token _export_vercel_project_vars
     include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose-project-targets/compose_project_targets.mk
   endif
 
+# Staged prod deploys (skip domain) for post-check promotion flow
+VERCEL_STAGED_PROD ?= 1
+VERCEL_HEALTHCHECK_PATH ?= /api/health
+VERCEL_HEALTHCHECK_RETRIES ?= 20
+VERCEL_HEALTHCHECK_TIMEOUT ?= 5
+VERCEL_HEALTHCHECK_INTERVAL ?= 3
+
 # Override _up entirely - Vercel builds remotely, no compose needed
 _up:
 	@$(MAKE) _build-pre-sync --no-print-directory
 	@echo "[INFO] [Up] Deploying to Vercel (skipping compose build/network/migrate)..."
 	@$(MAKE) _up-app --no-print-directory
+	@if [ "$(EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK)" -eq 1 ]; then \
+	  echo "[INFO] [Up] Skipping app post-check... EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK is set to 1"; \
+	else \
+	  if [ ! -f ".last_vercel_deploy_url" ]; then \
+		echo "[ERROR] [Up] .last_vercel_deploy_url not found."; \
+		exit 1; \
+	  fi; \
+	  DEPLOY_URL="$$(cat .last_vercel_deploy_url)"; \
+	  if [ -z "$$DEPLOY_URL" ]; then \
+		echo "[ERROR] [Up] Empty deploy URL."; \
+		exit 1; \
+	  fi; \
+	  HEALTH_PATH="$(VERCEL_HEALTHCHECK_PATH)"; \
+	  HEALTH_URL="$$DEPLOY_URL$$HEALTH_PATH"; \
+	  echo "[INFO] [Up] Post-check health: $$HEALTH_URL"; \
+	  "$(DEVOPS_TOOLKIT_PATH)/shared/scripts/health_check_url.sh" "$$HEALTH_URL" "$(VERCEL_HEALTHCHECK_RETRIES)" "$(VERCEL_HEALTHCHECK_TIMEOUT)" "$(VERCEL_HEALTHCHECK_INTERVAL)"; \
+	  if [ "$(ENV)" = "prod" ] && [ "$(VERCEL_STAGED_PROD)" = "1" ]; then \
+		echo "[INFO] [Up] Promoting staged deployment to production..."; \
+		vercel promote "$$DEPLOY_URL" --token $(VERCEL_TOKEN) --yes; \
+	  fi; \
+	fi
 
 # Override _up-app to deploy via Vercel CLI
 # Note: If NEXTJS_BACKEND_ENV_VAR is set (e.g., NEXT_PUBLIC_GENERATOR_URL),
@@ -354,8 +382,13 @@ _up-app:
 		fi; \
 	fi; \
 	echo "[INFO] [Up App] Deploying $(APP_NAME) to Vercel (remote build)..."; \
+	DEPLOY_ARGS="--prod"; \
+	if [ "$(ENV)" = "prod" ] && [ "$(VERCEL_STAGED_PROD)" = "1" ]; then \
+		DEPLOY_ARGS="--prod --skip-domain"; \
+		echo "[INFO] [Up App] Staged prod deploy enabled (no domain assignment)."; \
+	fi; \
 	DEPLOY_URL=$$(VERCEL_ORG_ID=$(VERCEL_ORG_ID) VERCEL_PROJECT_ID=$(VERCEL_PROJECT_ID) VERCEL_PROJECT_NAME=$(VERCEL_PROJECT_NAME) \
-		vercel deploy --prod --token $(VERCEL_TOKEN) --yes --force --archive=tgz --cwd $(CURDIR) $$BUILD_ENV_FLAGS \
+		vercel deploy $$DEPLOY_ARGS --token $(VERCEL_TOKEN) --yes --force --archive=tgz --cwd $(CURDIR) $$BUILD_ENV_FLAGS \
 		| /usr/bin/grep -Eo 'https://[^ ]+' | tail -n1); \
 	if [ -z "$$DEPLOY_URL" ]; then \
 		echo "[ERROR] [Up App] Failed to capture Vercel deploy URL."; \
