@@ -2,7 +2,7 @@
 # Compose CI Target
 # -----------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 .PHONY: ci
 

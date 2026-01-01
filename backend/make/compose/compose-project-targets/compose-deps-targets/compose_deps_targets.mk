@@ -2,7 +2,7 @@
 # Compose Deps Targets
 # --------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 .PHONY: _deps-%
 

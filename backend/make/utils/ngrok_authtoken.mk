@@ -4,7 +4,7 @@
 # These constants are not sensitive, and hence, are made available for Poof backend services.
 # ---------------------------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 
 # --------------------------------

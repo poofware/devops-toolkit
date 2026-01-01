@@ -2,7 +2,7 @@
 # Compose Down Target
 # ----------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 .PHONY: down
 

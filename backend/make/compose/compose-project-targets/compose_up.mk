@@ -2,7 +2,7 @@
 # Compose Up Target
 # ----------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 .PHONY: up _up-db migrate _unlocked_migrate _up-app-pre up-app-post-check
 

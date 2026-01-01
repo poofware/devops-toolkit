@@ -2,7 +2,7 @@
 # Compose Clean Target
 # ----------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 .PHONY: clean
 

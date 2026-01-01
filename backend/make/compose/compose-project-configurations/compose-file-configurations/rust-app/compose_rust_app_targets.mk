@@ -2,7 +2,7 @@
 # Compose Rust App Targets
 # ------------------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 .PHONY: help cargo-build cargo-check cargo-test cargo-fmt cargo-clippy run run-release
 

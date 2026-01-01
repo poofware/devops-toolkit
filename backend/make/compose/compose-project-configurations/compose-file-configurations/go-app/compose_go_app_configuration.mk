@@ -2,7 +2,7 @@
 # Compose Go App Configuration
 # ------------------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 # Check that the current working directory is the root of a Go service by verifying that go.mod exists.
 ifeq ($(wildcard go.mod),)

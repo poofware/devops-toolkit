@@ -1,7 +1,7 @@
 # -----------------------------------------------------------------------------
 # Google Cloud Configuration Targets
 # -----------------------------------------------------------------------------
-SHELL := /bin/bash
+SHELL := bash
 
 .PHONY: _export_android_gcp_vars _export_ios_gcp_vars \
 	_android_gcp_configuration _ios_gcp_configuration

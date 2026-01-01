@@ -2,7 +2,7 @@
 # Next.js App Targets
 # --------------------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 .PHONY: help
 

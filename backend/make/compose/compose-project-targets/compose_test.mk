@@ -2,7 +2,7 @@
 # Compose Test Targets
 # ----------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 .PHONY: integration-test unit-test
 

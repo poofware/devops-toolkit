@@ -12,7 +12,7 @@
 #   - up-backend, down-backend, clean-backend targets
 #   - _export_current_backend_domain for shell export (eval in shell scripts)
 
-SHELL := /bin/bash
+SHELL := bash
 
 ifndef INCLUDED_FRONTEND_BACKEND_UTILS
 

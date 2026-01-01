@@ -2,7 +2,7 @@
 # ENV Configuration
 # -----------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 INCLUDED_ENV_CONFIGURATION := 1
 

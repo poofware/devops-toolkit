@@ -1,7 +1,7 @@
 # --------------------------
 # Env Local (BWS)
 # --------------------------
-SHELL := /bin/bash
+SHELL := bash
 
 .PHONY: env-local
 

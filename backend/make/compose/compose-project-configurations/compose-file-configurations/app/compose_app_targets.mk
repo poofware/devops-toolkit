@@ -2,7 +2,7 @@
 # Compose App Targets
 # ------------------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 
 # Check that the current working directory is the root of a project by verifying that the root Makefile exists.
@@ -290,7 +290,12 @@ endif
 
 _export_vercel_token:
 ifndef VERCEL_TOKEN
-	$(error [Export Vercel Token] VERCEL_TOKEN is required for Vercel deploys. Export VERCEL_TOKEN in your environment or via your secret manager.)
+  ifdef BWS_ACCESS_TOKEN
+	$(eval export BWS_PROJECT_NAME := shared-$(ENV))
+	$(eval export VERCEL_TOKEN := $(shell $(DEVOPS_TOOLKIT_PATH)/shared/scripts/fetch_bws_secret.sh VERCEL_TOKEN | jq -r '.VERCEL_TOKEN // empty'))
+	$(if $(VERCEL_TOKEN),@echo "[INFO] [Export Vercel Token] Vercel token fetched from BWS.",)
+  endif
+	$(if $(VERCEL_TOKEN),,$(error [Export Vercel Token] VERCEL_TOKEN is required for Vercel deploys. Export VERCEL_TOKEN in your environment or set BWS_ACCESS_TOKEN to fetch from Bitwarden Secrets.))
 endif
 
 _export_vercel_project_vars:

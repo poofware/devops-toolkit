@@ -2,7 +2,7 @@
 # Docker Compose Service Utils
 # --------------------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 .PHONY: _check-failed-services _get_profile_services
 

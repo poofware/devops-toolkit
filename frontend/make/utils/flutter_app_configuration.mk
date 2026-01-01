@@ -2,7 +2,7 @@
 # Flutter App Configuration
 # --------------------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 # Check that the current working directory is the root of a Flutter app
 ifeq ($(wildcard pubspec.yaml),)

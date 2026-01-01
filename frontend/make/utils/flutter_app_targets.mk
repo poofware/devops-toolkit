@@ -2,7 +2,7 @@
 # Flutter App Targets
 # --------------------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 .PHONY: help check \
 	_run-env _run _integration-test _e2e-test clean

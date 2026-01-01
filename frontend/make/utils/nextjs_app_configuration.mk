@@ -2,7 +2,7 @@
 # Next.js App Configuration
 # --------------------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 # Check that the current working directory is the root of a Next.js app
 ifeq ($(wildcard package.json),)

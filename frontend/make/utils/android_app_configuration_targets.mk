@@ -1,7 +1,7 @@
 # -----------------------------------------------------------------------------
 # Android App Configuration Targets
 # -----------------------------------------------------------------------------
-SHELL := /bin/bash
+SHELL := bash
 
 .PHONY: _android_app_configuration
 

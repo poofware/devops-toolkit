@@ -1,7 +1,7 @@
 # --------------------------
 # BWS Secrets JSON
 # -------------------------
-SHELL := /bin/bash
+SHELL := bash
 
 .PHONY: _bws_project_secrets_json
 

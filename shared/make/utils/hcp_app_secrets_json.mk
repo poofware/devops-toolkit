@@ -1,7 +1,7 @@
 # --------------------------
 # App Secrets JSON
 # -------------------------
-SHELL := /bin/bash
+SHELL := bash
 
 .PHONY: _hcp_app_secrets_json
 

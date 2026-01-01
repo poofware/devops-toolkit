@@ -2,7 +2,7 @@
 # Next.js App
 # --------------------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 ifndef INCLUDED_TOOLKIT_BOOTSTRAP
   $(error [toolkit] bootstrap.mk not included before $(lastword $(MAKEFILE_LIST)))

@@ -2,7 +2,7 @@
 # Mobile Flutter App
 # --------------------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 .PHONY: run-web \
 	build-web \

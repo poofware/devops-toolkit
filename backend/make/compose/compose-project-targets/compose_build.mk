@@ -2,7 +2,7 @@
 # Compose Build Target
 # ----------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 .PHONY: build _build-pre-sync
 

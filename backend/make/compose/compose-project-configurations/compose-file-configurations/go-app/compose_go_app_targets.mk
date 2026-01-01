@@ -2,7 +2,7 @@
 # Compose Go App Targets
 # ------------------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 .PHONY: help build
 

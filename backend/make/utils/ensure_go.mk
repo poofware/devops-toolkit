@@ -2,7 +2,7 @@
 # Ensure Go
 # --------------------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 .PHONY: _ensure-go
 

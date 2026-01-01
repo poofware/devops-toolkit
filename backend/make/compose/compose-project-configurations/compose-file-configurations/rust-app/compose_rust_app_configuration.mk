@@ -2,7 +2,7 @@
 # Compose Rust App Configuration
 # ------------------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 # Check that the current working directory is the root of a Rust service by verifying that Cargo.toml exists.
 ifeq ($(wildcard Cargo.toml),)

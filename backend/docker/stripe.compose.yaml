@@ -31,6 +31,7 @@ services:
         STRIPE_WEBHOOK_CONNECTED_EVENTS: ${STRIPE_WEBHOOK_CONNECTED_EVENTS:-}
         STRIPE_WEBHOOK_PLATFORM_EVENTS: ${STRIPE_WEBHOOK_PLATFORM_EVENTS:-}
         STRIPE_WEBHOOK_ROUTE: ${STRIPE_WEBHOOK_ROUTE?Docker Compose Config Error! STRIPE_WEBHOOK_ROUTE is not set!}
+        BWS_PROJECT_NAME_FOR_STRIPE_LISTENER: ${STRIPE_LISTENER_BWS_PROJECT_NAME?Docker Compose Config Error! STRIPE_LISTENER_BWS_PROJECT_NAME is not set!}
       labels:
         <<: *build-labels
         com.docker.compose.service: stripe-listener
@@ -59,8 +60,10 @@ services:
         <<: *build-args
         APP_URL_FROM_ANYWHERE: ${APP_URL_FROM_ANYWHERE:-}
         STRIPE_WEBHOOK_CHECK_ROUTE: ${STRIPE_WEBHOOK_CHECK_ROUTE?Docker Compose Config Error! STRIPE_WEBHOOK_CHECK_ROUTE is not set!}
+        STRIPE_WEBHOOK_CHECK_MODE: ${STRIPE_WEBHOOK_CHECK_MODE:-}
         UNIQUE_RUN_NUMBER: ${UNIQUE_RUN_NUMBER?Docker Compose Config Error! UNIQUE_RUN_NUMBER is not set!}
         UNIQUE_RUNNER_ID: ${UNIQUE_RUNNER_ID?Docker Compose Config Error! UNIQUE_RUNNER_ID is not set!}
+        BWS_PROJECT_NAME_FOR_STRIPE_WEBHOOK_CHECK: ${STRIPE_WEBHOOK_CHECK_BWS_PROJECT_NAME?Docker Compose Config Error! STRIPE_WEBHOOK_CHECK_BWS_PROJECT_NAME is not set!}
       labels:
         <<: *build-labels
         com.docker.compose.service: stripe-webhook-check

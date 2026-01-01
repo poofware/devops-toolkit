@@ -2,7 +2,7 @@
 # Compose Deps Build
 # ------------------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 ifndef INCLUDED_COMPOSE_APP_CONFIGURATION
   $(error [ERROR] [Compose App Configuration] The Compose App Configuration must be included before any Compose Deps Targets.)

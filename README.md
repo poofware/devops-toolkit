@@ -395,7 +395,7 @@ The toolkit also supports Rust-based microservices with optional deployment to S
 # Root Makefile for "my-rust-service"
 # -------------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 # Connect devops-toolkit
 REPO_ROOT := $(shell git -C $(CURDIR) rev-parse --show-toplevel)

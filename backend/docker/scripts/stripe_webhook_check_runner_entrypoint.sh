@@ -9,6 +9,18 @@ echo "[INFO] Starting stripe-webhook-check-entrypoint..."
 : "${UNIQUE_RUN_NUMBER:?UNIQUE_RUN_NUMBER env var is required}"
 : "${UNIQUE_RUNNER_ID:?UNIQUE_RUNNER_ID env var is required}"
 
+# Optional: connect (default) or platform
+CHECK_MODE="$(echo "${STRIPE_WEBHOOK_CHECK_MODE:-connect}" | tr '[:upper:]' '[:lower:]')"
+if [ "$CHECK_MODE" = "connected" ]; then
+  CHECK_MODE="connect"
+fi
+if [ "$CHECK_MODE" != "connect" ] && [ "$CHECK_MODE" != "platform" ]; then
+  echo "[ERROR] Invalid STRIPE_WEBHOOK_CHECK_MODE: '$STRIPE_WEBHOOK_CHECK_MODE' (use 'connect' or 'platform')."
+  exit 1
+fi
+
+EVENT_TYPE="payment_intent.created"
+
 # 1) Wait for the service to be healthy
 source ./health_check.sh
 
@@ -21,7 +33,7 @@ if [ -z "$STRIPE_SECRET_KEY" ] || [ "$STRIPE_SECRET_KEY" = "null" ]; then
 fi
 echo "[INFO] 'STRIPE_SECRET_KEY' fetched from BWS."
 
-# 4) Set up a trap to ensure the connected account is always deleted
+# 4) Set up a trap to ensure the connected account is always deleted (connect mode only)
 ACCOUNT_ID=""
 cleanup() {
   if [ -n "$ACCOUNT_ID" ]; then
@@ -32,31 +44,44 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# 5) Create a connected account
-echo "[INFO] Creating an Express connected account..."
-ACCOUNT_CREATE_OUTPUT="$(stripe accounts create --type=express --api-key "$STRIPE_SECRET_KEY")"
-if [ -z "$ACCOUNT_CREATE_OUTPUT" ]; then
-  echo "[ERROR] Failed to create a connected account."
-  exit 1
+# 5) Create a connected account (connect mode only)
+if [ "$CHECK_MODE" = "connect" ]; then
+  echo "[INFO] Creating an Express connected account..."
+  ACCOUNT_CREATE_OUTPUT="$(stripe accounts create --type=express --api-key "$STRIPE_SECRET_KEY")"
+  if [ -z "$ACCOUNT_CREATE_OUTPUT" ]; then
+    echo "[ERROR] Failed to create a connected account."
+    exit 1
+  fi
+
+  ACCOUNT_ID="$(echo "$ACCOUNT_CREATE_OUTPUT" | jq -r '.id // empty')"
+  if [ -z "$ACCOUNT_ID" ]; then
+    echo "[ERROR] Could not parse 'id' from connected account creation response."
+    echo "==== RAW CREATE OUTPUT ===="
+    echo "$ACCOUNT_CREATE_OUTPUT"
+    exit 1
+  fi
+  echo "[INFO] Created connected account: $ACCOUNT_ID"
+else
+  echo "[INFO] Running in platform mode; skipping connected account creation."
 fi
 
-ACCOUNT_ID="$(echo "$ACCOUNT_CREATE_OUTPUT" | jq -r '.id // empty')"
-if [ -z "$ACCOUNT_ID" ]; then
-  echo "[ERROR] Could not parse 'id' from connected account creation response."
-  echo "==== RAW CREATE OUTPUT ===="
-  echo "$ACCOUNT_CREATE_OUTPUT"
-  exit 1
-fi
-echo "[INFO] Created connected account: $ACCOUNT_ID"
-
-# 6) Trigger a 'payment_intent.created' event with metadata
+# 6) Trigger a Stripe event with metadata
 METADATA_VALUE="webhook_check-${APP_NAME}-${UNIQUE_RUNNER_ID}-${UNIQUE_RUN_NUMBER}"
-echo "[INFO] Triggering Stripe event: payment_intent.created (connected account: $ACCOUNT_ID)"
+if [ "$CHECK_MODE" = "connect" ]; then
+  echo "[INFO] Triggering Stripe event: ${EVENT_TYPE} (connected account: $ACCOUNT_ID)"
+else
+  echo "[INFO] Triggering Stripe event: ${EVENT_TYPE} (platform account)"
+fi
 echo "[INFO] Using metadata 'generated_by=${METADATA_VALUE}'"
 
+ACCOUNT_ARGS=()
+if [ "$CHECK_MODE" = "connect" ]; then
+  ACCOUNT_ARGS=(--stripe-account "$ACCOUNT_ID")
+fi
+
 set +e
-TRIGGER_OUTPUT=$(timeout 15s stripe trigger payment_intent.created \
-  --stripe-account "$ACCOUNT_ID" \
+TRIGGER_OUTPUT=$(timeout 15s stripe trigger "${EVENT_TYPE}" \
+  "${ACCOUNT_ARGS[@]}" \
   --add "payment_intent:metadata.generated_by=${METADATA_VALUE}" \
   --api-key "$STRIPE_SECRET_KEY" 2>&1)
 TRIGGER_EXIT=$?
@@ -77,12 +102,16 @@ fi
 # Allow a brief pause so Stripe can register the event
 sleep 2
 
-# 7) Get the single most recent event for this connected account
-echo "[INFO] Fetching the last event from Stripe (connected account: $ACCOUNT_ID)..."
+# 7) Get the single most recent matching event
+if [ "$CHECK_MODE" = "connect" ]; then
+  echo "[INFO] Fetching the last event from Stripe (connected account: $ACCOUNT_ID)..."
+else
+  echo "[INFO] Fetching the last event from Stripe (platform account)..."
+fi
 set +e
 EVENTS_JSON=$(stripe events list \
   --limit 3 \
-  --stripe-account "$ACCOUNT_ID" \
+  "${ACCOUNT_ARGS[@]}" \
   --api-key "$STRIPE_SECRET_KEY" 2>&1)
 EVENTS_EXIT=$?
 set -e
@@ -101,7 +130,18 @@ if [ -z "$EVENTS_JSON" ]; then
 fi
 
 # 8) Parse the event ID
-EVENT_ID=$(echo "$EVENTS_JSON" | jq -r '.data[] | select(.type == "payment_intent.created") | .id // empty')
+EVENT_ID=$(echo "$EVENTS_JSON" | jq -r --arg event_type "$EVENT_TYPE" --arg generated_by "$METADATA_VALUE" '
+  .data[]
+  | select(.type == $event_type)
+  | select(.data.object.metadata.generated_by == $generated_by)
+  | .id // empty
+' | head -n 1)
+
+if [ -z "$EVENT_ID" ]; then
+  EVENT_ID=$(echo "$EVENTS_JSON" | jq -r --arg event_type "$EVENT_TYPE" '
+    .data[] | select(.type == $event_type) | .id // empty
+  ' | head -n 1)
+fi
 if [ -z "$EVENT_ID" ]; then
   echo "[ERROR] Could not parse an event id from the last event."
   echo "==== RAW EVENTS JSON ===="
@@ -131,4 +171,3 @@ done
 
 echo "[ERROR] Timed out waiting for webhook event $EVENT_ID to be recognized by the service."
 exit 1
-

@@ -2,7 +2,7 @@
 # Go App Update Target
 # -----------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 .PHONY: update
 

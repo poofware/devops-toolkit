@@ -2,7 +2,7 @@
 # Compose Project Targets
 # ------------------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 # Check that the current working directory is the root of a project by verifying that the Makefile exists. 
 ifeq ($(wildcard Makefile),)

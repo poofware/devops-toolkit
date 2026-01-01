@@ -2,7 +2,7 @@
 # Fly.io Configuration
 # ---------------------------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 # WireGuard configuration
 FLY_WIREGUARD_CONF_FILE := ./fly.conf

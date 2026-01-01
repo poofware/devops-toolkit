@@ -7,7 +7,7 @@
 # This file should be included in the root Makefile.
 # -----------------------------------------------------------------------------
 
-SHELL := /bin/bash
+SHELL := bash
 
 .PHONY: _export_android_keystore_vars
 

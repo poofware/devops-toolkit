@@ -13,7 +13,7 @@
 #   - Common variables (LOG_LEVEL, VERBOSE, VERBOSE_FLAG)
 #   - run_command_with_backend macro
 
-SHELL := /bin/bash
+SHELL := bash
 
 ifndef INCLUDED_FRONTEND_APP_CONFIGURATION
 
