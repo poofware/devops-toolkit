@@ -6,11 +6,14 @@ This README will walk you through:
 
 1. **High-Level Concepts** – Profiles, environment variables, dependency projects, etc.
 2. **Basic File Structure** – How the toolkit’s Makefiles and scripts are organized.
-3. **Two Usage Patterns**:
+3. **Usage Patterns**:
    - **Generic Docker Compose Project** (without Go-specific logic).
    - **Go App + Compose Project** (with built-in Go build/test pipelines).
+   - **Rust App + Compose Project** (with Shuttle.rs support).
+   - **Frontend Projects** (Next.js & Flutter).
 4. **Examples & Common Targets** – Starting containers, running tests, and more.
-5. **Advanced Usage** – Overriding profiles, environment variable usage, HCP (HashiCorp Cloud Platform) integration, LaunchDarkly, etc.
+5. **Integrations & Secrets** – Bitwarden Secrets (BWS), Stripe, LaunchDarkly.
+6. **Advanced Usage** – Overriding profiles, environment variable usage, HCP integration, Vercel Deployment Pipeline, Advanced Networking (Gateway, Ngrok, Fly WireGuard), etc.
 
 Read on to learn how to harness these tools and build consistent workflows for your services.
 
@@ -90,8 +93,10 @@ A typical repository that uses the DevOps Toolkit might look like this:
 .
 ├─ Makefile                          # Root Makefile for your service
 ├─ devops-toolkit/                   # The toolkit, possibly included as a submodule
-│  ├─ backend/make/                  # A library of .mk files
-│  ├─ backend/scripts/               # Reusable Bash scripts (token fetch, encryption, etc.)
+│  ├─ bootstrap.mk                   # The entry point for all Makefiles
+│  ├─ backend/make/                  # Backend .mk files (Go, Rust, Compose)
+│  ├─ frontend/make/                 # Frontend .mk files (Next.js, Flutter)
+│  ├─ backend/scripts/               # Reusable Bash scripts
 │  └─ backend/docker/                # Base Dockerfiles, docker-compose YAMLs
 └─ override.compose.yaml             # (Optional) Additional compose overrides
 ```
@@ -111,6 +116,15 @@ If you don’t have a Go-based service but still want to leverage this profile-b
 # Root Makefile for "my-service"
 # -------------------------
 
+SHELL := bash
+
+# 1) Connect devops-toolkit
+#    (Assumes devops-toolkit is in the project root or submodule)
+REPO_ROOT := $(shell git -C $(CURDIR) rev-parse --show-toplevel 2>/dev/null || echo $(CURDIR))
+ifndef INCLUDED_TOOLKIT_BOOTSTRAP
+  include $(REPO_ROOT)/devops-toolkit/bootstrap.mk
+endif
+
 ENV ?= dev-test
 COMPOSE_PROJECT_NAME := my-service
 COMPOSE_NETWORK_NAME ?= shared_service_network
@@ -120,19 +134,20 @@ WITH_DEPS ?= 0
 DEPS := ""
 
 # Compose files to include (colon-separated)
+# Note: $(DEVOPS_TOOLKIT_PATH) is set by bootstrap.mk
 COMPOSE_FILE := \
-  devops-toolkit/backend/docker/db.compose.yaml:\
-  devops-toolkit/backend/docker/stripe.compose.yaml:\
+  $(DEVOPS_TOOLKIT_PATH)/backend/docker/db.compose.yaml:\
+  $(DEVOPS_TOOLKIT_PATH)/backend/docker/stripe.compose.yaml:\
   override.compose.yaml
 
-# 1) Include project configuration (handles environment, profiles, etc.)
+# 2) Include project configuration (handles environment, profiles, etc.)
 ifndef INCLUDED_COMPOSE_PROJECT_CONFIGURATION
-  include devops-toolkit/backend/make/compose/compose_project_configuration.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose_project_configuration.mk
 endif
 
-# 2) Include standard project targets (build, up, down, clean, integration-test, etc.)
+# 3) Include standard project targets (build, up, down, clean, integration-test, etc.)
 ifndef INCLUDED_COMPOSE_PROJECT_TARGETS
-  include devops-toolkit/backend/make/compose/compose_project_targets.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose_project_targets.mk
 endif
 ```
 
@@ -180,7 +195,15 @@ Many `.mk` files and Dockerfiles in this toolkit focus on simplifying Go builds,
 # Root Makefile for "account-service"
 # -------------------------
 
-# 1) Basic Service Settings
+SHELL := bash
+
+# 1) Connect devops-toolkit
+REPO_ROOT := $(shell git -C $(CURDIR) rev-parse --show-toplevel 2>/dev/null || echo $(CURDIR))
+ifndef INCLUDED_TOOLKIT_BOOTSTRAP
+  include $(REPO_ROOT)/devops-toolkit/bootstrap.mk
+endif
+
+# 2) Basic Service Settings
 ENV ?= dev-test
 COMPOSE_PROJECT_NAME := account-service
 COMPOSE_NETWORK_NAME ?= shared_service_network
@@ -189,30 +212,30 @@ WITH_DEPS ?= 0
 DEPS := ""  # No dependent projects in this example
 
 COMPOSE_FILE := \
-  devops-toolkit/backend/docker/go-app.compose.yaml:\
-  devops-toolkit/backend/docker/db.compose.yaml:\
-  devops-toolkit/backend/docker/stripe.compose.yaml:\
+  $(DEVOPS_TOOLKIT_PATH)/backend/docker/go-app.compose.yaml:\
+  $(DEVOPS_TOOLKIT_PATH)/backend/docker/db.compose.yaml:\
+  $(DEVOPS_TOOLKIT_PATH)/backend/docker/stripe.compose.yaml:\
   override.compose.yaml
 
-# 2) Include the Compose Project Configuration
+# 3) Include the Compose Project Configuration
 ifndef INCLUDED_COMPOSE_PROJECT_CONFIGURATION
-  include devops-toolkit/backend/make/compose/compose_project_configuration.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose_project_configuration.mk
 endif
 
-# 3) Go App–specific Compose Configuration
+# 4) Go App–specific Compose Configuration
 #    - Tells the system which port your Go app runs on, etc.
 export APP_NAME := $(COMPOSE_PROJECT_NAME)
 export APP_PORT ?= 8080
 ifndef INCLUDED_GO_APP_COMPOSE_CONFIGURATION
-  include devops-toolkit/backend/make/go-app/go_app_compose_configuration.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/go-app/go_app_compose_configuration.mk
 endif
 
-# 4) Additional DB Migrations Config
+# 5) Additional DB Migrations Config
 export COMPOSE_DB_NAME := shared_pg_db
 export MIGRATIONS_PATH := migrations
 export HCP_APP_NAME_FOR_DB_SECRETS := $(APP_NAME)-$(ENV)
 
-# 5) Stripe Example Config
+# 6) Stripe Example Config
 export STRIPE_WEBHOOK_CONNECTED_EVENTS := \
   account.updated,capability.updated,identity.verification_session.created,\
   identity.verification_session.requires_input,identity.verification_session.verified,\
@@ -220,15 +243,15 @@ export STRIPE_WEBHOOK_CONNECTED_EVENTS := \
 export STRIPE_WEBHOOK_ROUTE := /api/v1/account/stripe/webhook
 export STRIPE_WEBHOOK_CHECK_ROUTE := /api/v1/account/stripe/webhook/check
 
-# 6) Finally, bring in the standard Compose project targets
+# 7) Finally, bring in the standard Compose project targets
 ifndef INCLUDED_COMPOSE_PROJECT_TARGETS
-  include devops-toolkit/backend/make/compose/compose_project_targets.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose_project_targets.mk
 endif
 
-# 7) Go App Targets (build, test, update, etc.)
+# 8) Go App Targets (build, test, update, etc.)
 PACKAGES := go-middleware go-repositories go-utils go-models
 ifndef INCLUDED_GO_APP_TARGETS
-  include devops-toolkit/backend/make/go-app/go_app_targets.mk
+  include $(DEVOPS_TOOLKIT_PATH)/backend/make/go-app/go_app_targets.mk
 endif
 ```
 
@@ -505,7 +528,163 @@ Set `PROD_DEPLOY_TARGET` and `STAGING_DEPLOY_TARGET` in your Makefile to choose 
 
 ---
 
-## 11. Conclusion
+## 11. Setting Up a **Frontend** Project
+
+The toolkit provides specialized support for Next.js and Flutter (Web/Mobile) applications.
+
+### 11.1 Next.js App
+
+For Next.js applications (often deployed to Vercel), your Makefile should look like this:
+
+```makefile
+# -------------------------
+# Root Makefile for "nextjs-app"
+# -------------------------
+
+SHELL := bash
+
+# 1) Connect devops-toolkit
+REPO_ROOT := $(shell git -C $(CURDIR) rev-parse --show-toplevel 2>/dev/null || echo $(CURDIR))
+ifndef INCLUDED_TOOLKIT_BOOTSTRAP
+  include $(REPO_ROOT)/devops-toolkit/bootstrap.mk
+endif
+
+ENV ?= dev-test
+APP_NAME := my-nextjs-app
+
+# 2) Next.js Configuration
+#    If your frontend needs to talk to a backend:
+#    - BACKEND_GATEWAY_PATH: Path to the local backend project (for dev URL resolution)
+#    - NEXTJS_BACKEND_ENV_VAR: The env var name in your Next.js app (e.g. NEXT_PUBLIC_API_URL)
+BACKEND_GATEWAY_PATH := ../my-backend-service
+NEXTJS_BACKEND_ENV_VAR := NEXT_PUBLIC_API_URL
+
+ifndef INCLUDED_NEXTJS_APP_CONFIGURATION
+  include $(DEVOPS_TOOLKIT_PATH)/frontend/make/nextjs_app.mk
+endif
+
+# 3) Deployment (Vercel)
+#    - Requires VERCEL_TOKEN (or BWS_ACCESS_TOKEN)
+#    - Requires .vercel/project.json or VERCEL_ORG_ID/VERCEL_PROJECT_ID
+DEPLOY_TARGET_FOR_ENV := vercel
+```
+
+**Common Targets:**
+- `make up` – Runs the app (dev mode). If `BACKEND_GATEWAY_PATH` is set, it resolves the backend URL.
+- `make build` – Builds the app.
+- `make ci` – Runs lint/test/build pipelines.
+
+#### 11.1.1 Vercel Deployment & Pipeline
+
+The toolkit implements a robust Vercel deployment pipeline:
+
+- **Remote Builds**: Uses the Vercel CLI to perform builds on Vercel's infrastructure.
+- **Backend URL Resolution**: If `NEXTJS_BACKEND_ENV_VAR` is set, the toolkit automatically resolves the backend service URL (via `BACKEND_GATEWAY_PATH`) and passes it to Vercel as a `--build-env` variable.
+- **Staged Production (`VERCEL_STAGED_PROD`)**: In `prod` environments, the toolkit can deploy to a preview URL first (skipping domain assignment).
+- **Automated Health Checks**: After deployment, the toolkit pings a health check endpoint (default `/api/health`) to ensure the new deployment is functional.
+- **Auto-Promotion**: If the health check passes and `VERCEL_STAGED_PROD` is enabled, the toolkit automatically promotes the successful deployment to production (assigning the main domain).
+
+**Configuration Variables:**
+- `VERCEL_STAGED_PROD := 1` – Enable staged-then-promote flow (default: 1).
+- `VERCEL_HEALTHCHECK_PATH := /api/health` – Custom health endpoint.
+- `VERCEL_HEALTHCHECK_RETRIES := 20` – Number of health check attempts.
+
+### 11.2 Flutter App (Web & Mobile)
+
+For Flutter applications, the toolkit helps manage web builds, integration tests, and platform-specific running.
+
+```makefile
+# -------------------------
+# Root Makefile for "flutter-app"
+# -------------------------
+
+SHELL := bash
+
+# 1) Connect devops-toolkit
+REPO_ROOT := $(shell git -C $(CURDIR) rev-parse --show-toplevel 2>/dev/null || echo $(CURDIR))
+ifndef INCLUDED_TOOLKIT_BOOTSTRAP
+  include $(REPO_ROOT)/devops-toolkit/bootstrap.mk
+endif
+
+ENV ?= dev-test
+
+# 2) Flutter Configuration
+#    - FLUTTER_BASE_HREF: Base href for web builds (required)
+FLUTTER_BASE_HREF := "/"
+
+# Include Web or Mobile targets as needed
+ifndef INCLUDED_WEB_FLUTTER_APP
+  include $(DEVOPS_TOOLKIT_PATH)/frontend/make/web_flutter_app.mk
+endif
+```
+
+**Common Targets:**
+- `make run-web` – Runs Flutter for Web (`flutter run -d chrome`).
+- `make build-web` – Builds Flutter for Web (`flutter build web --wasm`).
+- `make integration-test-web` – Runs integration tests (requires chromedriver).
+- `make ci-web` – Runs the full CI pipeline (tests + build).
+
+---
+
+## 12. Integrations & Secrets
+
+The toolkit provides deep integration with external services for secrets management and feature flags.
+
+### 12.1 Secrets Management (Bitwarden Secrets)
+The toolkit uses **Bitwarden Secrets Manager (BWS)** to inject secrets into your environment.
+- **Requirement**: Set `BWS_ACCESS_TOKEN` in your shell or CI environment.
+- **Local Dev**: The target `make env-local` (auto-run in `ENV=dev`) fetches secrets from a BWS project (defined by `ENV_LOCAL_BWS_PROJECT`, defaults to `$(APP_NAME)-$(ENV)`) and writes them to `.env.local`.
+- **Containers**: Services can fetch their own secrets at runtime using `fetch_bws_secret.sh`.
+
+### 12.2 Stripe Integration
+Two specialized containers facilitate Stripe development:
+1.  **`stripe-listener`**: Forwards Stripe events to your local app (requires `STRIPE_WEBHOOK_ROUTE` and `STRIPE_LISTENER_BWS_PROJECT_NAME`).
+2.  **`stripe-webhook-check`**: Verifies that your app correctly handles webhooks (requires `STRIPE_WEBHOOK_CHECK_ROUTE`).
+
+**Configuration:**
+```makefile
+export STRIPE_WEBHOOK_ROUTE := /api/stripe/webhook
+export STRIPE_WEBHOOK_CONNECTED_EVENTS := payment_intent.created
+export STRIPE_LISTENER_BWS_PROJECT_NAME := my-app-dev
+```
+
+### 12.3 LaunchDarkly
+Basic constants for LaunchDarkly are provided in `launchdarkly_constants.mk`.
+- `LD_SERVER_CONTEXT_KEY` (default: `server`)
+- `LD_SERVER_CONTEXT_KIND` (default: `user`)
+
+---
+
+## 13. Advanced Networking & Gateway
+
+For complex microservice setups, the toolkit offers advanced networking flags.
+
+### 12.1 Gateway Mode (`APP_IS_GATEWAY`)
+If your service acts as a public gateway that forwards requests to backend dependencies (e.g., a Next.js app or an API Gateway), set:
+```makefile
+APP_IS_GATEWAY := 1
+```
+This ensures that:
+- Dependency projects inherit the gateway’s public URL configuration.
+- `make up` builds/starts the gateway *before* dependencies (so dependencies can use the gateway's network if needed).
+
+### 12.2 Ngrok Integration (`ENABLE_NGROK_FOR_DEV`)
+To automatically expose your local service via [ngrok](https://ngrok.com/):
+```makefile
+ENABLE_NGROK_FOR_DEV := 1
+NGROK_AUTHTOKEN_VAR_NAME := NGROK_AUTHTOKEN # (Optional custom env var name)
+```
+When you run `make up`, an `ngrok` container will start, and `APP_URL_FROM_ANYWHERE` will be automatically set to the public ngrok URL.
+
+### 12.3 Fly.io WireGuard Control (`SKIP_FLY_WIREGUARD`)
+By default, deployments to Fly.io (`ENV=prod` or `ENV=staging`) attempt to set up a WireGuard VPN for secure internal access. If your app is a public standalone service (like a static site or simple API) that doesn't need to reach other Fly apps via private network:
+```makefile
+SKIP_FLY_WIREGUARD := 1
+```
+
+---
+
+## 14. Conclusion
 
 **The DevOps Toolkit** streamlines multi-stage Docker Compose usage, especially for Go-based applications. With a minimal root `Makefile`, you gain consistent commands like `make up`, `make down`, `make build`, `make test`, `make ci`, etc.—complete with flexible **profile-based** logic and optional **dependency chaining**.
 
