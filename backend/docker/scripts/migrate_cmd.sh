@@ -38,6 +38,12 @@ IFS=$'\n\t'
 # MIGRATE_MODE is optional; defaults to "forward"
 MIGRATE_MODE="$(echo "${MIGRATE_MODE:-forward}" | tr '[:upper:]' '[:lower:]')"
 
+if [[ "${ENV}" == "prod" && "${ALLOW_PROD_MIGRATIONS:-}" != "1" ]]; then
+  echo "[ERROR] Prod migrations require confirmation. Set ALLOW_PROD_MIGRATIONS=1 to bypass." >&2
+  exit 1
+fi
+
+
 
 ###############################################################################
 # 2. Fetch DB_URL secret from BWS

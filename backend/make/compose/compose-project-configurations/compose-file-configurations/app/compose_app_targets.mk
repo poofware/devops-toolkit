@@ -352,10 +352,22 @@ _up:
 	  HEALTH_PATH="$(VERCEL_HEALTHCHECK_PATH)"; \
 	  HEALTH_URL="$$DEPLOY_URL$$HEALTH_PATH"; \
 	  echo "[INFO] [Up] Post-check health: $$HEALTH_URL"; \
-	  "$(DEVOPS_TOOLKIT_PATH)/shared/scripts/health_check_url.sh" "$$HEALTH_URL" "$(VERCEL_HEALTHCHECK_RETRIES)" "$(VERCEL_HEALTHCHECK_TIMEOUT)" "$(VERCEL_HEALTHCHECK_INTERVAL)"; \
+	  "$(DEVOPS_TOOLKIT_PATH)/shared/scripts/health_check_url.sh" "$$HEALTH_URL" "$(VERCEL_HEALTHCHECK_RETRIES)" "$(VERCEL_HEALTHCHECK_TIMEOUT)" "$(VERCEL_HEALTHCHECK_INTERVAL)" || exit 1; \
 	  if [ "$(ENV)" = "prod" ] && [ "$(VERCEL_STAGED_PROD)" = "1" ]; then \
 		echo "[INFO] [Up] Promoting staged deployment to production..."; \
-		vercel promote "$$DEPLOY_URL" --token $(VERCEL_TOKEN) --yes; \
+		ORG_ID="$(VERCEL_ORG_ID)"; \
+		PROJ_ID="$(VERCEL_PROJECT_ID)"; \
+		if [ -z "$$ORG_ID" ] && [ -f ".vercel/project.json" ]; then \
+		  if command -v jq >/dev/null 2>&1; then \
+			ORG_ID=$$(jq -r .orgId .vercel/project.json); \
+		  fi; \
+		fi; \
+		if [ -z "$$PROJ_ID" ] && [ -f ".vercel/project.json" ]; then \
+		  if command -v jq >/dev/null 2>&1; then \
+			PROJ_ID=$$(jq -r .projectId .vercel/project.json); \
+		  fi; \
+		fi; \
+		VERCEL_ORG_ID="$$ORG_ID" VERCEL_PROJECT_ID="$$PROJ_ID" vercel promote "$$DEPLOY_URL" --token $(VERCEL_TOKEN) --yes --scope "$$ORG_ID"; \
 	  fi; \
 	fi
 
@@ -393,7 +405,7 @@ _up-app:
 		echo "[INFO] [Up App] Staged prod deploy enabled (no domain assignment)."; \
 	fi; \
 	DEPLOY_URL=$$(VERCEL_ORG_ID=$(VERCEL_ORG_ID) VERCEL_PROJECT_ID=$(VERCEL_PROJECT_ID) VERCEL_PROJECT_NAME=$(VERCEL_PROJECT_NAME) \
-		vercel deploy $$DEPLOY_ARGS --token $(VERCEL_TOKEN) --yes --force --archive=tgz --cwd $(CURDIR) $$BUILD_ENV_FLAGS \
+		vercel deploy $$DEPLOY_ARGS --token $(VERCEL_TOKEN) --yes --force --cwd $(CURDIR) $$BUILD_ENV_FLAGS \
 		| /usr/bin/grep -Eo 'https://[^ ]+' | tail -n1); \
 	if [ -z "$$DEPLOY_URL" ]; then \
 		echo "[ERROR] [Up App] Failed to capture Vercel deploy URL."; \

@@ -83,6 +83,7 @@ services:
     environment:
       BWS_ACCESS_TOKEN: ${BWS_ACCESS_TOKEN?Docker Compose Config Error! BWS_ACCESS_TOKEN is not set!}
       MIGRATE_MODE: ${MIGRATE_MODE:-forward}
+      ALLOW_PROD_MIGRATIONS: ${ALLOW_PROD_MIGRATIONS:-0}
 
 volumes:
   db_data:
