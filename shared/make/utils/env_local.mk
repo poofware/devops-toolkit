@@ -18,16 +18,17 @@ endif
 # --------------------------------
 
 ENV_LOCAL_FILE ?= .env.local
-ENV_LOCAL_BWS_PROJECT ?= $(APP_NAME)-$(ENV)
+# Use the dev BWS project for dev-test so local secrets don't need duplication.
+ENV_LOCAL_BWS_PROJECT ?= $(APP_NAME)-$(if $(filter $(ENV),$(DEV_TEST_ENV)),$(DEV_ENV),$(ENV))
 
 # --------------------------------
 # Targets
 # --------------------------------
 
-## Generates .env.local from Bitwarden (ENV=dev only). Updates if secrets changed.
+## Generates .env.local from Bitwarden (ENV=dev + ENV=dev-test). Updates if secrets changed.
 env-local:
-	@if [ "$(ENV)" != "$(DEV_ENV)" ]; then \
-		echo "[INFO] [Env-Local] ENV=$(ENV) (only runs when ENV=$(DEV_ENV)); skipping."; \
+	@if [ "$(ENV)" != "$(DEV_ENV)" ] && [ "$(ENV)" != "$(DEV_TEST_ENV)" ]; then \
+		echo "[INFO] [Env-Local] ENV=$(ENV) (only runs when ENV=$(DEV_ENV) or ENV=$(DEV_TEST_ENV)); skipping."; \
 		exit 0; \
 	fi
 	@if [ -z "$$BWS_ACCESS_TOKEN" ]; then \
