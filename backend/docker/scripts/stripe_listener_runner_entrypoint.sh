@@ -24,6 +24,12 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+# Never run the local Stripe CLI listener in production.
+if [[ "${ENV:-}" == "prod" ]]; then
+  echo "[INFO] ENV=prod — skipping Stripe listener."
+  exit 0
+fi
+
 ###############################################################################
 # 0. Required environment
 ###############################################################################

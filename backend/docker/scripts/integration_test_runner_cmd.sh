@@ -1,15 +1,15 @@
 #!/bin/bash
 set -e
 
-#!/bin/bash
-set -e
-
 : "${APP_URL_FROM_COMPOSE_NETWORK:?APP_URL_FROM_COMPOSE_NETWORK env var is required}"
+
+# Override the health path (default aligns with Vercel and Next.js convention)
+HEALTHCHECK_PATH="${HEALTHCHECK_PATH:-/api/health}"
 
 # Health check loop: tries up to 10 times to confirm the service is up
 n=10
-while ! curl -sf "$APP_URL_FROM_COMPOSE_NETWORK/health" && [ $((n--)) -gt 0 ]; do
-  echo "Waiting for service health from $APP_URL_FROM_COMPOSE_NETWORK..."
+while ! curl -sf "$APP_URL_FROM_COMPOSE_NETWORK$HEALTHCHECK_PATH" && [ $((n--)) -gt 0 ]; do
+  echo "Waiting for service health from $APP_URL_FROM_COMPOSE_NETWORK$HEALTHCHECK_PATH..."
   sleep 2
 done
 

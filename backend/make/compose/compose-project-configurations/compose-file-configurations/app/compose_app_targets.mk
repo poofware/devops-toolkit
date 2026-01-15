@@ -349,10 +349,12 @@ _up:
 		echo "[ERROR] [Up] Empty deploy URL."; \
 		exit 1; \
 	  fi; \
-	  HEALTH_PATH="$(VERCEL_HEALTHCHECK_PATH)"; \
-	  HEALTH_URL="$$DEPLOY_URL$$HEALTH_PATH"; \
-	  echo "[INFO] [Up] Post-check health: $$HEALTH_URL"; \
-	  "$(DEVOPS_TOOLKIT_PATH)/shared/scripts/health_check_url.sh" "$$HEALTH_URL" "$(VERCEL_HEALTHCHECK_RETRIES)" "$(VERCEL_HEALTHCHECK_TIMEOUT)" "$(VERCEL_HEALTHCHECK_INTERVAL)" || exit 1; \
+	  if [ -z "$(COMPOSE_PROFILE_APP_POST_CHECK_SERVICES)" ]; then \
+		echo "[WARN] [Up-App-Post-Check] No services found matching the '$(COMPOSE_PROFILE_APP_POST_CHECK)' profile. Skipping..."; \
+	  else \
+		echo "[INFO] [Up-App-Post-Check] Running '$(COMPOSE_PROFILE_APP_POST_CHECK)' services against $$DEPLOY_URL..."; \
+		APP_URL_FROM_ANYWHERE="$$DEPLOY_URL" $(MAKE) up-app-post-check --no-print-directory; \
+	  fi; \
 	  if [ "$(ENV)" = "prod" ] && [ "$(VERCEL_STAGED_PROD)" = "1" ]; then \
 		echo "[INFO] [Up] Promoting staged deployment to production..."; \
 		ORG_ID="$(VERCEL_ORG_ID)"; \
