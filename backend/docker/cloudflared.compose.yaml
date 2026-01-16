@@ -1,0 +1,18 @@
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}-cloudflared_instance
+    restart: unless-stopped
+    command: >
+      tunnel --no-autoupdate --loglevel info run --token ${CLOUDFLARED_TUNNEL_TOKEN?Docker Compose Config Error! CLOUDFLARED_TUNNEL_TOKEN is not set!} ${CLOUDFLARED_TUNNEL_NAME?Docker Compose Config Error! CLOUDFLARED_TUNNEL_NAME is not set!}
+    profiles:
+      - cloudflared
+    networks:
+      - app_network
+    environment:
+      - CLOUDFLARED_HOSTNAME=${CLOUDFLARED_HOSTNAME:-}
+
+networks:
+  app_network:
+    external: true
+    name: ${COMPOSE_NETWORK_NAME?Docker Compose Config Error! COMPOSE_NETWORK_NAME is not set!}

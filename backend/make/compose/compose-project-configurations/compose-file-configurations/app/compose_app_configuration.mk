@@ -79,6 +79,7 @@ export LOG_LEVEL ?= info
 export DEPS_PASSTHROUGH_VARS += LOG_LEVEL
 
 ENABLE_NGROK_FOR_DEV ?= 0
+ENABLE_CLOUDFLARED_FOR_DEV ?= 0
 
 ifeq ($(APP_IS_GATEWAY),1)
 # If the app is a gateway to its dependencies, we need to passthrough some key network configurations to the deps targets.
@@ -97,6 +98,12 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
   endif
 
   ifeq ($(ENABLE_NGROK_FOR_DEV),1)
+    ifeq ($(ENABLE_CLOUDFLARED_FOR_DEV),1)
+      $(error ENABLE_NGROK_FOR_DEV and ENABLE_CLOUDFLARED_FOR_DEV cannot both be 1. Choose one tunnel provider.)
+    endif
+  endif
+
+  ifeq ($(ENABLE_NGROK_FOR_DEV),1)
     # Include ngrok as part of the project
     COMPOSE_FILE := $(COMPOSE_FILE):$(DEVOPS_TOOLKIT_PATH)/backend/docker/ngrok.compose.yaml
 	
@@ -111,6 +118,24 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
     endif
 
     export NGROK_PORT := 4040
+  endif
+
+  ifeq ($(ENABLE_CLOUDFLARED_FOR_DEV),1)
+    ifeq ($(strip $(CLOUDFLARED_HOSTNAME)),)
+      $(error CLOUDFLARED_HOSTNAME is required when ENABLE_CLOUDFLARED_FOR_DEV=1. Example: CLOUDFLARED_HOSTNAME="$(APP_NAME)-dev.my-domain.com")
+    endif
+
+    # Include cloudflared as part of the project
+    COMPOSE_FILE := $(COMPOSE_FILE):$(DEVOPS_TOOLKIT_PATH)/backend/docker/cloudflared.compose.yaml
+
+    # Placeholder token so docker compose config can parse in preflight steps.
+    export CLOUDFLARED_TUNNEL_TOKEN ?= __cloudflared_tunnel_token_placeholder__
+
+    DEPS_PASSTHROUGH_VARS += CLOUDFLARED_HOSTNAME
+
+    ifeq ($(APP_IS_GATEWAY),1)
+      DEPS_PASSTHROUGH_VARS += CLOUDFLARED_UP
+    endif
   endif
 
 else

@@ -72,7 +72,43 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
     up:: _export_backend_url_dev
   endif
 
-  ifeq ($(ENABLE_NGROK_FOR_DEV),1)
+  ifeq ($(ENABLE_CLOUDFLARED_FOR_DEV),1)
+    ifndef INCLUDED_CLOUDFLARE_API_TOKEN
+      include $(DEVOPS_TOOLKIT_PATH)/backend/make/utils/cloudflare_api_token.mk
+    endif
+
+    _export_cloudflared_tunnel_token: _export_cloudflare_api_token
+    ifeq ($(CLOUDFLARED_TUNNEL_TOKEN),__cloudflared_tunnel_token_placeholder__)
+		$(eval CLOUDFLARED_TUNNEL_TOKEN := $(shell \
+		  CLOUDFLARE_API_TOKEN="$(CLOUDFLARE_API_TOKEN)" \
+		  CLOUDFLARE_ACCOUNT_ID="$(CLOUDFLARE_ACCOUNT_ID)" \
+		  CLOUDFLARE_ZONE_ID="$(CLOUDFLARE_ZONE_ID)" \
+		  CLOUDFLARED_TUNNEL_NAME="$(CLOUDFLARED_TUNNEL_NAME)" \
+		  CLOUDFLARED_HOSTNAME="$(CLOUDFLARED_HOSTNAME)" \
+		  APP_URL_FROM_COMPOSE_NETWORK="$(APP_URL_FROM_COMPOSE_NETWORK)" \
+		  $(DEVOPS_TOOLKIT_PATH)/backend/scripts/ensure_cloudflared_tunnel.sh \
+		))
+    endif
+
+    _export_cloudflared_url_as_app_url:
+    ifndef APP_URL_FROM_ANYWHERE
+		$(eval export APP_URL_FROM_ANYWHERE := https://$(CLOUDFLARED_HOSTNAME))
+		@echo "[INFO] [$(APP_NAME)] Cloudflared URL: $(APP_URL_FROM_ANYWHERE)" >&2
+    endif
+
+    _up-cloudflared: _export_cloudflared_tunnel_token
+    # Only need to start cloudflared once, but the target may be invoked multiple times.
+    ifndef CLOUDFLARED_UP
+		$(eval export CLOUDFLARED_UP := 1)
+		@$(MAKE) _up-network --no-print-directory
+		@echo "[INFO] [Up Cloudflared] Starting 'cloudflared' service..."
+		@$(COMPOSE_CMD) up -d cloudflared || exit 1
+    endif
+
+    build:: _up-cloudflared _export_cloudflared_url_as_app_url
+    up:: _up-cloudflared _export_cloudflared_url_as_app_url
+    print-public-app-domain:: _export_cloudflared_url_as_app_url
+  else ifeq ($(ENABLE_NGROK_FOR_DEV),1)
     _export_ngrok_url_as_app_url:
     ifndef APP_URL_FROM_ANYWHERE
 		$(eval NGROK_HOST_PORT := $(shell $(COMPOSE_CMD) port ngrok $(NGROK_PORT) | cut -d ':' -f 2))
@@ -107,15 +143,17 @@ ifneq (,$(filter $(ENV),$(DEV_TEST_ENV) $(DEV_ENV)))
   up:: _export_app_host_port
 
   ifneq ($(ENABLE_NGROK_FOR_DEV),1)
-    _export_lan_url_as_app_url:
-    ifndef APP_URL_FROM_ANYWHERE
+    ifneq ($(ENABLE_CLOUDFLARED_FOR_DEV),1)
+      _export_lan_url_as_app_url:
+      ifndef APP_URL_FROM_ANYWHERE
 		$(eval export APP_URL_FROM_ANYWHERE = http://$(shell $(DEVOPS_TOOLKIT_PATH)/backend/scripts/get_lan_ip.sh):$(APP_HOST_PORT))
 		@echo "[INFO] [$(APP_NAME)] LAN URL: $(APP_URL_FROM_ANYWHERE)" >&2
-    endif
+      endif
 
-    build:: _export_lan_url_as_app_url
-    up:: _export_lan_url_as_app_url
-    print-public-app-domain:: _export_app_host_port _export_lan_url_as_app_url
+      build:: _export_lan_url_as_app_url
+      up:: _export_lan_url_as_app_url
+      print-public-app-domain:: _export_app_host_port _export_lan_url_as_app_url
+    endif
   endif
 
   # If the app is a gateway to apps that are in deps, we need to include the deps targets after the app targets.
