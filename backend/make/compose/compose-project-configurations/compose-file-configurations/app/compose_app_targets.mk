@@ -394,20 +394,24 @@ _up:
 		APP_URL_FROM_ANYWHERE="$$DEPLOY_URL" $(MAKE) up-app-post-check --no-print-directory; \
 	  fi; \
 	  if [ "$(ENV)" = "prod" ] && [ "$(VERCEL_STAGED_PROD)" = "1" ]; then \
-		echo "[INFO] [Up] Promoting staged deployment to production..."; \
-		ORG_ID="$(VERCEL_ORG_ID)"; \
-		PROJ_ID="$(VERCEL_PROJECT_ID)"; \
-		if [ -z "$$ORG_ID" ] && [ -f ".vercel/project.json" ]; then \
-		  if command -v jq >/dev/null 2>&1; then \
-			ORG_ID=$$(jq -r .orgId .vercel/project.json); \
+		if [ "$(VERCEL_HOLD_PROMOTION)" = "1" ]; then \
+		  echo "[INFO] [Up] Promotion hold enabled (VERCEL_HOLD_PROMOTION=1); skipping promote."; \
+		else \
+		  echo "[INFO] [Up] Promoting staged deployment to production..."; \
+		  ORG_ID="$(VERCEL_ORG_ID)"; \
+		  PROJ_ID="$(VERCEL_PROJECT_ID)"; \
+		  if [ -z "$$ORG_ID" ] && [ -f ".vercel/project.json" ]; then \
+			if command -v jq >/dev/null 2>&1; then \
+			  ORG_ID=$$(jq -r .orgId .vercel/project.json); \
+			fi; \
 		  fi; \
-		fi; \
-		if [ -z "$$PROJ_ID" ] && [ -f ".vercel/project.json" ]; then \
-		  if command -v jq >/dev/null 2>&1; then \
-			PROJ_ID=$$(jq -r .projectId .vercel/project.json); \
+		  if [ -z "$$PROJ_ID" ] && [ -f ".vercel/project.json" ]; then \
+			if command -v jq >/dev/null 2>&1; then \
+			  PROJ_ID=$$(jq -r .projectId .vercel/project.json); \
+			fi; \
 		  fi; \
+		  VERCEL_ORG_ID="$$ORG_ID" VERCEL_PROJECT_ID="$$PROJ_ID" vercel promote "$$DEPLOY_URL" --token $(VERCEL_TOKEN) --yes --scope "$$ORG_ID"; \
 		fi; \
-		VERCEL_ORG_ID="$$ORG_ID" VERCEL_PROJECT_ID="$$PROJ_ID" vercel promote "$$DEPLOY_URL" --token $(VERCEL_TOKEN) --yes --scope "$$ORG_ID"; \
 	  fi; \
 	fi
 
