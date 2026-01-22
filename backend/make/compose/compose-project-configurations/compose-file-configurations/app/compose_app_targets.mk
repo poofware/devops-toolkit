@@ -393,10 +393,17 @@ _up:
 	  if [ -z "$(COMPOSE_PROFILE_APP_POST_CHECK_SERVICES)" ]; then \
 		echo "[WARN] [Up-App-Post-Check] No services found matching the '$(COMPOSE_PROFILE_APP_POST_CHECK)' profile. Skipping..."; \
 	  else \
-		echo "[INFO] [Up-App-Post-Check] Running '$(COMPOSE_PROFILE_APP_POST_CHECK)' services against $$DEPLOY_URL..."; \
-		APP_URL_FROM_ANYWHERE="$$DEPLOY_URL" $(MAKE) up-app-post-check --no-print-directory; \
+		POST_CHECK_URL="$$DEPLOY_URL"; \
+		if [ -n "$(strip $(VERCEL_STAGING_DOMAIN))" ]; then \
+		  case "$(VERCEL_STAGING_DOMAIN)" in \
+		    http://*|https://*) POST_CHECK_URL="$(VERCEL_STAGING_DOMAIN)" ;; \
+		    *) POST_CHECK_URL="https://$(VERCEL_STAGING_DOMAIN)" ;; \
+		  esac; \
+		fi; \
+		echo "[INFO] [Up-App-Post-Check] Running '$(COMPOSE_PROFILE_APP_POST_CHECK)' services against $$POST_CHECK_URL..."; \
+		APP_URL_FROM_ANYWHERE="$$POST_CHECK_URL" $(MAKE) up-app-post-check --no-print-directory; \
 	  fi; \
-	  if [ "$(ENV)" = "prod" ] && [ "$(VERCEL_STAGED_PROD)" = "1" ]; then \
+		  if [ "$(ENV)" = "prod" ] && [ "$(VERCEL_STAGED_PROD)" = "1" ]; then \
 		if [ "$(VERCEL_HOLD_PROMOTION)" = "1" ]; then \
 		  echo "[INFO] [Up] Promotion hold enabled (VERCEL_HOLD_PROMOTION=1); skipping promote."; \
 		else \
@@ -414,6 +421,25 @@ _up:
 			fi; \
 		  fi; \
 		  VERCEL_ORG_ID="$$ORG_ID" VERCEL_PROJECT_ID="$$PROJ_ID" vercel promote "$$DEPLOY_URL" --token $(VERCEL_TOKEN) --yes --scope "$$ORG_ID"; \
+		  if [ "$(EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK)" -eq 1 ]; then \
+			echo "[INFO] [Up] Skipping post-promotion app post-check... EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK is set to 1"; \
+		  else \
+			if [ -n "$(strip $(VERCEL_DOMAIN))" ]; then \
+			  POST_PROMOTE_URL="$(VERCEL_DOMAIN)"; \
+			  case "$$POST_PROMOTE_URL" in \
+				http://*|https://*) ;; \
+				*) POST_PROMOTE_URL="https://$$POST_PROMOTE_URL" ;; \
+			  esac; \
+			  if [ -z "$(COMPOSE_PROFILE_APP_POST_CHECK_SERVICES)" ]; then \
+				echo "[WARN] [Up-App-Post-Check] No services found matching the '$(COMPOSE_PROFILE_APP_POST_CHECK)' profile. Skipping..."; \
+			  else \
+				echo "[INFO] [Up-App-Post-Check] Running '$(COMPOSE_PROFILE_APP_POST_CHECK)' services against $$POST_PROMOTE_URL..."; \
+				APP_URL_FROM_ANYWHERE="$$POST_PROMOTE_URL" $(MAKE) up-app-post-check --no-print-directory; \
+			  fi; \
+			else \
+			  echo "[WARN] [Up] VERCEL_DOMAIN is not set; skipping post-promotion app post-check."; \
+			fi; \
+		  fi; \
 		fi; \
 	  fi; \
 	fi
@@ -433,6 +459,7 @@ _up-app:
 		exit 1; \
 	fi; \
 	BUILD_ENV_FLAGS=""; \
+	RUNTIME_ENV_FLAGS=""; \
 	if [ -n "$(NEXTJS_BACKEND_ENV_VAR)" ] && [ -n "$(BACKEND_GATEWAY_PATH)" ]; then \
 		echo "[INFO] [Up App] Resolving backend URL (with health check)..."; \
 		BACKEND_DOMAIN="$$( $(_backend_domain_cmd) )"; rc=$$?; \
@@ -445,6 +472,22 @@ _up-app:
 			echo "[WARN] [Up App] Could not resolve backend URL, deploying without it"; \
 		fi; \
 	fi; \
+	if [ -n "$(strip $(VERCEL_STAGING_DOMAIN))" ]; then \
+		BUILD_ENV_FLAGS="$$BUILD_ENV_FLAGS --build-env VERCEL_STAGING_DOMAIN=$(VERCEL_STAGING_DOMAIN)"; \
+		RUNTIME_ENV_FLAGS="$$RUNTIME_ENV_FLAGS --env VERCEL_STAGING_DOMAIN=$(VERCEL_STAGING_DOMAIN)"; \
+	fi; \
+	if [ -n "$(strip $(APP_NAME))" ]; then \
+		BUILD_ENV_FLAGS="$$BUILD_ENV_FLAGS --build-env APP_NAME=$(APP_NAME)"; \
+		RUNTIME_ENV_FLAGS="$$RUNTIME_ENV_FLAGS --env APP_NAME=$(APP_NAME)"; \
+	fi; \
+	if [ -n "$(strip $(UNIQUE_RUNNER_ID))" ]; then \
+		BUILD_ENV_FLAGS="$$BUILD_ENV_FLAGS --build-env UNIQUE_RUNNER_ID=$(UNIQUE_RUNNER_ID)"; \
+		RUNTIME_ENV_FLAGS="$$RUNTIME_ENV_FLAGS --env UNIQUE_RUNNER_ID=$(UNIQUE_RUNNER_ID)"; \
+	fi; \
+	if [ -n "$(strip $(UNIQUE_RUN_NUMBER))" ]; then \
+		BUILD_ENV_FLAGS="$$BUILD_ENV_FLAGS --build-env UNIQUE_RUN_NUMBER=$(UNIQUE_RUN_NUMBER)"; \
+		RUNTIME_ENV_FLAGS="$$RUNTIME_ENV_FLAGS --env UNIQUE_RUN_NUMBER=$(UNIQUE_RUN_NUMBER)"; \
+	fi; \
 	echo "[INFO] [Up App] Deploying $(APP_NAME) to Vercel (remote build)..."; \
 	DEPLOY_ARGS="--prod"; \
 	if [ "$(ENV)" = "prod" ] && [ "$(VERCEL_STAGED_PROD)" = "1" ]; then \
@@ -452,11 +495,17 @@ _up-app:
 		echo "[INFO] [Up App] Staged prod deploy enabled (no domain assignment)."; \
 	fi; \
 	DEPLOY_URL=$$(VERCEL_ORG_ID=$(VERCEL_ORG_ID) VERCEL_PROJECT_ID=$(VERCEL_PROJECT_ID) VERCEL_PROJECT_NAME=$(VERCEL_PROJECT_NAME) \
-		vercel deploy $$DEPLOY_ARGS --token $(VERCEL_TOKEN) --yes --force --cwd $(CURDIR) $$BUILD_ENV_FLAGS \
+		vercel deploy $$DEPLOY_ARGS --token $(VERCEL_TOKEN) --yes --force --cwd $(CURDIR) $$BUILD_ENV_FLAGS $$RUNTIME_ENV_FLAGS \
 		| /usr/bin/grep -Eo 'https://[^ ]+' | tail -n1); \
 	if [ -z "$$DEPLOY_URL" ]; then \
 		echo "[ERROR] [Up App] Failed to capture Vercel deploy URL."; \
 		exit 1; \
+	fi; \
+	if [ -n "$(strip $(VERCEL_STAGING_DOMAIN))" ]; then \
+		echo "[INFO] [Up App] Setting alias $(VERCEL_STAGING_DOMAIN) -> $$DEPLOY_URL"; \
+		if ! vercel alias set "$$DEPLOY_URL" "$(VERCEL_STAGING_DOMAIN)" --token $(VERCEL_TOKEN); then \
+			echo "[WARN] [Up App] Failed to set Vercel alias for $(VERCEL_STAGING_DOMAIN)."; \
+		fi; \
 	fi; \
 	echo "$$DEPLOY_URL" > .last_vercel_deploy_url; \
 	echo "[INFO] [Up App] Done. App $(APP_NAME) available at $$DEPLOY_URL."
