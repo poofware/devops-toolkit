@@ -4,6 +4,7 @@ x-build-network: &build-network
 x-environment: &environment
   environment:
     BWS_ACCESS_TOKEN: ${BWS_ACCESS_TOKEN?Docker Compose Config Error! BWS_ACCESS_TOKEN is not set!}
+    APP_URL_FROM_ANYWHERE: ${APP_URL_FROM_ANYWHERE:-}
 
 x-build-args: &build-args
   APP_NAME: ${APP_NAME?Docker Compose Config Error! APP_NAME is not set!}
@@ -27,7 +28,7 @@ services:
       <<: *build-network
       args:
         <<: *build-args
-        APP_URL_FROM_COMPOSE_NETWORK: ${APP_URL_FROM_COMPOSE_NETWORK?Docker Compose Config Error! APP_URL_FROM_COMPOSE_NETWORK is not set!}
+        APP_URL_FROM_COMPOSE_NETWORK: ${APP_URL_FROM_COMPOSE_NETWORK:-http://${APP_NAME}:8080}
         STRIPE_WEBHOOK_CONNECTED_EVENTS: ${STRIPE_WEBHOOK_CONNECTED_EVENTS:-}
         STRIPE_WEBHOOK_PLATFORM_EVENTS: ${STRIPE_WEBHOOK_PLATFORM_EVENTS:-}
         STRIPE_WEBHOOK_ROUTE: ${STRIPE_WEBHOOK_ROUTE?Docker Compose Config Error! STRIPE_WEBHOOK_ROUTE is not set!}
