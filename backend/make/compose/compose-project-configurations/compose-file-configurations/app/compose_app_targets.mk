@@ -373,6 +373,7 @@ VERCEL_HEALTHCHECK_INTERVAL ?= 3
 # Override _up entirely - Vercel builds remotely, no compose needed
 _up:
 	@$(MAKE) _build-pre-sync --no-print-directory
+	@$(MAKE) migrate --no-print-directory
 	@echo "[INFO] [Up] Deploying to Vercel (skipping compose build/network/migrate)..."
 	@$(MAKE) _up-app --no-print-directory
 	@if [ "$(EXCLUDE_COMPOSE_PROFILE_APP_POST_CHECK)" -eq 1 ]; then \
