@@ -59,6 +59,14 @@ migrate:: _up-network
 	@# We pass down MIGRATE_MODE to the inner make command to preserve its value.
 	@flock $(MIGRATION_LOCK_FILE) -c '$(MAKE) --no-print-directory _unlocked_migrate MIGRATE_MODE=$(MIGRATE_MODE)'
 	@echo "[INFO] [Migrate] Lock released."
+	@if [ "$(ENV)" = "prod" ] && [ "$(MIGRATE_MODE)" != "backward" ]; then \
+		latest=$$(ls "$(MIGRATIONS_PATH)" | grep -E '^[0-9]+' | cut -d_ -f1 | sort -n | tail -1); \
+		if [ -n "$$latest" ]; then \
+			ts=$$(date -u +%Y-%m-%dT%H:%M:%SZ); \
+			printf "%s %s\n" "$$latest" "$$ts" >> "$(MIGRATIONS_PATH)/prod_migrations_applied.txt"; \
+			echo "[INFO] [Migrate] Recorded prod migration $$latest in $(MIGRATIONS_PATH)/prod_migrations_applied.txt"; \
+		fi; \
+	fi
 
 # This is the new internal target containing the original migration logic.
 # It is only ever called by the locked `migrate` target above.
