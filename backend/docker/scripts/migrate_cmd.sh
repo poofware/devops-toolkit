@@ -208,6 +208,37 @@ case "${MIGRATE_MODE}" in
 esac
 
 ###############################################################################
+# 6¼. Prod logging helpers (authoritative migration run log)
+###############################################################################
+log_migration_result() {
+  local before="$1"
+  local after="$2"
+  local status="$3"
+  local mode="${MIGRATE_MODE:-forward}"
+  local ts
+  ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "MIGRATION_RESULT ${ENV} ${mode} ${before} ${after} ${ts} ${status}"
+}
+
+get_db_version() {
+  local vt="schema_version"
+  if [[ "${USE_ISOLATED_SCHEMA}" == true && -n "${ISOLATED_SCHEMA:-}" ]]; then
+    vt="\"${ISOLATED_SCHEMA}\".schema_version"
+  fi
+  local raw
+  raw="$(psql "${EFFECTIVE_DB_URL}" -Atq -c "select version from ${vt} limit 1" 2>/dev/null | head -n1 || true)"
+  raw="$(echo "${raw}" | tr -dc '0-9')"
+  if [[ -z "${raw}" ]]; then raw=0; fi
+  printf "%06d" "${raw}"
+}
+
+VERSION_BEFORE=""
+if [[ "${ENV}" == "prod" ]]; then
+  VERSION_BEFORE="$(get_db_version)"
+  if [[ -z "${VERSION_BEFORE}" ]]; then VERSION_BEFORE="000000"; fi
+fi
+
+###############################################################################
 # Guaranteed isolated-schema teardown for non-prod backward migrations
 ###############################################################################
 if [[ "${DROP_ISOLATED_AFTER}" == true ]]; then
@@ -262,6 +293,11 @@ if [[ "${ENV}" == "prod" && "${DESTINATION}" == "+1" ]]; then
 
   if (( current >= latest )); then
     echo "[INFO] Database is already at latest version (${latest}); skipping."
+    if [[ "${ENV}" == "prod" ]]; then
+      after="$(printf "%06d" "${current}")"
+      before="${VERSION_BEFORE:-${after}}"
+      log_migration_result "${before}" "${after}" "noop"
+    fi
     exit 0
   fi
 fi
@@ -287,4 +323,18 @@ else
        --migrations migrations \
        --conn-string "${EFFECTIVE_DB_URL}" \
        "${EXTRA_TERN_ARGS[@]}"
+fi
+
+###############################################################################
+# 8. Prod migration run log (authoritative)
+###############################################################################
+if [[ "${ENV}" == "prod" ]]; then
+  VERSION_AFTER="$(get_db_version)"
+  status="applied"
+  if [[ "${VERSION_AFTER}" == "${VERSION_BEFORE}" ]]; then
+    status="noop"
+  elif [[ "${MIGRATE_MODE}" == "backward" ]]; then
+    status="rolled_back"
+  fi
+  log_migration_result "${VERSION_BEFORE}" "${VERSION_AFTER}" "${status}"
 fi

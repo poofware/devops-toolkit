@@ -59,12 +59,20 @@ migrate:: _up-network
 	@# We pass down MIGRATE_MODE to the inner make command to preserve its value.
 	@flock $(MIGRATION_LOCK_FILE) -c '$(MAKE) --no-print-directory _unlocked_migrate MIGRATE_MODE=$(MIGRATE_MODE)'
 	@echo "[INFO] [Migrate] Lock released."
-	@if [ "$(ENV)" = "prod" ] && [ "$(MIGRATE_MODE)" != "backward" ]; then \
-		latest=$$(ls "$(MIGRATIONS_PATH)" | grep -E '^[0-9]+' | cut -d_ -f1 | sort -n | tail -1); \
-		if [ -n "$$latest" ]; then \
-			ts=$$(date -u +%Y-%m-%dT%H:%M:%SZ); \
-			printf "%s %s\n" "$$latest" "$$ts" >> "$(MIGRATIONS_PATH)/prod_migrations_applied.txt"; \
-			echo "[INFO] [Migrate] Recorded prod migration $$latest in $(MIGRATIONS_PATH)/prod_migrations_applied.txt"; \
+	@if [ "$(ENV)" = "prod" ] && [ -n "$(COMPOSE_PROFILE_MIGRATE_SERVICES)" ]; then \
+		log_file="$(MIGRATIONS_PATH)/migration_runs.txt"; \
+		log_line=$$(docker logs "$(COMPOSE_PROJECT_NAME)-migrate_instance" 2>/dev/null | grep "^MIGRATION_RESULT " | tail -1); \
+		if [ -n "$$log_line" ]; then \
+			if [ ! -f "$$log_file" ]; then \
+				printf "%s\n%s\n" \
+					"# migration_runs.txt" \
+					"# <env> <mode> <from_version> <to_version> <UTC_ISO8601> <status>" \
+					> "$$log_file"; \
+			fi; \
+			printf "%s\n" "$${log_line#MIGRATION_RESULT }" >> "$$log_file"; \
+			echo "[INFO] [Migrate] Recorded prod migration run in $$log_file"; \
+		else \
+			echo "[WARN] [Migrate] No MIGRATION_RESULT found in migrate logs; skipping log write."; \
 		fi; \
 	fi
 
