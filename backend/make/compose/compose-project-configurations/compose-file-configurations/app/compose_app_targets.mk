@@ -575,6 +575,53 @@ print-public-app-domain::
 		exit 1; \
 	fi
 
+  else ifeq ($(DEPLOY_TARGET_FOR_ENV),vps)
+
+_export_vps_deploy_script:
+	@if [ -z "$(VPS_DEPLOY_SCRIPT)" ]; then \
+		echo "[ERROR] [VPS] VPS_DEPLOY_SCRIPT is not set."; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(VPS_DEPLOY_SCRIPT)" ]; then \
+		echo "[ERROR] [VPS] Deploy script not found at $(VPS_DEPLOY_SCRIPT)."; \
+		exit 1; \
+	fi
+
+up:: _export_vps_deploy_script
+ci:: _export_vps_deploy_script
+clean:: _export_vps_deploy_script
+down:: _export_vps_deploy_script
+
+  ifndef INCLUDED_COMPOSE_PROJECT_TARGETS
+    include $(DEVOPS_TOOLKIT_PATH)/backend/make/compose/compose-project-targets/compose_project_targets.mk
+  endif
+
+# Override _up entirely - VPS deploy skips compose
+_up:
+	@echo "[INFO] [Up] Deploying to VPS (skipping compose build/network/migrate)..."
+	@$(MAKE) _up-app --no-print-directory
+
+# Override _up-app to deploy via custom script
+_up-app:
+	@set -euo pipefail; \
+	echo "[INFO] [Up App] Deploying $(APP_NAME) to VPS..."; \
+	bash "$(VPS_DEPLOY_SCRIPT)"; \
+	echo "[INFO] [Up App] Done. App $(APP_NAME) deployed to VPS."
+
+# Override down to avoid destructive remote removal
+down::
+	@echo "[INFO] [Down] VPS deploy target selected – skipping remote teardown."
+
+CUSTOM_PRINT_PUBLIC_APP_DOMAIN := 1
+
+print-public-app-domain::
+	@if [ -n "$(VPS_HOST)" ]; then \
+		echo "$(VPS_HOST)"; \
+	else \
+		echo "[ERROR] [Print Public App Domain] VPS_HOST not set." >&2; \
+		exit 1; \
+	fi
+
   endif
 
 endif

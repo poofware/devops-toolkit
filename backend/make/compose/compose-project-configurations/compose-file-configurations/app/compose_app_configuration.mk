@@ -62,7 +62,7 @@ endif
 
 
 # Deploy target selection
-ALLOWED_DEPLOY_TARGETS := fly vercel shuttle
+ALLOWED_DEPLOY_TARGETS := fly vercel shuttle vps
 STAGING_DEPLOY_TARGET ?= fly
 PROD_DEPLOY_TARGET ?= fly
 
@@ -235,6 +235,10 @@ else
     ifndef APP_URL_FROM_ANYWHERE
       export APP_URL_FROM_ANYWHERE := $(SHUTTLE_URL)
     endif
+
+  else ifeq ($(DEPLOY_TARGET_FOR_ENV),vps)
+
+    VPS_DEPLOY_SCRIPT ?= ./scripts/vps_deploy.sh
 
   endif
 
